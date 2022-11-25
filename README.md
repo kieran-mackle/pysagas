@@ -79,6 +79,13 @@ make html
 xo build/html/index.html
 ```
 
+If you are actively developing the docs, consider using
+[sphinx-autobuild](https://pypi.org/project/sphinx-autobuild/).
+
+```
+sphinx-autobuild source/ build/ --open-browser
+```
+
 
 ## License
 To be confirmed.
