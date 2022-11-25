@@ -71,9 +71,13 @@ pre-commit install
 pre-commit run --all-files
 ```
 
-4. Initialise [`commitizen`](https://commitizen-tools.github.io/commitizen/).
+### Building the docs
 
-
+```
+cd docs/
+make html
+xo build/html/index.html
+```
 
 
 ## License

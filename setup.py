@@ -20,8 +20,15 @@ def get_version(rel_path):
 
 # Define extra dependencies
 dev_dep = ["pytest >= 7.1.1", "black >= 22.10.0", "commitizen >= 2.35.0", "pre-commit"]
-
-all_dep = dev_dep
+docs_dep = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "sphinx-copybutton >= 0.5.0",
+    "sphinx-inline-tabs >= 2022.1.2b11",
+    "myst-parser >= 0.18.1",
+    "sphinx-autobuild >= 2021.3.14",
+]
+all_dep = dev_dep + docs_dep
 
 # Load README
 with open("README.md", "r", encoding="utf-8") as fh:
