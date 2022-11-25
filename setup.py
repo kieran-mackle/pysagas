@@ -21,8 +21,8 @@ def get_version(rel_path):
 # Define extra dependencies
 dev_dep = ["pytest >= 7.1.1", "black >= 22.10.0", "commitizen >= 2.35.0", "pre-commit"]
 docs_dep = [
-    "sphinx",
-    "sphinx-rtd-theme",
+    "sphinx == 5.3.0",
+    "sphinx-rtd-theme == 1.1.1",
     "sphinx-copybutton >= 0.5.0",
     "sphinx-inline-tabs >= 2022.1.2b11",
     "myst-parser >= 0.18.1",
@@ -53,7 +53,9 @@ setuptools.setup(
     package_dir={"": "."},
     packages=setuptools.find_packages(where="."),
     python_requires=">=3.7",
-    install_requires=[],
+    install_requires=[
+        "numpy==1.23.5",
+    ],
     extras_require={
         "dev": dev_dep,
         "all": all_dep,
