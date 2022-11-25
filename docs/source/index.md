@@ -6,9 +6,11 @@
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: Demo
+:caption: Theory and Examples
 
-Demo <demo>
+Theory <theory>
+2D Ramp Example <examples/ramp_2d>
+3D Ramp Example <examples/ramp_3d>
 ```
 
 
