@@ -1,6 +1,7 @@
-## Case Study - 2D Ramp (shock expansion)
+# Case Study: 2D Ramp (shock expansion)
 
 Simplest case ramp at angle, $\theta$, with length, $L$.
+
 Parameters $\mathbf{p} = [\theta, \, L]$
 
 Calculate nominal pressure and forces.
@@ -8,7 +9,7 @@ Calculate nominal pressure and forces.
 
 
 
-### Free Stream Conditions
+## Free Stream Conditions
 
 Use ideal gas air and a flow condition that approximates TUSQ
 
