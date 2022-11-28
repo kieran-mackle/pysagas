@@ -1,5 +1,6 @@
 # Poor Man's Adjoint Solver
-The proposed idea is to use local piston theory to evaluate the senitivity between surface pressure, and design and flow parameters. 
+The proposed idea is to use local piston theory to evaluate the 
+senitivity between surface pressure, and design and flow parameters. 
 
 From Piston Theory:
 
@@ -28,9 +29,11 @@ Thus:
 $$ P = P_l + \rho_l \, a_l \, \mathbf{V}_l \cdot \left( \mathbf{n}_0 - \mathbf{n} \right)$$
 
 
-Ref: 
-Zhan, W.-W., Ye, Z.-Y., and Zhang, C.-A., “Supersonic Flutter Analysis Based on a Local Piston Theory,” AIAA Journal,
-Vol. 47, No. 10, 2009.
+*Reference:*
+
+[Zhan, W.-W., Ye, Z.-Y., and Zhang, C.-A., “Supersonic Flutter 
+Analysis Based on a Local Piston Theory,” AIAA Journal, Vol. 47, 
+No. 10, 2009.](https://arc.aiaa.org/doi/10.2514/1.37750)
 
 
 
@@ -49,10 +52,15 @@ $$ \rightarrow \frac{d \, P}{d \, \mathbf{n}} $$
 
 $$ F_x = \sum_{i=0, \, N} P_i(p) \, A_i(p) \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T $$
 
-$$ \frac{d}{dp}(F_x) = \sum_{i=0, \, N} \left[ \frac{d \, P_i}{dp} \, A_i(p) \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T 
+$$ \frac{d}{dp}(F_x) = $$
+
+$$
+\sum_{i=0, \, N} \left[ \frac{d \, P_i}{dp} \, A_i(p) \, 
+\mathbf{n}(p) \cdot [1, \, 0, \, 0]^T 
 + P_i(p) \, \frac{d \, A_i}{d \, p} \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T
 + P_i(p) \, A_i(p) \, \frac{d \, \mathbf{n}}{dp} \cdot [1, \, 0, \, 0]^T
-\right] $$
+\right] 
+$$
 
 
 4. Convert to coefficient. 
@@ -78,18 +86,21 @@ explored and compared to actual adjoint calculations.
 
 
 Extra references to review:
-- Lighthill, M. J., “Oscillating Airfoils at High Mach Numbers,” Journal of the Aeronautical Sciences, Vol. 20, No. 6, June 1953, pp. 402–406
 
-- Ashley, H., and Zartarian, G., “Piston Theory: A New Aerodynamic Tool for the Aeroelastician,” Journal of the Aeronautical Sciences, Vol. 23, No. 12, Dec. 1956, pp. 1109–1118.
+- [Lighthill, M. J., “Oscillating Airfoils at High Mach Numbers,” Journal of the Aeronautical Sciences, Vol. 20, No. 6, June 1953, pp. 402–406](https://arc.aiaa.org/doi/abs/10.2514/8.2657?journalCode=jans)
 
-- Van Dyke, M., “A Study of Second-Order Supersonic Flow Theory,” NACA TR 1081, 1951.
+- [Ashley, H., and Zartarian, G., “Piston Theory: A New Aerodynamic Tool for the Aeroelastician,” Journal of the Aeronautical Sciences, Vol. 23, No. 12, Dec. 1956, pp. 1109–1118.](https://arc.aiaa.org/doi/abs/10.2514/8.3740)
 
-- Zartarian, G., Hsu, P. T., and Ashley, H., “Dynamic Airloads and Aeroelastic Problems at Entry Mach Numbers,” Journal of the Aeronautical Sciences, Vol. 28, No. 3, March 1961, pp. 209–222.
+- [Van Dyke, M., “A Study of Second-Order Supersonic Flow Theory,” NACA TR 1081, 1951.](https://thesis.library.caltech.edu/10587/1/van-dyke-milton-1949-thesis.pdf)
+
+- [Zartarian, G., Hsu, P. T., and Ashley, H., “Dynamic Airloads and Aeroelastic Problems at Entry Mach Numbers,” Journal of the Aeronautical Sciences, Vol. 28, No. 3, March 1961, pp. 209–222.](https://arc.aiaa.org/doi/10.2514/8.8927)
 
 
 ## More complex correction equations
 
-One caveat of usng higher order correction equations is that these may be better/worse suited for specific Mach number ranges. That is different approaches may be required for different parts of the flight envelope. 
+One caveat of usng higher order correction equations is that these may 
+be better/worse suited for specific Mach number ranges. That is different 
+approaches may be required for different parts of the flight envelope. 
 
 $$ q^2 = (U+u)^2 + v^2 + w^2 $$
 
@@ -99,7 +110,9 @@ $$C_p = \frac{P - P_\infty}{\frac{1}{2} \, \rho_\infty \, U^2} = \frac{2}{\gamma
 
 Expanding the equation yields:
 
-$$C_p = -2 \, \frac{u}{U} - \frac{v^2 + w^2}{U^2} + \beta^2 \, \frac{u^2}{U^2} + M^2 \, \frac{u}{U} \, \frac{v^2+w^2}{U^2} + \frac{M^2}{4} \, \left( \frac{v^2+w^2}{U^2} \right)^2 + 0 \, \left[ \frac{u^3}{U^3}, \, \frac{u^2}{U^2} \, \frac{v^2+w^2}{U^2}, \, \frac{u}{U} \, \left( \frac{v^2+w^2}{U^2} \right)^2, \, \left(\frac{v^2 +w^2}{U^2} \right)^3 \right] $$
+$$C_p = -2 \, \frac{u}{U} - \frac{v^2 + w^2}{U^2} + \beta^2 \, \frac{u^2}{U^2} + M^2 \, \frac{u}{U} \, \frac{v^2+w^2}{U^2} + \frac{M^2}{4} \, \left( \frac{v^2+w^2}{U^2} \right)^2 
+\\
++\left[ \frac{u^3}{U^3}, \, \frac{u^2}{U^2} \, \frac{v^2+w^2}{U^2}, \, \frac{u}{U} \, \left( \frac{v^2+w^2}{U^2} \right)^2, \, \left(\frac{v^2 +w^2}{U^2} \right)^3 \right] $$
 
 $$\beta = \sqrt{M^2-1}$$
 
