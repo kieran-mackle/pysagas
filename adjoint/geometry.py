@@ -107,8 +107,8 @@ class Cell:
 
         # Calculate geometric sensitivities
         # TODO - below not validated
-        _, self.dn = create_sensitivity_matrix(self.p0, self.p1, self.p2)
-        _, self.dA = create_area_sensitivity_matrix(self.p0, self.p1, self.p2)
+        self.dn = self.n_sensitivity(self.p0, self.p1, self.p2)
+        self.dA = self.A_sensitivity(self.p0, self.p1, self.p2)
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"
@@ -185,6 +185,284 @@ class Cell:
         S = 0.5 * np.linalg.norm(np.cross(A.vec, B.vec))
         return S
 
+    @staticmethod
+    def n_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
+        """Calculates the sensitivity of a cell's normal vector
+        to the points defining the cell analytically.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        -------
+        sensitivity : np.array
+            The sensitivity matrix with size m x n x p. Rows m refer to
+            the vertices, columns n refer to the vertex coordinates, and
+            slices p refer to the components of the normal vector.
+        """
+        g = (
+            ((p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)) ** 2
+            + ((p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)) ** 2
+            + ((p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)) ** 2
+        )
+
+        # n = np.empty(3)
+        # A = p0
+        # B = p1
+        # C = p2
+        # n[0] = ((B.y-A.y)*(C.z-A.z) - (B.z-A.z)*(C.y-A.y)) / g**0.5
+        # n[1] = ((B.z-A.z)*(C.x-A.x) - (B.x-A.x)*(C.z-A.z)) / g**0.5
+        # n[2] = ((B.x-A.x)*(C.y-A.y) - (B.y-A.y)*(C.x-A.x)) / g**0.5
+
+        M_sense = np.empty((3, 9))
+        for row in range(3):
+            if row == 0:
+                f = (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)  # f_x
+            elif row == 1:
+                f = (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)  # f_y
+            elif row == 2:
+                f = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)  # f_z
+
+            for col in range(9):
+                if col == 0:  # d/dp0.x
+                    g_dash = 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * (-(p1.z - p0.z) + (p2.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        -(p2.y - p0.y) + (p1.y - p0.y)
+                    )
+                elif col == 1:  # d/dp0.y
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * (-(p2.z - p0.z) + (p1.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        -(p1.x - p0.x) + (p2.x - p0.x)
+                    )
+                elif col == 2:  # d/dp0.z
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * (-(p1.y - p0.y) + (p2.y - p0.y)) + 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * (
+                        -(p2.x - p0.x) + (p1.x - p0.x)
+                    )
+                elif col == 3:  # d/dp1.x
+                    g_dash = 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * (-(p2.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        (p2.y - p0.y)
+                    )
+                elif col == 4:  # d/dp1.y
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * ((p2.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        -(p2.x - p0.x)
+                    )
+                elif col == 5:  # d/dp1.z
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * (-(p2.y - p0.y)) + 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * (
+                        (p2.x - p0.x)
+                    )
+                elif col == 6:  # d/dp2.x
+                    g_dash = 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * ((p1.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        -(p1.y - p0.y)
+                    )
+                elif col == 7:  # d/dp2.y
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * (-(p1.z - p0.z)) + 2 * (
+                        (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                    ) * (
+                        (p1.x - p0.x)
+                    )
+                elif col == 8:  # d/dp2.z
+                    g_dash = 2 * (
+                        (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                    ) * ((p1.y - p0.y)) + 2 * (
+                        (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                    ) * (
+                        -(p1.x - p0.x)
+                    )
+
+                if row == 0:  # for n..x
+                    # ((p1.y-p0.y)*(p2.z-p0.z) - (p1.z-p0.z)*(p2.y-p0.y))  # f_x
+                    if col == 1:  # d/dp0.y
+                        f_dash = -(p2.z - p0.z) + (p1.z - p0.z)
+                    elif col == 2:  # d/dp0.z
+                        f_dash = -(p1.y - p0.y) + (p2.y - p0.y)
+                    elif col == 4:  # d/dp1.y
+                        f_dash = p2.z - p0.z
+                    elif col == 5:  # d/dp1.z
+                        f_dash = -(p2.y - p0.y)
+                    elif col == 7:  # d/dp2.y
+                        f_dash = -(p1.z - p0.z)
+                    elif col == 8:  # d/dp2.z
+                        f_dash = p1.y - p0.y
+                    else:
+                        f_dash = 0
+                if row == 1:  # for n.y  # CHECK
+                    # f = ((p1.z-p0.z)*(p2.x-p0.x) - (p1.x-p0.x)*(p2.z-p0.z))  # f_y
+                    if col == 0:  # d/dp0.x
+                        f_dash = -(p1.z - p0.z) + (p2.z - p0.z)
+                    elif col == 2:  # d/dp0.z
+                        f_dash = -(p2.x - p0.x) + (p1.x - p0.x)  # CHECK
+                    elif col == 3:  # d/dp1.x
+                        f_dash = -(p2.z - p0.z)
+                    elif col == 5:  # d/dp1.z
+                        f_dash = p2.x - p0.x
+                    elif col == 6:  # d/dp2.x
+                        f_dash = p1.z - p0.z
+                    elif col == 8:  # d/dp2.z
+                        f_dash = -(p1.x - p0.x)
+                    else:
+                        f_dash = 0
+                if row == 2:  # for n.z  # CHECK
+                    # f = ((p1.x-p0.x)*(p2.y-p0.y) - (p1.y-p0.y)*(p2.x-p0.x))  # f_z
+                    if col == 0:  # d/dp0.x
+                        f_dash = -(p2.y - p0.y) + (p1.y - p0.y)
+                    elif col == 1:  # d/dp0.y
+                        f_dash = -(p1.x - p0.x) + (p2.x - p0.x)
+                    elif col == 3:  # d/dp1.x
+                        f_dash = p2.y - p0.y
+                    elif col == 4:  # d/dp1.y
+                        f_dash = -(p2.x - p0.x)
+                    elif col == 6:  # d/dp2.x
+                        f_dash = -(p1.y - p0.y)
+                    elif col == 7:  # d/dp2.y
+                        f_dash = p1.x - p0.x
+                    else:
+                        f_dash = 0
+
+                # Assign sensitivity
+                M_sense[row, col] = (
+                    f_dash * (g ** (-0.5)) + f * (-1 / 2) * g ** (-3 / 2) * g_dash
+                )
+        return M_sense
+
+    @staticmethod
+    def A_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
+        """Calculates the sensitivity of a cell's area to the points
+        defining the cell analytically.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        -------
+        sensitivity : np.array
+            The sensitivity matrix with size m x n. Rows m refer to
+            the vertices, columns n refer to the vertex coordinates.
+        """
+        g = (
+            ((p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)) ** 2
+            + ((p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)) ** 2
+            + ((p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)) ** 2
+        )
+
+        A_sense = np.empty(9)
+        for col in range(9):
+            if col == 0:  # d/dp0.x
+                g_dash = 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * (-(p1.z - p0.z) + (p2.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    -(p2.y - p0.y) + (p1.y - p0.y)
+                )
+            elif col == 1:  # d/dp0.y
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * (-(p2.z - p0.z) + (p1.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    -(p1.x - p0.x) + (p2.x - p0.x)
+                )
+            elif col == 2:  # d/dp0.z
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * (-(p1.y - p0.y) + (p2.y - p0.y)) + 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * (
+                    -(p2.x - p0.x) + (p1.x - p0.x)
+                )
+            elif col == 3:  # d/dp1.x
+                g_dash = 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * (-(p2.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    (p2.y - p0.y)
+                )
+            elif col == 4:  # d/dp1.y
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * ((p2.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    -(p2.x - p0.x)
+                )
+            elif col == 5:  # d/dp1.z
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * (-(p2.y - p0.y)) + 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * (
+                    (p2.x - p0.x)
+                )
+            elif col == 6:  # d/dp2.x
+                g_dash = 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * ((p1.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    -(p1.y - p0.y)
+                )
+            elif col == 7:  # d/dp2.y
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * (-(p1.z - p0.z)) + 2 * (
+                    (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x)
+                ) * (
+                    (p1.x - p0.x)
+                )
+            elif col == 8:  # d/dp2.z
+                g_dash = 2 * (
+                    (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y)
+                ) * ((p1.y - p0.y)) + 2 * (
+                    (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z)
+                ) * (
+                    -(p1.x - p0.x)
+                )
+
+            A_sense[col] = 0.5 * (1 / 2) * g ** (-1 / 2) * g_dash
+
+        return A_sense
+
 
 def calculate_3d_normal(p0, p1, p2):
     """Calculates the normal vector of a plane defined by 3 points."""
@@ -194,225 +472,3 @@ def calculate_3d_normal(p0, p1, p2):
     )
     n = n / np.sqrt(np.sum(n**2))
     return n
-
-
-def create_sensitivity_matrix(A: Vector, B: Vector, C: Vector):
-    """Calculates the sensitivity of face normals to three points, A, B and C."""
-    g = (
-        ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) ** 2
-        + ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) ** 2
-        + ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) ** 2
-    )
-
-    n = np.empty(3)
-    n[0] = ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) / g**0.5
-    n[1] = ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) / g**0.5
-    n[2] = ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) / g**0.5
-
-    M_sense = np.empty((3, 9))
-    for row in range(3):
-        if row == 0:
-            f = (B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)  # f_x
-        elif row == 1:
-            f = (B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)  # f_y
-        elif row == 2:
-            f = (B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)  # f_z
-        else:
-            raise Exception("Not sure how I got here.")
-
-        for col in range(9):
-            if col == 0:  # d/dA.x
-                g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    -(B.z - A.z) + (C.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    -(C.y - A.y) + (B.y - A.y)
-                )
-            elif col == 1:  # d/dA.y
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    -(C.z - A.z) + (B.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    -(B.x - A.x) + (C.x - A.x)
-                )
-            elif col == 2:  # d/dA.z
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    -(B.y - A.y) + (C.y - A.y)
-                ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    -(C.x - A.x) + (B.x - A.x)
-                )
-            elif col == 3:  # d/dB.x
-                g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    -(C.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    (C.y - A.y)
-                )
-            elif col == 4:  # d/dB.y
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    (C.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    -(C.x - A.x)
-                )
-            elif col == 5:  # d/dB.z
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    -(C.y - A.y)
-                ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    (C.x - A.x)
-                )
-            elif col == 6:  # d/dC.x
-                g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    (B.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    -(B.y - A.y)
-                )
-            elif col == 7:  # d/dC.y
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    -(B.z - A.z)
-                ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                    (B.x - A.x)
-                )
-            elif col == 8:  # d/dC.z
-                g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                    (B.y - A.y)
-                ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                    -(B.x - A.x)
-                )
-            else:
-                raise Exception("???")
-
-            if row == 0:  # for n..x
-                # ((B.y-A.y)*(C.z-A.z) - (B.z-A.z)*(C.y-A.y))  # f_x
-                if col == 0:  # d/dA.x
-                    f_dash = 0
-                elif col == 1:  # d/dA.y
-                    f_dash = -(C.z - A.z) + (B.z - A.z)
-                elif col == 2:  # d/dA.z
-                    f_dash = -(B.y - A.y) + (C.y - A.y)
-                elif col == 3:  # d/dB.x
-                    f_dash = 0
-                elif col == 4:  # d/dB.y
-                    f_dash = C.z - A.z
-                elif col == 5:  # d/dB.z
-                    f_dash = -(C.y - A.y)
-                elif col == 6:  # d/dC.x
-                    f_dash = 0
-                elif col == 7:  # d/dC.y
-                    f_dash = -(B.z - A.z)
-                elif col == 8:  # d/dC.z
-                    f_dash = B.y - A.y
-            if row == 1:  # for n.y  # CHECK
-                # f = ((B.z-A.z)*(C.x-A.x) - (B.x-A.x)*(C.z-A.z))  # f_y
-                if col == 0:  # d/dA.x
-                    f_dash = -(B.z - A.z) + (C.z - A.z)
-                elif col == 1:  # d/dA.y
-                    f_dash = 0
-                elif col == 2:  # d/dA.z
-                    f_dash = -(C.x - A.x) + (B.x - A.x)  # CHECK
-                elif col == 3:  # d/dB.x
-                    f_dash = -(C.z - A.z)
-                elif col == 4:  # d/dB.y
-                    f_dash = 0
-                elif col == 5:  # d/dB.z
-                    f_dash = C.x - A.x
-                elif col == 6:  # d/dC.x
-                    f_dash = B.z - A.z
-                elif col == 7:  # d/dC.y
-                    f_dash = 0
-                elif col == 8:  # d/dC.z
-                    f_dash = -(B.x - A.x)
-            if row == 2:  # for n.z  # CHECK
-                # f = ((B.x-A.x)*(C.y-A.y) - (B.y-A.y)*(C.x-A.x))  # f_z
-                if col == 0:  # d/dA.x
-                    f_dash = -(C.y - A.y) + (B.y - A.y)
-                elif col == 1:  # d/dA.y
-                    f_dash = -(B.x - A.x) + (C.x - A.x)
-                elif col == 2:  # d/dA.z
-                    f_dash = 0
-                elif col == 3:  # d/dB.x
-                    f_dash = C.y - A.y
-                elif col == 4:  # d/dB.y
-                    f_dash = -(C.x - A.x)
-                elif col == 5:  # d/dB.z
-                    f_dash = 0
-                elif col == 6:  # d/dC.x
-                    f_dash = -(B.y - A.y)
-                elif col == 7:  # d/dC.y
-                    f_dash = B.x - A.x
-                elif col == 8:  # d/dC.z
-                    f_dash = 0
-
-            M_sense[row, col] = (
-                f_dash * (g ** (-0.5)) + f * (-1 / 2) * g ** (-3 / 2) * g_dash
-            )
-    return n, M_sense
-
-
-def create_area_sensitivity_matrix(A: Vector, B: Vector, C: Vector):
-    """Calculates the sensitivity of a cell's area to its corner points."""
-    g = (
-        ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) ** 2
-        + ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) ** 2
-        + ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) ** 2
-    )  # g
-
-    A_sense = np.empty(9)
-
-    for col in range(9):
-        if col == 0:  # d/dA.x
-            g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                -(B.z - A.z) + (C.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                -(C.y - A.y) + (B.y - A.y)
-            )
-        elif col == 1:  # d/dA.y
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                -(C.z - A.z) + (B.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                -(B.x - A.x) + (C.x - A.x)
-            )
-        elif col == 2:  # d/dA.z
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                -(B.y - A.y) + (C.y - A.y)
-            ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                -(C.x - A.x) + (B.x - A.x)
-            )
-        elif col == 3:  # d/dB.x
-            g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                -(C.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                (C.y - A.y)
-            )
-        elif col == 4:  # d/dB.y
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                (C.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                -(C.x - A.x)
-            )
-        elif col == 5:  # d/dB.z
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                -(C.y - A.y)
-            ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                (C.x - A.x)
-            )
-        elif col == 6:  # d/dC.x
-            g_dash = 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                (B.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                -(B.y - A.y)
-            )
-        elif col == 7:  # d/dC.y
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                -(B.z - A.z)
-            ) + 2 * ((B.x - A.x) * (C.y - A.y) - (B.y - A.y) * (C.x - A.x)) * (
-                (B.x - A.x)
-            )
-        elif col == 8:  # d/dC.z
-            g_dash = 2 * ((B.y - A.y) * (C.z - A.z) - (B.z - A.z) * (C.y - A.y)) * (
-                (B.y - A.y)
-            ) + 2 * ((B.z - A.z) * (C.x - A.x) - (B.x - A.x) * (C.z - A.z)) * (
-                -(B.x - A.x)
-            )
-
-        A_sense[col] = 0.5 * (1 / 2) * g ** (-1 / 2) * g_dash
-
-    Area = 0.5 * g**0.5
-
-    return Area, A_sense
