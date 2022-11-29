@@ -85,19 +85,30 @@ class Cell:
     """A cell."""
 
     def __init__(self, p0: Vector, p1: Vector, p2: Vector) -> None:
+        """Constructs a cell, defined by three points.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+        """
         # Save points
         self.p0 = p0
         self.p1 = p1
         self.p2 = p2
 
         # Calculate normal vector
-        self.n = calculate_3d_normal(p0, p1, p2)
-        normal = self.calc_normal(p0, p1, p2)
+        self.n = self.calc_normal(p0, p1, p2)
+        self.A = self.calc_area(p0, p1, p2)
 
         # Calculate geometric sensitivities
         # TODO - below not validated
         _, self.dn = create_sensitivity_matrix(self.p0, self.p1, self.p2)
-        self.A, self.dA = create_area_sensitivity_matrix(self.p0, self.p1, self.p2)
+        _, self.dA = create_area_sensitivity_matrix(self.p0, self.p1, self.p2)
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"
@@ -108,6 +119,20 @@ class Cell:
     @staticmethod
     def calc_normal(p0: Vector, p1: Vector, p2: Vector) -> Vector:
         """Calculates the normal vector of a cell defined by three points.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        --------
+        normal : Vector
+            The unit normal vector of the cell defined by the points.
 
         References
         -----------
@@ -129,6 +154,36 @@ class Cell:
         unit_normal = normal / np.linalg.norm(normal.vec)
 
         return unit_normal
+
+    @staticmethod
+    def calc_area(p0: Vector, p1: Vector, p2: Vector) -> float:
+        """Calculates the area of a cell defined by three points.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        --------
+        area : float
+            The area of the cell defined by the points.
+
+        References
+        -----------
+        https://en.wikipedia.org/wiki/Cross_product
+        """
+        # Define cell edges
+        A = p1 - p0
+        B = p2 - p0
+
+        # Calculate area
+        S = 0.5 * np.linalg.norm(np.cross(A.vec, B.vec))
+        return S
 
 
 def calculate_3d_normal(p0, p1, p2):
