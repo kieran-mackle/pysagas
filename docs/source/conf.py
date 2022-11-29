@@ -44,6 +44,6 @@ exclude_patterns = ["build"]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
-html_favicon = 'favicon.ico'
+html_favicon = "favicon.ico"
 
 myst_enable_extensions = ["dollarmath", "amsmath"]
