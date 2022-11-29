@@ -6,7 +6,7 @@ From Piston Theory:
 
 $$ P = P_\infty \, \left( 1 + \frac{\gamma-1}{2} \frac{W}{a} \right) ^{\frac{2 \, \gamma}{\gamma-1}}$$
 
-This can be converted to local pressure variations as per Zhan (2009).
+This can be converted to local pressure variations as per Zhan (2009)[^1].
 
 $$ P = P_l + \rho_l \, a_l \, W$$
 
@@ -29,9 +29,7 @@ Thus:
 $$ P = P_l + \rho_l \, a_l \, \mathbf{V}_l \cdot \left( \mathbf{n}_0 - \mathbf{n} \right)$$
 
 
-*Reference:*
-
-[Zhan, W.-W., Ye, Z.-Y., and Zhang, C.-A., “Supersonic Flutter 
+[^1]: [Zhan, W.-W., Ye, Z.-Y., and Zhang, C.-A., “Supersonic Flutter 
 Analysis Based on a Local Piston Theory,” AIAA Journal, Vol. 47, 
 No. 10, 2009.](https://arc.aiaa.org/doi/10.2514/1.37750)
 
