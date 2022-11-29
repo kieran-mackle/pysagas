@@ -30,5 +30,6 @@ Theory <theory>
 :caption: API REFERENCE
 
 Geometry Module <api_ref/geometry>
+Flow Module <api_ref/flow>
 Utilities <api_ref/utilities>
 ```
