@@ -23,31 +23,10 @@ def calculate_force_vector(P: float, n: np.array, A: float):
     return [F_x, F_y, F_z]
 
 
-def force_sensitivity(
+def cell_dfdp(
     P: float,
-    area: float,
-    area_dp,
-    pressure_sense,
-    combined_sense,
-    n: np.array,
-    direction: np.array,
-) -> np.array:
-    """Calculates the force sensitivity."""
-    sensitivity = (
-        pressure_sense * area * np.dot(n, direction)
-        + P * area_dp * np.dot(n, direction)
-        + P * area * np.dot(-combined_sense, direction)
-    )
-    return sensitivity
-
-
-def all_force_sensitivities(
-    P: float,
-    area: float,
-    area_dp,
-    pressure_sense,
-    combined_sense,
-    n: np.array,
+    pressure_sense: np.array,
+    cell: Cell,
 ) -> np.array:
     """Calculates all direction force sensitivities.
 
@@ -62,24 +41,20 @@ def all_force_sensitivities(
         n parameters. The value of m is derived from the length
         of area_dp.
     """
-    sensitivities = np.zeros(shape=(len(area_dp), 3))
+    sensitivities = np.zeros(shape=(len(cell.dAdp), 3))
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
     for i, direction in enumerate(all_directions):
-        dir_sens = force_sensitivity(
-            P_ramp=P,
-            area=area,
-            area_dp=area_dp,
-            pressure_sense=pressure_sense,
-            combined_sense=combined_sense,
-            n=n,
-            direction=direction.vec,
+        dir_sens = (
+            pressure_sense * cell.A * np.dot(cell.n.vec, direction.vec)
+            + P * cell.dAdp * np.dot(cell.n.vec, direction.vec)
+            + P * cell.A * np.dot(-cell.dndp, direction.vec)
         )
         sensitivities[:, i] = dir_sens
 
     return sensitivities
 
 
-def dfdp(
+def all_dfdp(
     cells: list[Cell], P: float, rho: float, a: float, vel_vector: np.array
 ) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells."""
@@ -89,13 +64,10 @@ def dfdp(
         dPdp = rho * a * np.dot(vel_vector, -cell.dndp)
 
         # Calculate force sensitivity
-        cell_dFdp = all_force_sensitivities(
-            P_ramp=P,
-            area=cell.A,
-            area_dp=cell.dAdp,
+        cell_dFdp = cell_dfdp(
+            P=P,
             pressure_sense=dPdp,
-            combined_sense=cell.dndp,
-            n=cell.n.vec,
+            cell=cell,
         )
 
         dFdp += cell_dFdp
