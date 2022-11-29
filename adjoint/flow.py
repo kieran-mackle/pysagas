@@ -1,11 +1,13 @@
 class FlowState:
-    """Flow conditions."""
+    """An ideal gas flow state defined by Mach number, pressure and
+    temperature.
+    """
 
     gamma = 1.4
     R = 287  # J/kg·K.3
 
     def __init__(self, mach: float, pressure: float, temperature: float) -> None:
-        """Define a flow state.
+        """Define a new flow state.
 
         Parameters
         -----------

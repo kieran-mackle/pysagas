@@ -8,6 +8,17 @@ class Vector:
     PRECISION = 3
 
     def __init__(self, x: float = None, y: float = None, z: float = None):
+        """Define a new vector.
+
+        Parameters
+        ----------
+        x : float, optional
+            The x-component of the vector.
+        y : float, optional
+            The y-component of the vector.
+        z : float, optional
+            The z-component of the vector.
+        """
         self._x = x
         self._y = y
         self._z = z
@@ -91,14 +102,14 @@ class Vector:
 
     @property
     def vec(self) -> np.array:
-        """The vector as a Numpy array."""
+        """The vector represented as a Numpy array."""
         return np.array([float(i) for i in self._non_none])
 
 
 class Cell:
-    """A cell."""
+    """A triangular cell object."""
 
-    def __init__(self, p0: Vector, p1: Vector, p2: Vector) -> None:
+    def __init__(self, p0: Vector, p1: Vector, p2: Vector):
         """Constructs a cell, defined by three points.
 
         Parameters
@@ -489,8 +500,23 @@ class Cell:
         return A_sense
 
 
-def calculate_3d_normal(p0, p1, p2):
-    """Calculates the normal vector of a plane defined by 3 points."""
+def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
+    """Calculates the normal vector of a plane defined by 3 points.
+
+    Parameters
+    ----------
+    p0 : Vector
+        The first point defining the cell.
+    p1 : Vector
+        The second point defining the cell.
+    p2 : Vector
+        The third point defining the cell.
+
+    Returns
+    -------
+    n : np.array
+        The normal vector.
+    """
     n = np.cross(
         np.array([p1.x - p0.x, p1.y - p0.y, p1.z - p0.z]),
         np.array([p2.x - p0.x, p2.y - p0.y, p2.z - p0.z]),
