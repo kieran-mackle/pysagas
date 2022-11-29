@@ -1,7 +1,7 @@
 # **PyAdjoint** Documentation
 
 See the [Getting Started](getting-started) guide, or have a look
-at the [examples](examples/ramp_2d.md).
+at the [examples](examples/ramp_3d.md).
 
 
 ```{toctree}
@@ -19,7 +19,6 @@ Theory <theory>
 :hidden:
 :caption: Case Studies
 
-2D Ramp <examples/ramp_2d>
 3D Ramp <examples/ramp_3d>
 ```
 
