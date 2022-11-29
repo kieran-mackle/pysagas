@@ -1,6 +1,7 @@
-# Home of **PyAdjoint** documentation
+# **PyAdjoint** Documentation
 
-[Getting Started](getting-started)
+See the [Getting Started](getting-started) guide, or have a look
+at the [examples](examples/ramp_2d.md).
 
 
 ```{toctree}
@@ -21,4 +22,5 @@ Theory <theory>
 
 Getting Started <getting-started>
 ```
+
 
