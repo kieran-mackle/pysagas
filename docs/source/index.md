@@ -7,20 +7,28 @@ at the [examples](examples/ramp_2d.md).
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: Theory and Examples
+:caption: DOCUMENTATION
 
+Getting Started <getting-started>
 Theory <theory>
-2D Ramp Example <examples/ramp_2d>
-3D Ramp Example <examples/ramp_3d>
 ```
 
 
 ```{toctree}
 :maxdepth: 2
 :hidden:
-:caption: DOCUMENTATION
+:caption: Case Studies
 
-Getting Started <getting-started>
+2D Ramp <examples/ramp_2d>
+3D Ramp <examples/ramp_3d>
 ```
 
 
+```{toctree}
+:maxdepth: 2
+:hidden:
+:caption: API REFERENCE
+
+Geometry Module <api_ref/geometry>
+Utilities <api_ref/utilities>
+```

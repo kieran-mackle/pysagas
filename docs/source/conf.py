@@ -30,6 +30,7 @@ release = "0.1.0"
 extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
     "sphinx_copybutton",
     "myst_parser",
     "sphinx_inline_tabs",
@@ -45,5 +46,17 @@ exclude_patterns = ["build"]
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 html_favicon = "favicon.ico"
+html_show_sourcelink = True
 
 myst_enable_extensions = ["dollarmath", "amsmath"]
+
+
+# -- Options for autodoc ----------------------------------------------------
+# https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html#configuration
+
+# Automatically extract typehints when specified and place them in
+# descriptions of the relevant function/method.
+autodoc_typehints = "description"
+
+# Don't show class signature with the class' name.
+autodoc_class_signature = "separated"
