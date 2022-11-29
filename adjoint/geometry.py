@@ -25,6 +25,10 @@ class Vector:
     def __repr__(self) -> str:
         return f"Vector({', '.join(self._round_non_none)})"
 
+    def __neg__(self):
+        """Returns the vector pointing in the opposite direction."""
+        return Vector(x=-1 * self.x, y=-1 * self.y, z=-1 * self.z)
+
     def __add__(self, other):
         """Element-wise vector addition.
 
@@ -52,7 +56,7 @@ class Vector:
         return Vector(x=self.x - other.x, y=self.y - other.y, z=self.z - other.z)
 
     def __truediv__(self, denominator: Union[float, int]):
-        """Vector division.
+        """Element-wise vector division.
 
         Parameters
         ----------
@@ -62,6 +66,16 @@ class Vector:
         return Vector(
             x=self.x / denominator, y=self.y / denominator, z=self.z / denominator
         )
+
+    def __mul__(self, multiple: Union[float, int]):
+        """Element-wise vector multiplication.
+
+        Parameters
+        ----------
+        multiple : float | int
+            The multiple to use in the multiplication.
+        """
+        return Vector(x=self.x * multiple, y=self.y * multiple, z=self.z * multiple)
 
     @property
     def x(self) -> float:
@@ -102,19 +116,30 @@ class Cell:
         self.p2 = p2
 
         # Calculate normal vector
-        self.n = self.calc_normal(p0, p1, p2)
+        # TODO - assess validity of negating below
+        self.n = -self.calc_normal(p0, p1, p2)
         self.A = self.calc_area(p0, p1, p2)
 
         # Calculate geometric sensitivities
-        # TODO - below not validated
-        self.dn = self.n_sensitivity(self.p0, self.p1, self.p2)
-        self.dA = self.A_sensitivity(self.p0, self.p1, self.p2)
+        self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
+        self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
+
+        # Parameter sensitivities
+        self.dvdp = None
+        self.dndp = None
+        self.dAdp = None
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"
 
     def __str__(self) -> str:
         return "A Cell"
+
+    def _add_sensitivities(self, dvdp: np.array) -> None:
+        """Adds the cell sensitivities to the cell."""
+        self.dvdp = dvdp
+        self.dndp = np.dot(self.dndv, self.dvdp)
+        self.dAdp = np.dot(self.dAdv, self.dvdp)
 
     @staticmethod
     def calc_normal(p0: Vector, p1: Vector, p2: Vector) -> Vector:

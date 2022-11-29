@@ -1,7 +1,7 @@
 import numpy as np
 import gdtk.ideal_gas_flow as igf
 from adjoint.flow import FlowState
-from adjoint.geometry import Vector
+from adjoint.geometry import Vector, Cell
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:
@@ -24,7 +24,7 @@ def calculate_force_vector(P: float, n: np.array, A: float):
 
 
 def force_sensitivity(
-    P_ramp: float,
+    P: float,
     area: float,
     area_dp,
     pressure_sense,
@@ -35,14 +35,14 @@ def force_sensitivity(
     """Calculates the force sensitivity."""
     sensitivity = (
         pressure_sense * area * np.dot(n, direction)
-        + P_ramp * area_dp * np.dot(n, direction)
-        + P_ramp * area * np.dot(-combined_sense, direction)
+        + P * area_dp * np.dot(n, direction)
+        + P * area * np.dot(-combined_sense, direction)
     )
     return sensitivity
 
 
 def all_force_sensitivities(
-    P_ramp: float,
+    P: float,
     area: float,
     area_dp,
     pressure_sense,
@@ -66,7 +66,7 @@ def all_force_sensitivities(
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
     for i, direction in enumerate(all_directions):
         dir_sens = force_sensitivity(
-            P_ramp=P_ramp,
+            P_ramp=P,
             area=area,
             area_dp=area_dp,
             pressure_sense=pressure_sense,
@@ -77,3 +77,27 @@ def all_force_sensitivities(
         sensitivities[:, i] = dir_sens
 
     return sensitivities
+
+
+def dfdp(
+    cells: list[Cell], P: float, rho: float, a: float, vel_vector: np.array
+) -> np.array:
+    """Calcualtes the force sensitivities for a list of Cells."""
+    dFdp = 0
+    for cell in cells:
+        # Calculate pressure sensitivity
+        dPdp = rho * a * np.dot(vel_vector, -cell.dndp)
+
+        # Calculate force sensitivity
+        cell_dFdp = all_force_sensitivities(
+            P_ramp=P,
+            area=cell.A,
+            area_dp=cell.dAdp,
+            pressure_sense=dPdp,
+            combined_sense=cell.dndp,
+            n=cell.n.vec,
+        )
+
+        dFdp += cell_dFdp
+
+    return dFdp
