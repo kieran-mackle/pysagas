@@ -5,10 +5,12 @@
 A computationally-efficient method for generating flow adjoints
 from existing flow solutions.
 
+<a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
+
 
 <!-- TABLE OF CONTENTS -->
 <details>
-  <summary>Table of Contents</summary>
+  <summary><h2>Table of Contents</h2></summary>
   <ol>
     <li>
       <a href="#getting-started">Getting Started</a>
