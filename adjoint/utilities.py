@@ -1,4 +1,5 @@
 import numpy as np
+from typing import List
 import gdtk.ideal_gas_flow as igf
 from adjoint.flow import FlowState
 from adjoint.geometry import Vector, Cell
@@ -92,7 +93,7 @@ def cell_dfdp(
 
 
 def all_dfdp(
-    cells: list[Cell], P: float, rho: float, a: float, vel_vector: np.array
+    cells: List[Cell], P: float, rho: float, a: float, vel_vector: np.array
 ) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells.
 
