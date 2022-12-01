@@ -55,6 +55,7 @@ setuptools.setup(
     python_requires=">=3.7",
     install_requires=[
         "numpy==1.23.5",
+        "pandas",
     ],
     extras_require={
         "dev": dev_dep,
