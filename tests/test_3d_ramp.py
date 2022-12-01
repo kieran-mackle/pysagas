@@ -2,7 +2,7 @@ import numpy as np
 
 np.seterr(all="ignore")
 import gdtk.ideal_gas_flow as igf
-from adjoint.flow import GasState
+from adjoint.flow import GasState, FlowState
 from adjoint.utilities import (
     calculate_pressures,
     calculate_force_vector,
@@ -88,15 +88,18 @@ def run_main():
     # Calculate velocity vector
     vel_ramp_vector = [vel_ramp * np.cos(theta), vel_ramp * np.sin(theta), 0.0]
 
-    # Calculate force sensitivity
-    F_sense = all_dfdp(
-        cells=[A, B], P=P_ramp, rho=rho_ramp, a=a_ramp, vel_vector=vel_ramp_vector
+    # Define ramp flow state
+    ramp_velocity_vector = Vector.from_coordinates(vel_ramp_vector)
+    ramp_fs = FlowState(
+        mach=M_ramp, pressure=P_ramp, temperature=T_ramp, direction=ramp_velocity_vector
     )
 
-    # Summation of cells
-    Fx_sense = F_sense[:, 0]
-    Fy_sense = F_sense[:, 1]
-    Fz_sense = F_sense[:, 2]
+    # Attribute the ramp flow state to each Cell
+    A.flowstate = ramp_fs
+    B.flowstate = ramp_fs
+
+    # Calculate force sensitivity
+    F_sense = all_dfdp(cells=[A, B])
 
     # Calculate error with finite differencing method
     fd_F_sense = calc_fd_sens(parameters, freestream)

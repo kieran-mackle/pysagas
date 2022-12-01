@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 from typing import Union, List
+import adjoint.flow
 
 
 class Vector:
@@ -165,6 +166,9 @@ class Cell:
         self.dvdp = None  # vertex-parameter sensitivities
         self.dndp = None  # normal-parameter sensitivities
         self.dAdp = None  # area-parameter sensitivities
+
+        # FlowState
+        self.flowstate: adjoint.flow.FlowState = None
 
     @classmethod
     def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:

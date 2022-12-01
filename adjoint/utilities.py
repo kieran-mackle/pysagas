@@ -53,19 +53,11 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
-def cell_dfdp(
-    P: float,
-    pressure_sense: np.array,
-    cell: Cell,
-) -> np.array:
+def cell_dfdp(cell: Cell) -> np.array:
     """Calculates all direction force sensitivities.
 
     Parameters
     ----------
-    P : float
-        The flow pressure.
-    pressure_sense : np.array
-        The pressure sensitivity array.
     cell : Cell
         The cell.
 
@@ -80,36 +72,31 @@ def cell_dfdp(
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
+    # Calculate pressure sensitivity
+    dPdp = (
+        cell.flowstate.rho * cell.flowstate.a * np.dot(cell.flowstate.vec, -cell.dndp)
+    )
+
     sensitivities = np.zeros(shape=(len(cell.dAdp), 3))
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
     for i, direction in enumerate(all_directions):
         dir_sens = (
-            pressure_sense * cell.A * np.dot(cell.n.vec, direction.vec)
-            + P * cell.dAdp * np.dot(cell.n.vec, direction.vec)
-            + P * cell.A * np.dot(-cell.dndp, direction.vec)
+            dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
+            + cell.flowstate.P * cell.dAdp * np.dot(cell.n.vec, direction.vec)
+            + cell.flowstate.P * cell.A * np.dot(-cell.dndp, direction.vec)
         )
         sensitivities[:, i] = dir_sens
 
     return sensitivities
 
 
-def all_dfdp(
-    cells: List[Cell], P: float, rho: float, a: float, vel_vector: np.array
-) -> np.array:
+def all_dfdp(cells: List[Cell]) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells.
 
     Parameters
     ----------
     cells : list[Cell]
         The cells to be analysed.
-    P : float
-        The flow pressure.
-    rho : float
-        The flow density.
-    a : float
-        The flow speed of sound.
-    vel_vector : np.array
-        The flow velocity vector.
 
     Returns
     --------
@@ -122,13 +109,8 @@ def all_dfdp(
     """
     dFdp = 0
     for cell in cells:
-        # Calculate pressure sensitivity
-        dPdp = rho * a * np.dot(vel_vector, -cell.dndp)
-
         # Calculate force sensitivity
         cell_dFdp = cell_dfdp(
-            P=P,
-            pressure_sense=dPdp,
             cell=cell,
         )
 
