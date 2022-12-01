@@ -157,9 +157,9 @@ class Cell:
         self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
 
         # Parameter sensitivities
-        self.dvdp = None
-        self.dndp = None
-        self.dAdp = None
+        self.dvdp = None  # vertex-parameter sensitivities
+        self.dndp = None  # normal-parameter sensitivities
+        self.dAdp = None  # area-parameter sensitivities
 
     @classmethod
     def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
