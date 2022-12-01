@@ -2,7 +2,7 @@ import numpy as np
 
 np.seterr(all="ignore")
 import gdtk.ideal_gas_flow as igf
-from adjoint.flow import FlowState
+from adjoint.flow import GasState
 from adjoint.utilities import (
     calculate_pressures,
     calculate_force_vector,
@@ -16,7 +16,7 @@ from adjoint.geometry import (
 
 def run_main():
     # Define freestream flow state
-    freestream = FlowState(mach=6, pressure=700, temperature=70)
+    freestream = GasState(mach=6, pressure=700, temperature=70)
 
     # Define geometric parameters
     theta = np.radians(10)
@@ -108,7 +108,7 @@ def run_main():
     assert np.max(np.abs(errors)) < 10, "Adjoints inaccurately calculated"
 
 
-def calc_fd_sens(parameters: list, freestream: FlowState):
+def calc_fd_sens(parameters: list, freestream: GasState):
     # Perturbation parameters
     dp = 0.001  # 0.1% perturbation
 
