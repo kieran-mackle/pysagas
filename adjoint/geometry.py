@@ -106,6 +106,11 @@ class Vector:
         """The vector represented as a Numpy array."""
         return np.array([float(i) for i in self._non_none])
 
+    @property
+    def unit(self) -> Vector:
+        """The unit vector associated with the Vector."""
+        return self / np.linalg.norm(self.vec)
+
     @classmethod
     def from_coordinates(cls, coordinates: np.array) -> Vector:
         """Constructs a Vector object from an array of coordinates.
