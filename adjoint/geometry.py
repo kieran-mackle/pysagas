@@ -1,5 +1,6 @@
+from __future__ import annotations
 import numpy as np
-from typing import Union
+from typing import Union, List
 
 
 class Vector:
@@ -105,6 +106,26 @@ class Vector:
         """The vector represented as a Numpy array."""
         return np.array([float(i) for i in self._non_none])
 
+    @classmethod
+    def from_coordinates(cls, coordinates: np.array) -> Vector:
+        """Constructs a Vector object from an array of coordinates.
+
+        Parameters
+        ----------
+        coordinates : np.array
+            The coordinates of the vector.
+
+        Returns
+        -------
+        Vector
+
+        Examples
+        --------
+        >>> Vector.from_coordinates([1,2,3])
+        Vector(1, 2, 3)
+        """
+        return cls(*coordinates)
+
 
 class Cell:
     """A triangular cell object."""
@@ -139,6 +160,21 @@ class Cell:
         self.dvdp = None
         self.dndp = None
         self.dAdp = None
+
+    @classmethod
+    def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
+        """Constructs a Vector object from an array of coordinates.
+
+        Parameters
+        ----------
+        points : Union[List[Vector], np.array[Vector]]
+            The points defining the cell.
+
+        Returns
+        -------
+        Cell
+        """
+        return cls(*points)
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"
