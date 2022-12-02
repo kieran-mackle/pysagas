@@ -1,57 +1,9 @@
 import os as os
 import numpy as np
 import pandas as pd
-import gdtk.ideal_gas_flow as igf
-import xml.etree.ElementTree as ET
-
 from adjoint.flow import FlowState
-from adjoint.utilities import (
-    calculate_pressures,
-    calculate_force_vector,
-    all_dfdp,
-)
-from adjoint.geometry import (
-    Vector,
-    Cell,
-)
-
-
-# ------------------------------------------------------
-# Function definition
-# ------------------------------------------------------
-
-# create matrix linking vertex positons to parameter
-def create_positon_sense_matrix(A, B, C, N_parameters):
-    # [[dA.x/dp0, dA.x/dp1 ....],
-    #  [dA.y/dp0, .....
-    #  ...
-    # [dC.z/dp0, .... dC.z/dpN]]
-    M_dp = np.zeros((9, N_parameters))
-
-    for i in range(N_parameters):
-        M_dp[0:3, i] = [A[12 + i], A[13 + i], A[14 + i]]
-        M_dp[3:6, i] = [B[12 + i], B[13 + i], B[14 + i]]
-        M_dp[6:9, i] = [C[12 + i], C[13 + i], C[14 + i]]
-
-    return M_dp
-
-
-def parse_tri_file(filepath: str) -> tuple[list, list]:
-    """Parses a .tri file."""
-
-    def parse_rows(data: str, dtype: type):
-        rows = [r.split() for r in data.strip().splitlines()]
-        return [[dtype(c) for c in r] for r in rows]
-
-    tree = ET.parse(filepath)
-    root = tree.getroot()
-    points = root[0][0][0]
-    cells = root[0][0][1]
-
-    vertices = parse_rows(data=points[0].text, dtype=float)
-    triangles = parse_rows(data=cells[0].text, dtype=int)
-
-    return vertices, triangles
+from adjoint.utilities import all_dfdp
+from adjoint.geometry import Vector, Cell
 
 
 # ------------------------------------------------------
@@ -76,34 +28,24 @@ def parse_tri_file(filepath: str) -> tuple[list, list]:
 
 
 # Configuration
-verbosity = 2
-directory = "/home/kieran/Documents/PoorMansAdjoint/coarse/testpv"
-components_filepath = os.path.join(directory, "Components.i.tri")
+directory = "/home/kieran/Documents/PoorMansAdjoint/simple/workingdir"
+parameters = ["P"]  # TODO - automate extraction of parameters
 
 # Filepaths
-# sim_result_filepath = os.path.join(directory, "simdata.csv")
 sensitivity_filepath = os.path.join(directory, "combined.csv")
 celldata_filepath = os.path.join(directory, "cells.csv")
 pointdata_filepath = os.path.join(directory, "points.csv")
 
-# Define freestream flow proerties
-dynamic_pressure_inf = 50e3  # kPa
-rho_inf = 0.0308742  # kg/m3
-a_inf = 299.499  # m/s
 L_ref = 1  # m
 Area_ref = 1  # m2
 
-
 # Load data
-# simdata = pd.read_csv(sim_result_filepath)
 sensdata = pd.read_csv(sensitivity_filepath)
 celldata = pd.read_csv(celldata_filepath)
 pointdata = pd.read_csv(pointdata_filepath)
 
 coordinates = pointdata[["Points_0", "Points_1", "Points_2"]]
 cell_vertex_ids = celldata[["Point Index 0", "Point Index 1", "Point Index 2"]]
-
-parameters = ["chord", "thickness", "wingspan"]
 
 params_sens_cols = []
 for p in parameters:
@@ -124,7 +66,7 @@ for cell in celldata.index:
     dvdp = []
     for v in vertex_sensitivity_info:
         for p in parameters:
-            dvdp.append([v[f"dxd_{p}"], v[f"dyd_{p}"], v[f"dzd_{p}"]])
+            dvdp.append([v[f"dxd{p}"], v[f"dyd{p}"], v[f"dzd{p}"]])
 
     # Create Cell
     newcell = Cell.from_points(vertices)
@@ -144,7 +86,6 @@ for cell in celldata.index:
 
     # Append new Cell
     cells.append(newcell)
-
 
 # Calculate force sensitivity
 F_sense = all_dfdp(cells=cells)
