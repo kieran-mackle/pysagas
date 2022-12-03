@@ -64,28 +64,32 @@ def cell_dfdp(cell: Cell) -> np.array:
     Returns
     --------
     sensitivities : np.array
-        An array of shape n x m, for a 3-dimensional cell with
-        n parameters. The value of m is derived from the length
-        of area_dp.
+        An array of shape n x 3, for a 3-dimensional cell with
+        n parameters.
 
     See Also
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
-    # Calculate pressure sensitivity
-    dPdp = (
-        cell.flowstate.rho * cell.flowstate.a * np.dot(cell.flowstate.vec, -cell.dndp)
-    )
-
-    sensitivities = np.zeros(shape=(len(cell.dAdp), 3))
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-    for i, direction in enumerate(all_directions):
-        dir_sens = (
-            dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
-            + cell.flowstate.P * cell.dAdp * np.dot(cell.n.vec, direction.vec)
-            + cell.flowstate.P * cell.A * np.dot(-cell.dndp, direction.vec)
+
+    sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    for p_i in range(cell.dndp.shape[1]):
+        # Calculate pressure sensitivity
+        dPdp = (
+            cell.flowstate.rho
+            * cell.flowstate.a
+            * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
         )
-        sensitivities[:, i] = dir_sens
+
+        # Evaluate force sensitivity for each direction
+        for i, direction in enumerate(all_directions):
+            dir_sens = (
+                dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
+                + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
+                + cell.flowstate.P * cell.A * np.dot(-cell.dndp[:, p_i], direction.vec)
+            )
+            sensitivities[p_i, i] = dir_sens
 
     return sensitivities
 
@@ -110,11 +114,7 @@ def all_dfdp(cells: List[Cell]) -> np.array:
     dFdp = 0
     for cell in cells:
         # Calculate force sensitivity
-        cell_dFdp = cell_dfdp(
-            cell=cell,
-        )
-
-        dFdp += cell_dFdp
+        dFdp += cell_dfdp(cell=cell)
 
     return dFdp
 

@@ -28,7 +28,7 @@ from adjoint.geometry import Vector, Cell
 
 
 # Configuration
-directory = "/home/kieran/Documents/PoorMansAdjoint/simple/workingdir"
+directory = "/mnt/c/Users/kemac/Documents/pysagas"
 parameters = ["P"]  # TODO - automate extraction of parameters
 
 # Filepaths
@@ -63,10 +63,13 @@ for cell in celldata.index:
     # Extract sensitivity information for the cell
     vertex_sensitivity_info = [sensdata.loc[v_id] for v_id in vertex_ids]
 
-    dvdp = []
-    for v in vertex_sensitivity_info:
-        for p in parameters:
-            dvdp.append([v[f"dxd{p}"], v[f"dyd{p}"], v[f"dzd{p}"]])
+    dvdp = np.empty((9, len(parameters)))
+    for i, p in enumerate(parameters):
+        r = 0
+        for v in vertex_sensitivity_info:
+            for c in ["x", "y", "z"]:
+                dvdp[r, i] = v[f"d{c}d{p}"]
+                r += 1
 
     # Create Cell
     newcell = Cell.from_points(vertices)
