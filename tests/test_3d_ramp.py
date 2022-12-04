@@ -2,13 +2,13 @@ import numpy as np
 
 np.seterr(all="ignore")
 import gdtk.ideal_gas_flow as igf
-from adjoint.flow import GasState, FlowState
-from adjoint.utilities import (
+from pysagas.flow import GasState, FlowState
+from pysagas.utilities import (
     calculate_pressures,
     calculate_force_vector,
     all_dfdp,
 )
-from adjoint.geometry import (
+from pysagas.geometry import (
     Vector,
     Cell,
 )
