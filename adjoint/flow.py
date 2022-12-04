@@ -1,6 +1,3 @@
-import adjoint.geometry
-
-
 class GasState:
     """An ideal gas state defined by Mach number, pressure and
     temperature.
@@ -72,7 +69,7 @@ class FlowState(GasState):
         mach: float,
         pressure: float,
         temperature: float,
-        direction: adjoint.geometry.Vector,
+        direction: "Vector",
     ) -> None:
         """Define a new flow state.
 
