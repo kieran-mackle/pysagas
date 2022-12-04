@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
-from typing import Union, List
 import adjoint.flow
+from typing import Union, List
 
 
 class Vector:

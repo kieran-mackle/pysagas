@@ -1,11 +1,10 @@
 # Sensitivity Definitions
 
-
 ## Cell Definition
 
 ```{seealso}
-The Cell definition shown below corresponds to the
-Cell object.
+The Cell definition shown below is consistent with the
+[Cell](adjoint.geometry.Cell) object.
 ```
 
 ![Nominal Cell definition](../_static/nominal_tri.png)

@@ -32,5 +32,5 @@ Sharp Wedge <examples/sharp_wedge>
 
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
-Utilities <api_ref/utilities>
+Utilities Module <api_ref/utilities>
 ```

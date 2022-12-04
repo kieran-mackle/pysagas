@@ -1,4 +1,4 @@
-from adjoint.geometry import Vector
+import adjoint.geometry
 
 
 class GasState:
@@ -68,7 +68,11 @@ class FlowState(GasState):
     """
 
     def __init__(
-        self, mach: float, pressure: float, temperature: float, direction: Vector
+        self,
+        mach: float,
+        pressure: float,
+        temperature: float,
+        direction: adjoint.geometry.Vector,
     ) -> None:
         """Define a new flow state.
 
