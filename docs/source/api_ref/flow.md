@@ -2,6 +2,6 @@
 
 
 ```{eval-rst}
-.. automodule:: adjoint.flow
+.. automodule:: pysagas.flow
    :members:
 ```

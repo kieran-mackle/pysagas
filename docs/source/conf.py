@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath("./../.."))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = "PyAdjoint"
+project = "PySAGAS"
 copyright = "2022, Kieran Mackle, Ingo Jahn"
 author = "Kieran Mackle, Ingo Jahn"
 release = "0.1.0"

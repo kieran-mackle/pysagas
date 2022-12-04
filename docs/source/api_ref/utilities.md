@@ -1,7 +1,7 @@
 # PyAdjoint Utilities
 
 ```{eval-rst}
-.. automodule:: adjoint.utilities
+.. automodule:: pysagas.utilities
    :members:
 ```
 

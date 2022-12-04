@@ -4,7 +4,7 @@
 
 ```{seealso}
 The Cell definition shown below is consistent with the
-[Cell](adjoint.geometry.Cell) object.
+[Cell](pysagas.geometry.Cell) object.
 ```
 
 ![Nominal Cell definition](../_static/nominal_tri.png)
