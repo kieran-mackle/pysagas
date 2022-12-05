@@ -1,13 +1,12 @@
 # 3D Ramp Example
 
-Simplest case ramp at angle, $\theta$, with length, $L$.
-
-Parameters $\mathbf{p} = [\theta, \, L]$
-
-Calculate nominal pressure and forces.
+A simple test case is a ramp at angle $\theta$, with length $L$ and 
+width $W$. The parameters of this problem are
+ $\mathbf{p} = [\theta, \, L, \, W]$
 
 
 ## Free Stream Conditions
+The freestream conditions are defined below.
 
 $$\gamma = 1.4$$
 
@@ -18,29 +17,25 @@ $$ P_{freestream} = 700 Pa$$
 $$ T_{freestream} = 70 K$$
 
 
-## Reference Case Study - Ramp (shock expansion)
-
-Simplest case ramp at angle, $\theta$, with length, $L$ and width, $W$.
-Parameters $\mathbf{p} = [\theta, \, L, \, W]$
-
-Calculate nominal pressure and forces and normal and then also sensitivites. 
-
 
 ## Calculate sensitivities using local piston theory
 
 ### Step 1: Work out $\frac{d \, \mathbf{n}}{d \, \mathbf{p}}$
 
-This is done in a two stage process
-$$ \frac{d \, \mathbf{n}}{d \, \mathbf{p}} = \frac{d \, \mathbf{n}}{d \, \mathbf{pos}} \cdot \frac{d \, \mathbf{pos}}{d \, \mathbf{p}}$$ 
+This is done in a two stage process:
+
+$$ \frac{d \, \mathbf{n}}{d \, \mathbf{p}} = \frac{d \, \mathbf{n}}{d \, \mathbf{pos}} \cdot \frac{d \, \mathbf{pos}}{d \, \mathbf{p}} $$
 
 
 
 ## Step 2: Do pressure Caculation and differentiate $\frac{d \, P}{d \, \mathbf{p}}$
 
-This is a straightforward calculation
+This is a straightforward calculation:
+
 $$ P = P_l + \rho_l \, a_l \, \mathbf{V}_l \cdot \left( \mathbf{n}_0 - \mathbf{n} \right)$$
 
 Hence
+
 $$ \frac{d \, P}{d \, \mathbf{p}} = \rho_l \, a_l \, \mathbf{V}_l \cdot  \left(- \frac{d \, \mathbf{n}}{d \, \mathbf{p}} \right)$$
 
 
