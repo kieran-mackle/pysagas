@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from typing import List
+from typing import List, Callable
 import gdtk.ideal_gas_flow as igf
 from adjoint.flow import FlowState
 from adjoint.geometry import Vector, Cell
@@ -53,7 +53,7 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
-def cell_dfdp(cell: Cell) -> np.array:
+def cell_dfdp(cell: Cell, dPdp_method: Callable, **kwargs) -> np.array:
     """Calculates all direction force sensitivities.
 
     Parameters
@@ -76,11 +76,7 @@ def cell_dfdp(cell: Cell) -> np.array:
     sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
     for p_i in range(cell.dndp.shape[1]):
         # Calculate pressure sensitivity
-        dPdp = (
-            cell.flowstate.rho
-            * cell.flowstate.a
-            * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
-        )
+        dPdp = dPdp_method(cell=cell, p_i=p_i, **kwargs)
 
         # Evaluate force sensitivity for each direction
         for i, direction in enumerate(all_directions):
@@ -94,7 +90,35 @@ def cell_dfdp(cell: Cell) -> np.array:
     return sensitivities
 
 
-def all_dfdp(cells: List[Cell]) -> np.array:
+def panel_dPdp(cell: Cell, p_i, **kwargs):
+    """Calculates the pressure-parameter sensitivity using
+    the Panel method approximation."""
+    dPdp = (
+        cell.flowstate.rho
+        * cell.flowstate.a
+        * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
+    )
+    return dPdp
+
+
+def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
+    """Calculates the pressure-parameter sensitivity using
+    the isentropic flow relation directly."""
+    # TODO - direct Pressure method. Unsure what to use for P_inf
+    gamma = cell.flowstate.gamma
+    power = (gamma + 1) / (gamma - 1)
+    dPdW = (
+        kwargs["P_inf"]
+        * gamma
+        * (2 * cell.flowstate.a + cell.flowstate.v * (gamma - 1)) ** power
+    ) / (2**power * cell.flowstate.a ** (2 * gamma / (gamma - 1)))
+    dWdn = cell.flowstate.v
+    dndp = cell.dndp[:, p_i]
+    dPdp = np.linalg.multi_dot(arrays=[dPdW, dWdn, dndp])
+    return dPdp
+
+
+def all_dfdp(cells: List[Cell], dPdp_method: Callable = panel_dPdp) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells.
 
     Parameters
@@ -114,7 +138,7 @@ def all_dfdp(cells: List[Cell]) -> np.array:
     dFdp = 0
     for cell in cells:
         # Calculate force sensitivity
-        dFdp += cell_dfdp(cell=cell)
+        dFdp += cell_dfdp(cell=cell, dPdp_method=dPdp_method)
 
     return dFdp
 
