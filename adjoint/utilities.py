@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 from typing import List
 import gdtk.ideal_gas_flow as igf
@@ -52,63 +53,54 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
-def cell_dfdp(
-    P: float,
-    pressure_sense: np.array,
-    cell: Cell,
-) -> np.array:
+def cell_dfdp(cell: Cell) -> np.array:
     """Calculates all direction force sensitivities.
 
     Parameters
     ----------
-    P : float
-        The flow pressure.
-    pressure_sense : np.array
-        The pressure sensitivity array.
     cell : Cell
         The cell.
 
     Returns
     --------
     sensitivities : np.array
-        An array of shape n x m, for a 3-dimensional cell with
-        n parameters. The value of m is derived from the length
-        of area_dp.
+        An array of shape n x 3, for a 3-dimensional cell with
+        n parameters.
 
     See Also
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
-    sensitivities = np.zeros(shape=(len(cell.dAdp), 3))
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-    for i, direction in enumerate(all_directions):
-        dir_sens = (
-            pressure_sense * cell.A * np.dot(cell.n.vec, direction.vec)
-            + P * cell.dAdp * np.dot(cell.n.vec, direction.vec)
-            + P * cell.A * np.dot(-cell.dndp, direction.vec)
+
+    sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    for p_i in range(cell.dndp.shape[1]):
+        # Calculate pressure sensitivity
+        dPdp = (
+            cell.flowstate.rho
+            * cell.flowstate.a
+            * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
         )
-        sensitivities[:, i] = dir_sens
+
+        # Evaluate force sensitivity for each direction
+        for i, direction in enumerate(all_directions):
+            dir_sens = (
+                dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
+                + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
+                + cell.flowstate.P * cell.A * np.dot(-cell.dndp[:, p_i], direction.vec)
+            )
+            sensitivities[p_i, i] = dir_sens
 
     return sensitivities
 
 
-def all_dfdp(
-    cells: List[Cell], P: float, rho: float, a: float, vel_vector: np.array
-) -> np.array:
+def all_dfdp(cells: List[Cell]) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells.
 
     Parameters
     ----------
     cells : list[Cell]
         The cells to be analysed.
-    P : float
-        The flow pressure.
-    rho : float
-        The flow density.
-    a : float
-        The flow speed of sound.
-    vel_vector : np.array
-        The flow velocity vector.
 
     Returns
     --------
@@ -121,16 +113,156 @@ def all_dfdp(
     """
     dFdp = 0
     for cell in cells:
-        # Calculate pressure sensitivity
-        dPdp = rho * a * np.dot(vel_vector, -cell.dndp)
-
         # Calculate force sensitivity
-        cell_dFdp = cell_dfdp(
-            P=P,
-            pressure_sense=dPdp,
-            cell=cell,
-        )
-
-        dFdp += cell_dFdp
+        dFdp += cell_dfdp(cell=cell)
 
     return dFdp
+
+
+def process_components_file():
+    """A ParaView script to process Components.i.plt."""
+
+    try:
+        # import the simple module from the paraview
+        from paraview.simple import (
+            VisItTecplotBinaryReader,
+            _DisableFirstRenderCameraReset,
+            GetActiveViewOrCreate,
+            Show,
+            ProgrammableFilter,
+            Hide,
+            PointDatatoCellData,
+            ExportView,
+        )
+    except ModuleNotFoundError:
+        # Cannot find paraview python package
+        print(
+            "Cannot find ParaView Python package. If ParaView is already "
+            + "installed, please append the bin/ directory to the Python path. "
+            + "If it is not installed, please do so. If you are using "
+            + "an Anaconda environment, you can install using "
+            + "'conda install -c conda-forge paraview'."
+        )
+        sys.exit()
+
+    # disable automatic camera reset on 'Show'
+    _DisableFirstRenderCameraReset()
+
+    # create a new 'VisItTecplotBinaryReader'
+    print("Loading Components.i.plt.")
+    componentsiplt = VisItTecplotBinaryReader(FileName=["Components.i.plt"])
+    componentsiplt.MeshStatus = ["Surface"]
+    componentsiplt.PointArrayStatus = []
+
+    # Properties modified on componentsiplt
+    componentsiplt.PointArrayStatus = [
+        "Cp",
+        "Pressure",
+        "Rho",
+        "U",
+        "V",
+        "W",
+        "x",
+        "y",
+        "z",
+    ]
+
+    # get active view
+    spreadSheetView1 = GetActiveViewOrCreate("SpreadSheetView")
+    # uncomment following to set a specific view size
+    # spreadSheetView1.ViewSize = [400, 400]
+
+    # show data in view
+    componentsipltDisplay = Show(componentsiplt, spreadSheetView1)
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
+    # create a new 'Programmable Filter'
+    programmableFilter1 = ProgrammableFilter(Input=componentsiplt)
+    programmableFilter1.Script = ""
+    programmableFilter1.RequestInformationScript = ""
+    programmableFilter1.RequestUpdateExtentScript = ""
+    programmableFilter1.PythonPath = ""
+
+    # Properties modified on programmableFilter1
+    print("  Dimensionalising attributes.")
+    programmableFilter1.Script = """# Paraview script to normalise Cart3D variables.
+
+    ######## Define freestream conditions here ###########
+    M_inf = 6
+    ######################################################
+
+    R_gas = 287.058
+    gamma = 1.4
+
+    # Look up the freestream and sound speed for the given Mach number and q = 50 kPa
+    rho_lookup = {5:0.0450814, 6:0.0308742, 7:0.0225510, 7.5:0.0195525, 8:0.0171295, 9:0.0134424, 10:0.0107105}
+    a_lookup = {5:297.891, 6:299.499, 7:300.840, 7.5:301.575, 8:302.018, 9:303.061, 10:305.562}
+    a_inf = a_lookup[M_inf]
+    rho_inf = rho_lookup[M_inf]
+
+    # Redefine the Cart3D variables - normalised values are *_tilde
+    output.PointData.append(inputs[0].PointData["U"], "U_tilde")
+    output.PointData.append(inputs[0].PointData["V"], "V_tilde")
+    output.PointData.append(inputs[0].PointData["W"], "W_tilde")
+    output.PointData.append(inputs[0].PointData["Pressure"], "p_tilde")
+    output.PointData.append(inputs[0].PointData["Rho"], "rho_tilde")
+
+    # Define the dimensional flow properties
+    output.PointData.append(a_inf * inputs[0].PointData["U"], "U")
+    output.PointData.append(a_inf * inputs[0].PointData["V"], "V")
+    output.PointData.append(a_inf * inputs[0].PointData["W"], "W")
+
+    output.PointData.append(a_inf * a_inf * rho_inf * output.PointData["p_tilde"], "p")
+    output.PointData.append(rho_inf * output.PointData["rho_tilde"], "rho")
+    output.PointData.append(a_inf*a_inf*rho_inf*output.PointData["p_tilde"] / (rho_inf*output.PointData["rho_tilde"]*R_gas), "T")
+    output.PointData.append((abs(gamma * R_gas * output.PointData["T"]))**0.5, "a")
+    output.PointData.append((output.PointData["U"]**2 + output.PointData["V"]**2 + output.PointData["W"]**2)**0.5, "V_mag")
+    output.PointData.append(output.PointData["V_mag"]/output.PointData["a"], "M")"""
+    programmableFilter1.RequestInformationScript = ""
+    programmableFilter1.RequestUpdateExtentScript = ""
+    programmableFilter1.PythonPath = ""
+
+    # show data in view
+    programmableFilter1Display = Show(programmableFilter1, spreadSheetView1)
+
+    # hide data in view
+    Hide(componentsiplt, spreadSheetView1)
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
+    # create a new 'Point Data to Cell Data'
+    pointDatatoCellData1 = PointDatatoCellData(Input=programmableFilter1)
+
+    # show data in view
+    pointDatatoCellData1Display = Show(pointDatatoCellData1, spreadSheetView1)
+
+    # hide data in view
+    Hide(programmableFilter1, spreadSheetView1)
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
+    # Properties modified on pointDatatoCellData1
+    pointDatatoCellData1.PassPointData = 1
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
+    # Properties modified on spreadSheetView1
+    spreadSheetView1.GenerateCellConnectivity = 1
+
+    # export view
+    print("  Saving point data.")
+    ExportView("points.csv", view=spreadSheetView1)
+
+    # Properties modified on spreadSheetView1
+    spreadSheetView1.FieldAssociation = "Cell Data"
+
+    # export view
+    print("  Saving cell data.")
+    ExportView("cells.csv", view=spreadSheetView1)
+
+    print("Complete.")

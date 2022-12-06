@@ -1,6 +1,6 @@
 # **PyAdjoint** Documentation
 
-See the [Getting Started](getting-started) guide, or have a look
+See the [Getting Started](documentation/getting-started) guide, or have a look
 at the [examples](examples/ramp_3d.md).
 
 
@@ -9,8 +9,9 @@ at the [examples](examples/ramp_3d.md).
 :hidden:
 :caption: DOCUMENTATION
 
-Getting Started <getting-started>
-Theory <theory>
+Getting Started <documentation/getting-started>
+Theory <documentation/theory>
+Definitions <documentation/definitions>
 ```
 
 
@@ -20,6 +21,7 @@ Theory <theory>
 :caption: Case Studies
 
 3D Ramp <examples/ramp_3d>
+Sharp Wedge <examples/sharp_wedge>
 ```
 
 
@@ -30,5 +32,5 @@ Theory <theory>
 
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
-Utilities <api_ref/utilities>
+Utilities Module <api_ref/utilities>
 ```

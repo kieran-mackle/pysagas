@@ -1,5 +1,5 @@
-class FlowState:
-    """An ideal gas flow state defined by Mach number, pressure and
+class GasState:
+    """An ideal gas state defined by Mach number, pressure and
     temperature.
     """
 
@@ -7,7 +7,7 @@ class FlowState:
     R = 287  # J/kg·K.3
 
     def __init__(self, mach: float, pressure: float, temperature: float) -> None:
-        """Define a new flow state.
+        """Define a new gas state.
 
         Parameters
         -----------
@@ -57,6 +57,58 @@ class FlowState:
     @property
     def v(self):
         return self._v
+
+
+class FlowState(GasState):
+    """An ideal gas state defined by Mach number, pressure and
+    temperature, with a flow direction.
+    """
+
+    def __init__(
+        self,
+        mach: float,
+        pressure: float,
+        temperature: float,
+        direction: "Vector",
+    ) -> None:
+        """Define a new flow state.
+
+        Parameters
+        -----------
+        mach : float
+            The flow Mach number.
+        pressure : float
+            The flow pressure (Pa).
+        temperature : float
+            The flow temperature (K).
+        direction : Vector
+            The direction vector of the flow.
+        """
+        super().__init__(mach, pressure, temperature)
+        self.direction = direction.unit
+
+        # Velocity vector
+        self._Vector = self.direction * self.v
+
+    @property
+    def vx(self):
+        return self._Vector.x
+
+    @property
+    def vy(self):
+        return self._Vector.y
+
+    @property
+    def vz(self):
+        return self._Vector.z
+
+    @property
+    def vec(self):
+        return self._Vector.vec
+
+    @property
+    def Vector(self):
+        return self._Vector
 
 
 if __name__ == "__main__":
