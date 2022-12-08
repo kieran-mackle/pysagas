@@ -1,6 +1,6 @@
 # Geometry Module
 
 ```{eval-rst}
-.. automodule:: adjoint.geometry
+.. automodule:: pysagas.geometry
    :members:
 ```

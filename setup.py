@@ -35,15 +35,15 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="adjoint",
-    version=get_version("adjoint/__init__.py"),
+    name="pysagas",
+    version=get_version("pysagas/__init__.py"),
     author="Kieran Mackle",
     author_email="kemackle98@gmail.com",
-    description="The poor man's adjoint solver.",
+    description="Python Sensitivity Approximations for Geometric-Aerodynamic Surfaces",
     long_description=long_description,
     project_urls={
-        "Bug Tracker": "https://github.com/kieran-mackle/py-adjoint/issues",
-        "Source Code": "https://github.com/kieran-mackle/py-adjoint",
+        "Bug Tracker": "https://github.com/kieran-mackle/pysagas/issues",
+        "Source Code": "https://github.com/kieran-mackle/pysagas",
     },
     classifiers=[
         "Programming Language :: Python :: 3.7",

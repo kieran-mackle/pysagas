@@ -2,8 +2,8 @@ import sys
 import numpy as np
 from typing import List
 import gdtk.ideal_gas_flow as igf
-from adjoint.flow import FlowState
-from adjoint.geometry import Vector, Cell
+from pysagas.flow import FlowState
+from pysagas.geometry import Vector, Cell
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:

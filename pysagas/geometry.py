@@ -1,6 +1,6 @@
 from __future__ import annotations
 import numpy as np
-import adjoint.flow
+import pysagas.flow
 from typing import Union, List
 
 
@@ -168,7 +168,7 @@ class Cell:
         self.dAdp = None  # area-parameter sensitivities
 
         # FlowState
-        self.flowstate: adjoint.flow.FlowState = None
+        self.flowstate: pysagas.flow.FlowState = None
 
     @classmethod
     def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
