@@ -1,3 +1,13 @@
+## v0.3.1 (2022-12-08)
+
+### Fix
+
+- **pyproject.toml**: rename to pysagas
+
+### Refactor
+
+- rename package to pysagas
+
 ## v0.3.0 (2022-12-06)
 
 ### Feat
