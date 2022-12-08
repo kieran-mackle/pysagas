@@ -11,6 +11,6 @@ name = "cz_conventional_commits"
 version = "0.3.0"
 tag_format = "v$version"
 version_files = [
-    "adjoint/__init__.py:__version__",
+    "pysagas/__init__.py:__version__",
 ]
 update_changelog_on_bump = true
