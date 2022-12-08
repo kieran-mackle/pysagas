@@ -10,19 +10,20 @@ This can be converted to local pressure variations as per Zhan (2009)[^1].
 
 $$ P = P_l + \rho_l \, a_l \, W$$
 
-$$ W = \mathbf{V}_l \cdot \delta \mathbf{n} + \mathbf{V}_b \cdot \mathbf{n}$$
+$$ W = \mathbf{V}_l \cdot \delta \mathbf{n} + \mathbf{V}_b \cdot \mathbf{n} $$
 
 $$ \delta \mathbf{n} = \mathbf{n}_0 - \mathbf{n} $$
 
-where subscript $l$ refers to the local conditions at the vehicle surface 
+Here, the subscript $l$ refers to the local conditions at the vehicle surface 
 (e.g. results from a CFD solver) and $W$ is the local downwash velocity.
+In the formulation, deformation (or change in geometry) away 
+from the shape is considered when the local conditions were evaluated 
+using the $\mathbf{V}_l \cdot \delta \mathbf{n}$ and the contribution 
+due to surface normal velocity $\mathbf{V}_b \cdot \mathbf{n}$.
 
-In their formulation, they consider deformation (or change in geometry) away 
-from the shape when the local conditions were evaluated using the 
-$\mathbf{V}_l \cdot \delta \mathbf{n}$ and the contribution due to surface 
-normal velocity $\mathbf{V}_b \cdot \mathbf{n}$.
-
-We are only interested in the first term, as this relates to vehicle deformation. 
+We are only interested in the first term, $\mathbf{V}_l \cdot \delta \mathbf{n}$, 
+as this relates to vehicle deformation. The second term, $\mathbf{V}_b \cdot \mathbf{n}$,
+can be discarded, since $\mathbf{V}_b = 0$ in this case.
 
 Thus:
 
@@ -36,7 +37,8 @@ No. 10, 2009.](https://arc.aiaa.org/doi/10.2514/1.37750)
 
 
 ## Approach
-To get the geometry sensitivities (e.g. $\frac{d \, C_X}{d \, p}$) we will apply the following process:
+To get the geometry sensitivities (e.g. $\frac{d \, C_X}{d \, p}$) we will apply 
+the following process:
 
 1. Find effect of design parameter, $p$ on surface normal. 
 
@@ -104,17 +106,54 @@ $$ q^2 = (U+u)^2 + v^2 + w^2 $$
 
 For isentropic flow the pressure coefficient is given by:
 
-$$C_p = \frac{P - P_\infty}{\frac{1}{2} \, \rho_\infty \, U^2} = \frac{2}{\gamma \, M^2} \, \left[ \left( 1 + \frac{\gamma-1}{2} \, M^2 \, \left( 1 - \frac{q^2}{U^2} \right) \right)^{\frac{\gamma}{\gamma-1}} - 1 \right] $$
+$$C_p = \frac{P - P_\infty}{\frac{1}{2} \, \rho_\infty \, U^2} = 
+\frac{2}{\gamma \, M^2} \, \left[ \left( 1 + \frac{\gamma-1}{2} \, M^2 \, \left( 1 - 
+\frac{q^2}{U^2} \right) \right)^{\frac{\gamma}{\gamma-1}} - 1 \right] $$
 
 Expanding the equation yields:
 
-$$C_p = -2 \, \frac{u}{U} - \frac{v^2 + w^2}{U^2} + \beta^2 \, \frac{u^2}{U^2} + M^2 \, \frac{u}{U} \, \frac{v^2+w^2}{U^2} + \frac{M^2}{4} \, \left( \frac{v^2+w^2}{U^2} \right)^2 
+$$
+C_p = -2 \, \frac{u}{U} - \frac{v^2 + w^2}{U^2} + \beta^2 \, \frac{u^2}{U^2} + 
+M^2 \, \frac{u}{U} \, \frac{v^2+w^2}{U^2} + \frac{M^2}{4} \, 
+\left( \frac{v^2+w^2}{U^2} \right)^2 
 \\
-+\left[ \frac{u^3}{U^3}, \, \frac{u^2}{U^2} \, \frac{v^2+w^2}{U^2}, \, \frac{u}{U} \, \left( \frac{v^2+w^2}{U^2} \right)^2, \, \left(\frac{v^2 +w^2}{U^2} \right)^3 \right] $$
++\left[ \frac{u^3}{U^3}, \, \frac{u^2}{U^2} \, 
+\frac{v^2+w^2}{U^2}, \, \frac{u}{U} \, \left( \frac{v^2+w^2}{U^2} \right)^2, \, 
+\left(\frac{v^2 +w^2}{U^2} \right)^3 \right] 
+$$
 
-$$\beta = \sqrt{M^2-1}$$
+$$
+\beta = \sqrt{M^2-1}
+$$
 
 All the explicitly listed terms will contribute to second order solutions. 
 
 
+### Directly using the Pressure Equation
+
+First, take the derivative of $P$ with respect to $W$.
+
+$$ \frac{dP}{dW} = \frac{P_{\infty} \gamma \left(2a+W\left(\gamma-1\right)\right)^
+{\frac{\gamma+1}{\gamma-1}}}
+{2^{\frac{\gamma+1}{\gamma-1}}a^{\frac{2\gamma}{\gamma-1}}} $$
+
+
+$$ W = \mathbf{V}_l \cdot (\mathbf{n}_0 - \mathbf{n}) + \mathbf{V}_b \cdot \mathbf{n}$$
+
+$$ \frac{dW}{d\mathbf{n}} = \mathbf{V}_l + \mathbf{V}_b $$
+
+
+Next, calculate $\frac{dP}{d\mathbf{p}}$:
+
+
+$$ \frac{dP}{d\mathbf{p}} = \frac{dP}{dW} \cdot \frac{dW}{d\mathbf{n}} \cdot \frac{d\mathbf{n}}{d\mathbf{p}} $$
+
+$$ = \frac{P_{\infty} \gamma \left(2a+W\left(\gamma-1\right)\right)^
+{\frac{\gamma+1}{\gamma-1}}}
+{2^{\frac{\gamma+1}{\gamma-1}}a^{\frac{2\gamma}{\gamma-1}}}
+\cdot
+(\mathbf{V}_l + \mathbf{V}_b) 
+\cdot 
+\frac{d\mathbf{n}}{d\mathbf{p}}
+$$
 
