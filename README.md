@@ -1,8 +1,8 @@
 <a name="readme-top"></a>
 
-# Poor Mans Adjoint
+# PySAGAS
 
-A computationally-efficient method for generating flow adjoints
+A computationally-efficient method for generating surface sensitivity approximations
 from existing flow solutions.
 
 <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
