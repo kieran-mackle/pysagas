@@ -1,3 +1,17 @@
+## v0.4.0 (2022-12-08)
+
+### Feat
+
+- **utilities.py**: modularised dPdp method
+
+### Fix
+
+- merge conflicts
+
+### Refactor
+
+- **wrappers**: added wrappers submodule heirarchy
+
 ## v0.3.1 (2022-12-08)
 
 ### Fix
