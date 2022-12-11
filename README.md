@@ -52,13 +52,13 @@ cd ../../../
 After installing the dependencies above, clone this repo to your machine.
 
 ```
-git clone https://github.com/kieran-mackle/py-adjoint
+git clone https://github.com/kieran-mackle/pysagas
 ```
 
-Next, use pip to install the `py-adjoint` from repo you just cloned.
+Next, use pip to install the `pysagas` from repo you just cloned.
 
 ```
-python3 -m pip install py-adjoint
+python3 -m pip install pysagas
 ```
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
@@ -75,7 +75,7 @@ To be determined.
 
 
 ## Contributing 
-To contribute to `py-adjoint`, please read the instructions below,
+To contribute to `pysagas`, please read the instructions below,
 and stick to the styling of the code.
 
 1. Create a new Python virtual environment to isolate the package. You 
@@ -125,7 +125,7 @@ is a great tool to help with this, and is already configured for this
 repo. Simply stage changed code, then use the `cz c` command to make a 
 commit.
 
-- Open a [Pull Request](https://github.com/kieran-mackle/py-adjoint/pulls) 
+- Open a [Pull Request](https://github.com/kieran-mackle/pysagas/pulls) 
 when your code is complete and ready to be merged.
 
 
