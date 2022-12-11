@@ -36,4 +36,15 @@ Sharp Wedge <examples/sharp_wedge>
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
 Utilities Module <api_ref/utilities>
+Wrappers <api_ref/wrapper>
+```
+
+
+```{toctree}
+:maxdepth: 2
+:hidden:
+:caption: Source
+
+Contributing <documentation/contributing>
+Changelog <documentation/changelog>
 ```

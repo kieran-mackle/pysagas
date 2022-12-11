@@ -2,7 +2,7 @@
 
 
 ```{eval-rst}
-.. automodule:: adjoint.wrappers.wrapper
+.. automodule:: pysagas.wrappers.wrapper
    :members:
 ```
 
