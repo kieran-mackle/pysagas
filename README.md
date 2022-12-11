@@ -67,11 +67,30 @@ python3 -m pip install pysagas
 
 
 ## Usage
-Coming soon.
+Detailed usage instructions coming soon.
+
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
 
 
 ## Roadmap
-To be determined.
+
+PySAGAS is being developed along the following roadmap.
+
+* [ ] Modularisation of models
+* [ ] API for convenient, generalised usage
+* [ ] Implementation of higher-fidelity correction models
+* [ ] Control over surface tags / faces being analysed
+* [ ] CLI
+* [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
+* [ ] Integration with [hypervehicle](https://github.com/kieran-mackle/hypervehicle)
+
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
 
 
 ## Contributing 
@@ -99,6 +118,7 @@ pre-commit install
 4. Start developing! After following the steps above, you are ready
 to start developing the code. Make sure to follow the guidelines 
 below.
+
 
 ### Contribution Guidelines
 
@@ -154,3 +174,5 @@ sphinx-autobuild source/ build/ --open-browser
 ## License
 To be confirmed.
 
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
