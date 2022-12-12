@@ -121,7 +121,7 @@ Extra references to review:
 - [Zartarian, G., Hsu, P. T., and Ashley, H., “Dynamic Airloads and Aeroelastic Problems at Entry Mach Numbers,” Journal of the Aeronautical Sciences, Vol. 28, No. 3, March 1961, pp. 209–222.](https://arc.aiaa.org/doi/10.2514/8.8927)
 
 
-## More complex correction equations
+### More complex correction equations
 
 One caveat of usng higher order correction equations is that these may 
 be better/worse suited for specific Mach number ranges. That is different 
@@ -186,4 +186,9 @@ $$ = \frac{P_{\infty} \gamma \left(2a+W\left(\gamma-1\right)\right)^
 \cdot 
 \frac{d\mathbf{n}}{d\mathbf{p}}
 $$
+
+
+### Conditional Models
+Different models for forward facing cells versus backwards 
+facing cells.
 
