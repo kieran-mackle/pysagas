@@ -1,8 +1,18 @@
+import os
 import sys
 
 
-def process_components_file():
-    """A ParaView script to process Components.i.plt."""
+def process_components_file(filepath: str = "Components.i.plt"):
+    """A ParaView script to process Components.i.plt.
+
+    Parameters
+    ----------
+    filepath : str, optional
+        The default is Components.i.plt.
+    """
+    # Check file exists
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File '{filepath}' does not exist.")
 
     try:
         # import the simple module from the paraview
@@ -31,8 +41,8 @@ def process_components_file():
     _DisableFirstRenderCameraReset()
 
     # create a new 'VisItTecplotBinaryReader'
-    print("Loading Components.i.plt.")
-    componentsiplt = VisItTecplotBinaryReader(FileName=["Components.i.plt"])
+    print(f"Loading {filepath}")
+    componentsiplt = VisItTecplotBinaryReader(FileName=[filepath])
     componentsiplt.MeshStatus = ["Surface"]
     componentsiplt.PointArrayStatus = []
 
@@ -138,13 +148,17 @@ def process_components_file():
 
     # export view
     print("  Saving point data.")
-    ExportView("points.csv", view=spreadSheetView1)
+    points_filename = "points.csv"
+    ExportView(points_filename, view=spreadSheetView1)
 
     # Properties modified on spreadSheetView1
     spreadSheetView1.FieldAssociation = "Cell Data"
 
     # export view
     print("  Saving cell data.")
-    ExportView("cells.csv", view=spreadSheetView1)
+    cells_filename = "cells.csv"
+    ExportView(cells_filename, view=spreadSheetView1)
 
     print("Complete.")
+
+    return points_filename, cells_filename
