@@ -4,6 +4,7 @@
 ```{eval-rst}
 .. automodule:: pysagas.wrappers.wrapper
    :members:
+   :private-members:
 ```
 
 

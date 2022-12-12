@@ -41,10 +41,10 @@ Wrappers <api_ref/wrapper>
 
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 3
 :hidden:
-:caption: Source
+:caption: Source Code
 
-Contributing <documentation/contributing>
+Contributing <documentation/contributing_docs/index>
 Changelog <documentation/changelog>
 ```
