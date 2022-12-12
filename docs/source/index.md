@@ -6,8 +6,8 @@
 :end-before: <!-- end intro -->
 ```
 
-See the [Getting Started](documentation/getting-started) guide, or have a look
-at the [examples](examples/ramp_3d.md).
+See the [Getting Started](documentation/getting-started) guide, 
+or have a look at the [examples](examples/ramp_3d.md).
 
 
 ```{toctree}
@@ -16,6 +16,7 @@ at the [examples](examples/ramp_3d.md).
 :caption: DOCUMENTATION
 
 Getting Started <documentation/getting-started>
+Usage <documentation/usage>
 Theory <documentation/theory>
 Definitions <documentation/definitions>
 ```
@@ -26,7 +27,7 @@ Definitions <documentation/definitions>
 :hidden:
 :caption: Case Studies
 
-3D Ramp <examples/ramp_3d>
+Inclined Ramp <examples/ramp_3d>
 Sharp Wedge <examples/sharp_wedge>
 ```
 
