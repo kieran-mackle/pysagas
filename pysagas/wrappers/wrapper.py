@@ -1,6 +1,7 @@
-from typing import List
+import numpy as np
+from typing import List, Callable
 from abc import ABC, abstractmethod
-from pysagas.utilities import all_dfdp
+from pysagas.utilities import all_dfdp, panel_dPdp
 
 
 class AbstractWrapper(ABC):
@@ -55,7 +56,7 @@ class Wrapper(AbstractWrapper):
     def __init__(self, **kwargs) -> None:
         pass
 
-    def calculate(self):
+    def calculate(self, dPdp_method: Callable = panel_dPdp, **kwargs) -> np.array:
         """Calculate the force sensitivities of the surface to the
         parameters.
         """
@@ -68,6 +69,6 @@ class Wrapper(AbstractWrapper):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense = all_dfdp(cells=cells)
+        F_sense = all_dfdp(cells=cells, dPdp_method=dPdp_method, **kwargs)
 
         return F_sense
