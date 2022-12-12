@@ -1,10 +1,8 @@
 import os as os
 import numpy as np
 import pandas as pd
-from pysagas.flow import FlowState
-from pysagas.utilities import all_dfdp
-from pysagas.geometry import Vector, Cell
 from pysagas.wrappers import Cart3DWrapper
+from pysagas.utilities import isentropic_dPdp
 
 
 def run_main(data_path):
@@ -17,6 +15,7 @@ def run_main(data_path):
 
     wrapper = Cart3DWrapper(sensitivity_filepath, celldata_filepath, pointdata_filepath)
     F_sense = wrapper.calculate()
+    # F_sense = wrapper.calculate(isentropic_dPdp, P_inf=-24)
 
     M_inf = 6
     A_ref = 1  # m2
@@ -59,7 +58,7 @@ def run_main(data_path):
     errors = np.nan_to_num(100 * (coef_sens - c3d_sens) / c3d_sens, posinf=0, neginf=0)
     print(errors)
 
-    assert np.max(np.abs(errors)) < 40, "Adjoints inaccurately calculated"
+    return errors
 
 
 def cart3d_fd(data_path):
@@ -90,7 +89,9 @@ def test_ramp():
     """Run the test."""
     file_dir = os.path.abspath(os.path.dirname(__file__))
     data_path = os.path.join(file_dir, "data")
-    run_main(data_path)
+    errors = run_main(data_path)
+
+    assert np.max(np.abs(errors)) < 40, "Adjoints inaccurately calculated"
 
 
 if __name__ == "__main__":
