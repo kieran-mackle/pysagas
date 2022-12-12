@@ -103,15 +103,12 @@ def panel_dPdp(cell: Cell, p_i, **kwargs):
 def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     the isentropic flow relation directly."""
-    # TODO - direct Pressure method. Unsure what to use for P_inf
     gamma = cell.flowstate.gamma
     power = (gamma + 1) / (gamma - 1)
-    dPdW = (
-        kwargs["P_inf"]
-        * gamma
-        * (2 * cell.flowstate.a + cell.flowstate.v * (gamma - 1)) ** power
-    ) / (2**power * cell.flowstate.a ** (2 * gamma / (gamma - 1)))
-    dWdn = cell.flowstate.vec
+    dPdW = (cell.flowstate.P * gamma / cell.flowstate.a) * (
+        1 + cell.flowstate.v * (gamma - 1) / (2 * cell.flowstate.a)
+    ) ** power
+    dWdn = -cell.flowstate.vec
     dndp = cell.dndp[:, p_i]
     dPdp = dPdW * np.dot(dWdn, dndp)
     return dPdp

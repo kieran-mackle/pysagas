@@ -158,9 +158,14 @@ All the explicitly listed terms will contribute to second order solutions.
 
 First, take the derivative of $P$ with respect to $W$.
 
-$$ \frac{dP}{dW} = \frac{P_{\infty} \gamma \left(2a+W\left(\gamma-1\right)\right)^
-{\frac{\gamma+1}{\gamma-1}}}
-{2^{\frac{\gamma+1}{\gamma-1}}a^{\frac{2\gamma}{\gamma-1}}} $$
+$$ 
+\frac{dP}{dW} = 
+\frac{P\gamma}{a} \cdot
+\left(
+    1 + W \frac{\gamma - 1}{2a}
+\right) ^
+\frac{\gamma + 1}{\gamma - 1}
+$$
 
 
 $$ W = \mathbf{V}_l \cdot (\mathbf{n}_0 - \mathbf{n}) + \mathbf{V}_b \cdot \mathbf{n}$$

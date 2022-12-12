@@ -14,8 +14,8 @@ def run_main(data_path):
     pointdata_filepath = os.path.join(data_path, "points.csv")
 
     wrapper = Cart3DWrapper(sensitivity_filepath, celldata_filepath, pointdata_filepath)
-    F_sense = wrapper.calculate()
-    # F_sense = wrapper.calculate(isentropic_dPdp, P_inf=-24)
+    # F_sense = wrapper.calculate()
+    F_sense = wrapper.calculate(isentropic_dPdp)
 
     M_inf = 6
     A_ref = 1  # m2
