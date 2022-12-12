@@ -1,5 +1,15 @@
 # Sensitivity Definitions
 
+
+## Nomenclature
+| Symbol | Description |
+| ------ | ----------- |
+| **v** | Vertex vector |
+| **n** | Normal vector |
+| P | Pressure |
+| A | Area |
+
+
 ## Cell Definition
 
 ```{seealso}
