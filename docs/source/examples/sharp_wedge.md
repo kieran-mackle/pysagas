@@ -5,7 +5,7 @@ CFD solution. Here, a diamond wedge geometry has
 been simulated in Cart3D, though the flow solution
 from any solver could be used instead of Cart3D.
 
-## Geometry Defintion
+## Problem Defintion
 The geometry for this example was generated using the 
 parameteric geometry generation tool 
 [hypervehicle](https://github.com/kieran-mackle/hypervehicle).
@@ -13,6 +13,12 @@ This tool provides the capability of generating cell vertex
 sensitivities to geometric parameters. 
 
 ![Wedge Geometry](../_static/wedge.png)
+
+
+### Free Stream Conditions
+The wedge is simulated at Mach 6, with a 3-degree angle of attack.
+Since Cart3D is an inviscid flow solver, this is all that is required
+to define the non-dimensional flow state.
 
 
 ### Parameterisation

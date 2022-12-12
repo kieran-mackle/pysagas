@@ -167,7 +167,7 @@ commit.
 when your code is complete and ready to be merged.
 
 
-### Building the docs
+### Building the Docs
 To build the documentation, run the commands below. 
 
 ```
