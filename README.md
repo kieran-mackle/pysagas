@@ -34,6 +34,7 @@ to use in geometric parameter optimisation studies.
 
 
 ## Getting Started
+<!-- start getting started -->
 
 ### Prerequisites
 This code depends on the [Eilmer](https://github.com/gdtk-uq/gdtk) python 
@@ -66,6 +67,8 @@ Next, use pip to install the `pysagas` from repo you just cloned.
 ```
 python3 -m pip install pysagas
 ```
+
+<!-- end getting started -->
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
 
