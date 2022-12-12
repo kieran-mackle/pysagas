@@ -1,7 +1,10 @@
 # **PySAGAS** Documentation
 
-PySAGAS is a Python package for the generation of **S**ensitivity **A**pproximations
-for **G**eometric and **A**erodynamic **Surface** properties.
+
+```{include} ../../README.md
+:start-after: <!-- start intro -->
+:end-before: <!-- end intro -->
+```
 
 See the [Getting Started](documentation/getting-started) guide, or have a look
 at the [examples](examples/ramp_3d.md).

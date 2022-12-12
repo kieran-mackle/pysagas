@@ -2,10 +2,16 @@
 
 # PySAGAS
 
-A computationally-efficient method for generating surface sensitivity approximations
-from existing flow solutions.
+<!-- start intro -->
+**PySAGAS** is a Python package for the generation of **S**ensitivity **A**pproximations
+for **G**eometric and **A**erodynamic **Surface** properties.
+It provides a computationally-efficient method for generating 
+surface sensitivity approximations from existing flow solutions,
+to use in geometric parameter optimisation studies.
+<!-- end intro -->
 
 <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
+
 
 
 <!-- TABLE OF CONTENTS -->
@@ -94,8 +100,13 @@ PySAGAS is being developed along the following roadmap.
 
 
 ## Contributing 
+
+<!-- start contribution guidelines -->
+
 To contribute to `pysagas`, please read the instructions below,
 and stick to the styling of the code.
+
+### Setting up for Development
 
 1. Create a new Python virtual environment to isolate the package. You 
 can do so using [`venv`](https://docs.python.org/3/library/venv.html) or
@@ -120,7 +131,7 @@ to start developing the code. Make sure to follow the guidelines
 below.
 
 
-### Contribution Guidelines
+### Developing PySAGAS
 
 - Before making any changes, create a new branch to develop on using 
 `git checkout -b new-branch-name`.
@@ -166,6 +177,8 @@ live, rather than re-building repeatadly.
 ```
 sphinx-autobuild source/ build/ --open-browser
 ```
+
+<!-- end contribution guidelines -->
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
 

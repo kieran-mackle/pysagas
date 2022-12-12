@@ -1,7 +1,6 @@
 # PySAGAS Contribution Guide
 
 
-
 ```{toctree}
 :maxdepth: 2
 
