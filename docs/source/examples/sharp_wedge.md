@@ -30,7 +30,7 @@ is used to alter the wedge geometry.
 ![Wedge with thickness variations](../_static/thick-thin-wedges.png)
 
 
-## Cart3D Flow Solution
+## Cart3D Solution
 
 ![Wedge flow visualisation](../_static/wedge-flow.png) 
 
@@ -39,11 +39,31 @@ is used to alter the wedge geometry.
 
 ### Parameter Sensitivities via Finite Differencing
 
-< Insert table of results from Cart3D >
+
+|  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
+|-----------------|-----------|-----------|-----------|
+| Thickness       |  0.14517  |  0.126153   |  0.0000  |
 
 
-## PySAGAS Parameter Sensitivities
-
-< Insert table of results from Cart3D >
+## PySAGAS Solution
 
 
+Note, the error of each sensitivitiy, as calculated using 
+the Cart3D solution for reference, is shown in brackets.
+
+|  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
+|-----------------|-----------|-----------|-----------|
+| Thickness       |  0.15496 (5.0%) | -5.57204 (-5.6%)  |  0.00312 (-) |
+
+
+
+## Special Considerations
+
+- Having a coarse geometry mesh will impact the accuracy of the
+Cart3D solution. In terms of computational expense, there is little
+reason to use a coarse geometry mesh, since this is loaded by Cart3D
+just once. A coarse geometry mesh may also not accurately capture
+the features of the geometry.
+- The computational expense of PySAGAS scales with the number of 
+cells which must be transcribed from the Cart3D solution, so the 
+resolution of the geometry mesh should not be excessive.
