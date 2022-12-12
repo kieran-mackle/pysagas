@@ -1,6 +1,7 @@
 import sys
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 from typing import Union, List
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector, Cell
@@ -55,6 +56,12 @@ class Cart3DWrapper(Wrapper):
         ]
 
         # Construct cells
+        print("Transcribing cells from Components.i.plt...")
+        pbar = tqdm(
+            total=len(self.celldata.index),
+            position=0,
+            leave=True,
+        )
         cells = []
         for cell in self.celldata.index:
             vertex_ids = cell_vertex_ids.loc[cell].values
@@ -92,6 +99,11 @@ class Cart3DWrapper(Wrapper):
 
             # Append new Cell
             cells.append(newcell)
+
+            # Update progress bar
+            pbar.update(1)
+        pbar.close()
+        print("Done.")
 
         return cells
 

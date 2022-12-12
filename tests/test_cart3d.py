@@ -14,8 +14,8 @@ def run_main(data_path):
     pointdata_filepath = os.path.join(data_path, "points.csv")
 
     wrapper = Cart3DWrapper(sensitivity_filepath, celldata_filepath, pointdata_filepath)
-    # F_sense = wrapper.calculate()
-    F_sense = wrapper.calculate(isentropic_dPdp)
+    F_sense = wrapper.calculate()
+    # F_sense = wrapper.calculate(isentropic_dPdp)
 
     M_inf = 6
     A_ref = 1  # m2
@@ -97,4 +97,5 @@ def test_ramp():
 if __name__ == "__main__":
     np.seterr(all="ignore")
     data_path = "tests/data"
+    # data_path = "/home/kieran/Documents/PoorMansAdjoint/sims/look"
     run_main(data_path)
