@@ -7,40 +7,26 @@ from pysagas.utilities import isentropic_dPdp
 
 def run_main(data_path):
     """Analyse the Cart3D solution."""
+    # Define flow conditions
+    M_inf = 6
+    A_ref = 1  # m2
+    a_inf = 299.499  # m/s
+    rho_inf = 0.0308742  # kg/m3
+    V_inf = M_inf * a_inf  # m/s
 
     # Filepaths
     sensitivity_filepath = os.path.join(data_path, "combined.csv")
-    celldata_filepath = os.path.join(data_path, "cells.csv")
-    pointdata_filepath = os.path.join(data_path, "points.csv")
+    components_filepath = os.path.join(data_path, "Components.i.plt")
 
-    wrapper = Cart3DWrapper(sensitivity_filepath, celldata_filepath, pointdata_filepath)
+    # Create PySAGAS wrapper
+    wrapper = Cart3DWrapper(
+        a_inf=a_inf,
+        rho_inf=rho_inf,
+        sensitivity_filepath=sensitivity_filepath,
+        components_filepath=components_filepath,
+    )
     F_sense = wrapper.calculate()
     # F_sense = wrapper.calculate(isentropic_dPdp)
-
-    M_inf = 6
-    A_ref = 1  # m2
-
-    rho_lookup = {
-        5: 0.0450814,
-        6: 0.0308742,
-        7: 0.0225510,
-        7.5: 0.0195525,
-        8: 0.0171295,
-        9: 0.0134424,
-        10: 0.0107105,
-    }
-    a_lookup = {
-        5: 297.891,
-        6: 299.499,
-        7: 300.840,
-        7.5: 301.575,
-        8: 302.018,
-        9: 303.061,
-        10: 305.562,
-    }
-    a_inf = a_lookup[M_inf]
-    rho_inf = rho_lookup[M_inf]
-    V_inf = M_inf * a_inf
 
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)

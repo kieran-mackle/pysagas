@@ -16,38 +16,18 @@ class Cart3DWrapper(Wrapper):
 
     def __init__(
         self,
+        a_inf: float,
+        rho_inf: float,
         sensitivity_filepath: str,
-        celldata_filepath: str = None,
-        pointdata_filepath: str = None,
         components_filepath: str = None,
+        write_data: bool = False,
         **kwargs,
     ) -> None:
-
-        if celldata_filepath is None and pointdata_filepath is None:
-            # Generate cell and point data from Components.i.plt
-            try:
-                pointdata_filepath, celldata_filepath = process_components_file(
-                    components_filepath
-                )
-            except FileNotFoundError as e:
-                if components_filepath is not None:
-                    # A filepath was provided, but not valid
-                    print(
-                        f"Cannot find Components.i.plt file at {components_filepath}."
-                    )
-                else:
-                    # No filepath was provided, and could not find the default
-                    print(
-                        "Please provide the filepaths to the "
-                        + "cell data file and points data file. Alternatively, "
-                        + "provide the filepath to the Components.i.plt file."
-                    )
-                sys.exit()
-
         # Load data
         self.sensdata = pd.read_csv(sensitivity_filepath)
-        self.celldata = pd.read_csv(celldata_filepath)
-        self.pointdata = pd.read_csv(pointdata_filepath)
+        self.pointdata, self.celldata = process_components_file(
+            a_inf, rho_inf, components_filepath, write_data=write_data
+        )
 
     def _create_cells(self, parameters: list):
         coordinates = self.pointdata[["Points_0", "Points_1", "Points_2"]]
