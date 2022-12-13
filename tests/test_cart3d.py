@@ -2,7 +2,6 @@ import os as os
 import numpy as np
 import pandas as pd
 from pysagas.wrappers import Cart3DWrapper
-from pysagas.utilities import isentropic_dPdp
 
 
 def run_main(data_path):
@@ -26,7 +25,6 @@ def run_main(data_path):
         components_filepath=components_filepath,
     )
     F_sense = wrapper.calculate()
-    # F_sense = wrapper.calculate(isentropic_dPdp)
 
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)

@@ -21,22 +21,62 @@ class Cart3DWrapper(Wrapper):
         sensitivity_filepath: str,
         components_filepath: str = None,
         write_data: bool = False,
+        verbosity: int = 1,
         **kwargs,
     ) -> None:
+        """A PySAGAS wrapper for Cart3D.
+
+        Parameters
+        ----------
+        a_inf : float
+            The freestream speed of sound (m/s).
+        rho_inf : float
+            The freestream density (kg/m^3).
+        filepath : str, optional
+            The filepath to the Components.i.plt file to be processed.
+            The default is None.
+        write_data : bool, optional
+            Write the flow data to CSV files. The default is True.
+        verbosity : int, optional
+            The verbosity of the code. The defualt is 1.
+        """
         # Load data
         self.sensdata = pd.read_csv(sensitivity_filepath)
         self.pointdata, self.celldata = process_components_file(
-            a_inf, rho_inf, components_filepath, write_data=write_data
+            a_inf,
+            rho_inf,
+            components_filepath,
+            write_data=write_data,
+            verbosity=verbosity,
         )
+        self.verbosity = verbosity
 
-    def _create_cells(self, parameters: list):
+    def _create_cells(self, parameters: List[str]) -> List[Cell]:
+        """Transcribes the cells from Components.i.plt files into
+        PySAGAS Cell objects.
+
+        Parameters
+        -----------
+        parameters : List[str]
+            A list of the geometric design parameters.
+
+        Returns
+        --------
+        cells : List[Cell]
+            A list of all transcribed cells.
+
+        See Also
+        --------
+        pysagas.geometry.Cell
+        """
         coordinates = self.pointdata[["Points_0", "Points_1", "Points_2"]]
         cell_vertex_ids = self.celldata[
             ["Point Index 0", "Point Index 1", "Point Index 2"]
         ]
 
         # Construct cells
-        print("Transcribing cells from Components.i.plt...")
+        if self.verbosity > 0:
+            print("\nTranscribing cells from Components.i.plt...")
         pbar = tqdm(
             total=len(self.celldata.index),
             position=0,
@@ -83,7 +123,8 @@ class Cart3DWrapper(Wrapper):
             # Update progress bar
             pbar.update(1)
         pbar.close()
-        print("Done.")
+        if self.verbosity > 0:
+            print("Done.")
 
         return cells
 

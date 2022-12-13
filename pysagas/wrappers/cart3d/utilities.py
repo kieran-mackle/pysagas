@@ -9,6 +9,7 @@ def process_components_file(
     rho_inf: float,
     filepath: str = "Components.i.plt",
     write_data: bool = True,
+    verbosity: int = 1,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """A ParaView script to process Components.i.plt.
 
@@ -23,6 +24,8 @@ def process_components_file(
         The default is Components.i.plt.
     write_data : bool, optional
         Write the flow data to CSV files. The default is True.
+    verbosity : int, optional
+        The verbosity of the code. The defualt is 1.
 
     Returns
     -------
@@ -34,6 +37,9 @@ def process_components_file(
     # Check file exists
     if not os.path.exists(filepath):
         raise FileNotFoundError(f"File '{filepath}' does not exist.")
+
+    # Define root directory
+    root_dir = os.path.dirname(filepath)
 
     try:
         # import the simple module from the paraview
@@ -62,7 +68,8 @@ def process_components_file(
     _DisableFirstRenderCameraReset()
 
     # create a new 'VisItTecplotBinaryReader'
-    print(f"Loading {filepath}")
+    if verbosity > 0:
+        print(f"Loading {filepath}")
     componentsiplt = VisItTecplotBinaryReader(FileName=[filepath])
     componentsiplt.MeshStatus = ["Surface"]
     componentsiplt.PointArrayStatus = []
@@ -99,7 +106,8 @@ def process_components_file(
     programmableFilter1.PythonPath = ""
 
     # Properties modified on programmableFilter1
-    print("  Dimensionalising attributes.")
+    if verbosity > 0:
+        print("  Dimensionalising attributes.")
     programmableFilter1.Script = f"""
     # Paraview script to normalise Cart3D variables.
     R_gas = 287.058
@@ -158,21 +166,22 @@ def process_components_file(
     spreadSheetView1.GenerateCellConnectivity = 1
 
     # export view
-    print("  Saving point data.")
-    # TODO - get parent dir from components file
-    points_filename = "points.csv"
+    if verbosity > 0:
+        print("  Saving point data.")
+    points_filename = os.path.join(root_dir, "points.csv")
     ExportView(points_filename, view=spreadSheetView1)
 
     # Properties modified on spreadSheetView1
     spreadSheetView1.FieldAssociation = "Cell Data"
 
     # export view
-    print("  Saving cell data.")
-    # TODO - get parent dir from components file
-    cells_filename = "cells.csv"
+    if verbosity > 0:
+        print("  Saving cell data.")
+    cells_filename = os.path.join(root_dir, "cells.csv")
     ExportView(cells_filename, view=spreadSheetView1)
 
-    print("Complete.")
+    if verbosity > 0:
+        print("Complete.")
 
     # Read the files to Pandas DataFrames
     points = pd.read_csv(points_filename)
