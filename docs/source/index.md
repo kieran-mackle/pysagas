@@ -40,7 +40,7 @@ Sharp Wedge <examples/sharp_wedge>
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
 Utilities Module <api_ref/utilities>
-Wrappers <api_ref/wrapper>
+Wrappers <api_ref/wrappers/index>
 ```
 
 
