@@ -59,7 +59,7 @@ the Cart3D solution for reference, is shown in brackets.
 
 |  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
 |-----------------|-----------|-----------|-----------|
-| Thickness       |  0.15496 (5.0%) | 0.11912(-5.6%)  |  0.00312 (-) |
+| Thickness       |  0.15496 (5.0%) | 0.11912 (-5.6%)  |  0.00312 (-) |
 
 
 
