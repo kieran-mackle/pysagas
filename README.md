@@ -56,13 +56,15 @@ cd ../../../
 ```
 
 ### Installation
-After installing the dependencies above, clone this repo to your machine.
+After installing the dependencies above, clone this repo to your 
+machine.
 
 ```
 git clone https://github.com/kieran-mackle/pysagas
 ```
 
-Next, use pip to install the `pysagas` from repo you just cloned.
+Next, use pip to install the `pysagas` package from the repo you 
+just cloned.
 
 ```
 python3 -m pip install pysagas
