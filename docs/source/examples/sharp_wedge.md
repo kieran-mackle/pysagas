@@ -43,7 +43,7 @@ perturbations of the wedge thickness about the nominal
 value, the following sensitiviites can be generated using
 finite differencing. Note that the values are reported for
 sensitivities in the non-dimensional coefficients 
-$C_X, C_Y$ and $C_Z$.
+$C_x, C_y$ and $C_z$.
 
 
 |  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
@@ -59,7 +59,7 @@ the Cart3D solution for reference, is shown in brackets.
 
 |  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
 |-----------------|-----------|-----------|-----------|
-| Thickness       |  0.15496 (5.0%) | -5.57204 (-5.6%)  |  0.00312 (-) |
+| Thickness       |  0.15496 (5.0%) | 0.11912(-5.6%)  |  0.00312 (-) |
 
 
 
@@ -70,6 +70,6 @@ Cart3D solution. In terms of computational expense, there is little
 reason to use a coarse geometry mesh, since this is loaded by Cart3D
 just once. A coarse geometry mesh may also not accurately capture
 the features of the geometry.
-- The computational expense of PySAGAS scales with the number of 
+- The computational expense of *PySAGAS* scales with the number of 
 cells which must be transcribed from the Cart3D solution, so the 
 resolution of the geometry mesh should not be excessive.

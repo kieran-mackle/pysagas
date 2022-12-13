@@ -29,14 +29,14 @@ def run_main(data_path):
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)
 
-    # Print results
-    print("PySAGAS Result:")
-    print("      dFx/dP           dFy/dP          dFz/dP")
-    print(coef_sens)
-
-    print("Cart 3D Finite Difference Result:")
+    print("\nCart 3D Finite Difference Result:")
     c3d_sens = np.array([[0.147517, 0.126153, 0]])
     print(c3d_sens)
+
+    # Print results
+    print("\nPySAGAS Result:")
+    print("      dFx/dP           dFy/dP          dFz/dP")
+    print(coef_sens)
 
     print("\nError (%):")
     errors = np.nan_to_num(100 * (coef_sens - c3d_sens) / c3d_sens, posinf=0, neginf=0)
