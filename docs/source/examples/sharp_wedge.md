@@ -1,6 +1,6 @@
 # Cart3D Sharp Wedge Study
 
-This example highlights the use of PySAGAS on a 
+This example highlights the use of *PySAGAS* on a 
 CFD solution. Here, a diamond wedge geometry has 
 been simulated in Cart3D, though the flow solution
 from any solver could be used instead of Cart3D.
