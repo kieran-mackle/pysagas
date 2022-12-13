@@ -125,8 +125,8 @@ F_sense = wrapper.calculate()
 
 PySAGAS is being developed along the following roadmap.
 
-* [ ] Modularisation of models
-* [ ] API for convenient, generalised usage
+* [x] Modularisation of models
+* [x] API for convenient, generalised usage
 * [ ] Implementation of higher-fidelity correction models
 * [ ] Control over surface tags / faces being analysed
 * [ ] CLI
