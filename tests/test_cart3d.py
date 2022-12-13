@@ -77,7 +77,7 @@ def test_ramp():
     data_path = os.path.join(file_dir, "data")
     errors = run_main(data_path)
 
-    assert np.max(np.abs(errors)) < 40, "Adjoints inaccurately calculated"
+    assert np.max(np.abs(errors)) < 5.6, "Adjoints inaccurately calculated"
 
 
 if __name__ == "__main__":
