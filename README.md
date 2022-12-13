@@ -37,8 +37,11 @@ to use in geometric parameter optimisation studies.
 <!-- start getting started -->
 
 ### Prerequisites
-This code depends on the [Eilmer](https://github.com/gdtk-uq/gdtk) python 
-package. Note that a full Eilmer install is not required. Instead, do a 
+
+#### GDTK
+*PySAGAS* depends on the [GDTK](https://github.com/gdtk-uq/gdtk) python 
+package for ideal gas dynamics. Note that a full install is 
+not required. Instead, do a 
 [sparse checkout](https://stackoverflow.com/questions/600079/how-do-i-clone-a-subdirectory-only-of-a-git-repository)
 of the relevant files, using the commands below.
 
@@ -54,6 +57,33 @@ cd src/lib
 python3 -m pip install .
 cd ../../../
 ```
+
+#### ParaView
+If you plan on using *PySAGAS* with Cart3D solutions, you should
+also install ParaView, or at least the ParaView Python bindings.
+If you are using an Anaconda environment, you can install the 
+ParaView Python packages via
+[Conda Forge](https://anaconda.org/conda-forge/paraview) using 
+the command below:
+
+```
+conda install -c conda-forge paraview
+```
+
+If you already have ParaView installed, you can append the path
+to the binaries to the Python path using the snippet below.
+
+```python
+import sys
+sys.path.insert(0, "/opt/ParaView-5.6.2-MPI-Linux-64bit/bin")
+
+# Now the import should work
+import paraview
+```
+
+For more information on ParaView's Python packages, see the 
+[ParaView Wiki](https://www.paraview.org/Wiki/PvPython_and_PvBatch).
+
 
 ### Installation
 After installing the dependencies above, clone this repo to your 
