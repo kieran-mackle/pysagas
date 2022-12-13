@@ -80,7 +80,38 @@ python3 -m pip install pysagas
 ## Usage
 
 <!-- start usage -->
-Detailed usage instructions coming soon.
+
+*PySAGAS* uses low-order methods to approximate sensitivities
+on the surface of aerodynamic geometries. The user must provide
+a nominal condition of the flow properties on the surface, along
+with the sensitivity of the geometric vertices to the design 
+parameters. With these things, a *wrapper* can be conveniently 
+used.
+
+### Cart3D Wrapper
+To generate surface sensitivities from a Cart3D solution, 
+you are required to provide 2 things to *PySAGAS*:
+1. The `Components.i.plt` file, containing the properties
+on the geometry surface.
+2. A parameter sensitivities file, for example generated
+by [hypervehicle](https://github.com/kieran-mackle/hypervehicle).
+
+With these two things, simply use the Cart3D wrapper, as 
+shown in the snippet below. Note you must specify the 
+freestream speed of sound and density, along with the path
+to both the sensitivity file, and the components file.
+
+```python
+from pysagas.wrappers import Cart3DWrapper
+
+wrapper = Cart3DWrapper(
+    a_inf=a_inf,
+    rho_inf=rho_inf,
+    sensitivity_filepath=sensitivity_filepath,
+    components_filepath=components_filepath,
+)
+F_sense = wrapper.calculate()
+```
 
 
 <!-- end usage -->
