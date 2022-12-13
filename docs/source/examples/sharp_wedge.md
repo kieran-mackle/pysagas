@@ -38,6 +38,12 @@ is used to alter the wedge geometry.
 
 
 ### Parameter Sensitivities via Finite Differencing
+Running a series of simulations in Cart3D for geometric 
+perturbations of the wedge thickness about the nominal 
+value, the following sensitiviites can be generated using
+finite differencing. Note that the values are reported for
+sensitivities in the non-dimensional coefficients 
+$C_X, C_Y$ and $C_Z$.
 
 
 |  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
@@ -46,8 +52,8 @@ is used to alter the wedge geometry.
 
 
 ## PySAGAS Solution
-
-
+Using the nominal geometry's Cart3D solution, the following
+sensitivities can be generated using *PySAGAS*.
 Note, the error of each sensitivitiy, as calculated using 
 the Cart3D solution for reference, is shown in brackets.
 
