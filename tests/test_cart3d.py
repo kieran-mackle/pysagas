@@ -69,7 +69,7 @@ def cart3d_fd(data_path):
     )
 
 
-def test_ramp():
+def test_cart3d_wedge():
     """Run the test."""
     file_dir = os.path.abspath(os.path.dirname(__file__))
     data_path = os.path.join(file_dir, "data")
@@ -81,5 +81,4 @@ def test_ramp():
 if __name__ == "__main__":
     np.seterr(all="ignore")
     data_path = "tests/data"
-    # data_path = "/home/kieran/Documents/PoorMansAdjoint/sims/look"
     run_main(data_path)
