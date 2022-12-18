@@ -26,8 +26,8 @@ class AbstractWrapper(ABC):
         pass
 
     @abstractmethod
-    def _create_cells(self, parameters: List):
-        """Creates the unified Cells from the solver data.
+    def _transcribe_cells(self, parameters: List):
+        """Transcribes the unified Cells from the solver data.
 
         Returns
         --------
@@ -49,19 +49,25 @@ class AbstractWrapper(ABC):
         # This method should be overloaded with the solver-specific method
         pass
 
+    @abstractmethod
+    def to_csv(self):
+        """Dumps the sensitivity data to CSV file."""
+        pass
+
 
 class Wrapper(AbstractWrapper):
     """Wrapper base class."""
 
     def __init__(self, **kwargs) -> None:
-        pass
+        # Cell data
+        self.cells = None
 
     def calculate(self, dPdp_method: Callable = panel_dPdp, **kwargs) -> np.array:
         """Calculate the force sensitivities of the surface to the
         parameters.
         """
         parameters = self._extract_parameters()
-        cells = self._create_cells(parameters)
+        cells = self._transcribe_cells(parameters)
 
         params_sens_cols = []
         for p in parameters:
@@ -72,3 +78,11 @@ class Wrapper(AbstractWrapper):
         F_sense = all_dfdp(cells=cells, dPdp_method=dPdp_method, **kwargs)
 
         return F_sense
+
+    def to_csv(self):
+        """Dumps the sensitivity data to CSV file."""
+        if self.cells is not None:
+            pass
+
+        else:
+            raise Exception("No cells have been transcribed.")

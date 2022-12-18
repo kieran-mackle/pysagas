@@ -170,6 +170,17 @@ class Cell:
         # FlowState
         self.flowstate: pysagas.flow.FlowState = None
 
+        # Sensitivities
+        self.sensitivities = None
+
+    def to_dict(self):
+        """Returns the Cell as a dictionary."""
+        # TODO - need to think about representing the cells
+        # vs. the points
+        # The values at the points will need to be averaged
+        # across cells
+        pass
+
     @classmethod
     def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
         """Constructs a Vector object from an array of coordinates.

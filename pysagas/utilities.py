@@ -86,6 +86,9 @@ def cell_dfdp(cell: Cell, dPdp_method: Callable, **kwargs) -> np.array:
             )
             sensitivities[p_i, i] = dir_sens
 
+    # Append to cell
+    cell.sensitivities = sensitivities
+
     return sensitivities
 
 
