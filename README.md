@@ -158,6 +158,7 @@ PySAGAS is being developed along the following roadmap.
 
 * [x] Modularisation of models
 * [x] API for convenient, generalised usage
+* [ ] Visualisation of sensitivities on mesh (cell-wise)
 * [ ] Implementation of higher-fidelity correction models
 * [ ] Control over surface tags / faces being analysed
 * [ ] CLI
