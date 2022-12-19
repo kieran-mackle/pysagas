@@ -67,7 +67,8 @@ class Wrapper(AbstractWrapper):
         parameters.
         """
         parameters = self._extract_parameters()
-        cells = self._transcribe_cells(parameters)
+        if self.cells is None:
+            self.cells = self._transcribe_cells(parameters)
 
         params_sens_cols = []
         for p in parameters:
@@ -75,7 +76,7 @@ class Wrapper(AbstractWrapper):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense = all_dfdp(cells=cells, dPdp_method=dPdp_method, **kwargs)
+        F_sense = all_dfdp(cells=self.cells, dPdp_method=dPdp_method, **kwargs)
 
         return F_sense
 

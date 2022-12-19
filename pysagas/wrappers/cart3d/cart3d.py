@@ -51,6 +51,8 @@ class Cart3DWrapper(Wrapper):
         )
         self.verbosity = verbosity
 
+        super().__init__(**kwargs)
+
     def _transcribe_cells(self, parameters: List[str]) -> List[Cell]:
         """Transcribes the cells from Components.i.plt files into
         PySAGAS Cell objects.
@@ -125,9 +127,6 @@ class Cart3DWrapper(Wrapper):
         pbar.close()
         if self.verbosity > 0:
             print("Done.")
-
-        # Save transcribed cells
-        self.cells = cells
 
         return cells
 
