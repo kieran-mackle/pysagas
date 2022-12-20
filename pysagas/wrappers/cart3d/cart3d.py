@@ -20,6 +20,8 @@ class Cart3DWrapper(Wrapper):
         rho_inf: float,
         sensitivity_filepath: str,
         components_filepath: str = None,
+        pointdata: pd.DataFrame = None,
+        celldata: pd.DataFrame = None,
         write_data: bool = False,
         verbosity: int = 1,
         **kwargs,
@@ -32,9 +34,15 @@ class Cart3DWrapper(Wrapper):
             The freestream speed of sound (m/s).
         rho_inf : float
             The freestream density (kg/m^3).
-        filepath : str, optional
+        sensitivity_filepath : str
+            The filepath to the geometry sensitivities.
+        components_filepath : str, optional
             The filepath to the Components.i.plt file to be processed.
             The default is None.
+        pointdata : pd.DataFrame, optional
+            The point data. Must be supplied with celldata.
+        celldata : pd.DataFrame, optional
+            The cell data. Must be supplied with pointdata.
         write_data : bool, optional
             Write the flow data to CSV files. The default is True.
         verbosity : int, optional
@@ -42,13 +50,17 @@ class Cart3DWrapper(Wrapper):
         """
         # Load data
         self.sensdata = pd.read_csv(sensitivity_filepath)
-        self.pointdata, self.celldata = process_components_file(
-            a_inf,
-            rho_inf,
-            components_filepath,
-            write_data=write_data,
-            verbosity=verbosity,
-        )
+        if pointdata is not None and celldata is not None:
+            self.pointdata = pointdata
+            self.celldata = celldata
+        else:
+            self.pointdata, self.celldata = process_components_file(
+                a_inf,
+                rho_inf,
+                components_filepath,
+                write_data=write_data,
+                verbosity=verbosity,
+            )
         self.verbosity = verbosity
 
         super().__init__(**kwargs)
