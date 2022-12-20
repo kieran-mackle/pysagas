@@ -185,9 +185,9 @@ and stick to the styling of the code.
 can do so using [`venv`](https://docs.python.org/3/library/venv.html) or
 [anaconda](https://www.anaconda.com/).
 
-2. Install the code in editable mode using the command below. Also install
-all dependencies using the `[all]` command, which includes developer 
-dependencies.
+2. Install the code in editable mode using the command below (run from
+inside the `pysagas` root directory). Also install all dependencies 
+using the `[all]` command, which includes the developer dependencies.
 
 ```
 pip install -e .[all]
@@ -245,10 +245,11 @@ xdg-open build/html/index.html
 If you are actively developing the docs, consider using
 [sphinx-autobuild](https://pypi.org/project/sphinx-autobuild/).
 This will continuosly update the docs for you to see any changes
-live, rather than re-building repeatadly. 
+live, rather than re-building repeatadly. From the `docs/` 
+directory, run the following command:
 
 ```
-sphinx-autobuild source/ build/ --open-browser
+sphinx-autobuild source/ build/html --open-browser
 ```
 
 <!-- end contribution guidelines -->
