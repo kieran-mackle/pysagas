@@ -1,8 +1,45 @@
+import os
 import sys
+import pandas as pd
+from typing import Tuple
 
 
-def process_components_file():
-    """A ParaView script to process Components.i.plt."""
+def process_components_file(
+    a_inf: float,
+    rho_inf: float,
+    filepath: str = "Components.i.plt",
+    write_data: bool = True,
+    verbosity: int = 1,
+) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """A ParaView script to process Components.i.plt.
+
+    Parameters
+    ----------
+    a_inf : float
+        The freestream speed of sound (m/s).
+    rho_inf : float
+        The freestream density (kg/m^3).
+    filepath : str, optional
+        The filepath to the Components.i.plt file to be processed.
+        The default is Components.i.plt.
+    write_data : bool, optional
+        Write the flow data to CSV files. The default is True.
+    verbosity : int, optional
+        The verbosity of the code. The defualt is 1.
+
+    Returns
+    -------
+    points : pd.DataFrame
+        A DataFrame of the point data.
+    cells : pd.DataFrame
+        A DataFrame of the cell data.
+    """
+    # Check file exists
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File '{filepath}' does not exist.")
+
+    # Define root directory
+    root_dir = os.path.dirname(filepath)
 
     try:
         # import the simple module from the paraview
@@ -31,8 +68,9 @@ def process_components_file():
     _DisableFirstRenderCameraReset()
 
     # create a new 'VisItTecplotBinaryReader'
-    print("Loading Components.i.plt.")
-    componentsiplt = VisItTecplotBinaryReader(FileName=["Components.i.plt"])
+    if verbosity > 0:
+        print(f"Loading {filepath}")
+    componentsiplt = VisItTecplotBinaryReader(FileName=[filepath])
     componentsiplt.MeshStatus = ["Surface"]
     componentsiplt.PointArrayStatus = []
 
@@ -68,21 +106,12 @@ def process_components_file():
     programmableFilter1.PythonPath = ""
 
     # Properties modified on programmableFilter1
-    print("  Dimensionalising attributes.")
-    programmableFilter1.Script = """# Paraview script to normalise Cart3D variables.
-
-    ######## Define freestream conditions here ###########
-    M_inf = 6
-    ######################################################
-
+    if verbosity > 0:
+        print("  Dimensionalising attributes.")
+    programmableFilter1.Script = f"""
+    # Paraview script to normalise Cart3D variables.
     R_gas = 287.058
     gamma = 1.4
-
-    # Look up the freestream and sound speed for the given Mach number and q = 50 kPa
-    rho_lookup = {5:0.0450814, 6:0.0308742, 7:0.0225510, 7.5:0.0195525, 8:0.0171295, 9:0.0134424, 10:0.0107105}
-    a_lookup = {5:297.891, 6:299.499, 7:300.840, 7.5:301.575, 8:302.018, 9:303.061, 10:305.562}
-    a_inf = a_lookup[M_inf]
-    rho_inf = rho_lookup[M_inf]
 
     # Redefine the Cart3D variables - normalised values are *_tilde
     output.PointData.append(inputs[0].PointData["U"], "U_tilde")
@@ -92,13 +121,13 @@ def process_components_file():
     output.PointData.append(inputs[0].PointData["Rho"], "rho_tilde")
 
     # Define the dimensional flow properties
-    output.PointData.append(a_inf * inputs[0].PointData["U"], "U")
-    output.PointData.append(a_inf * inputs[0].PointData["V"], "V")
-    output.PointData.append(a_inf * inputs[0].PointData["W"], "W")
+    output.PointData.append({a_inf} * inputs[0].PointData["U"], "U")
+    output.PointData.append({a_inf} * inputs[0].PointData["V"], "V")
+    output.PointData.append({a_inf} * inputs[0].PointData["W"], "W")
 
-    output.PointData.append(a_inf * a_inf * rho_inf * output.PointData["p_tilde"], "p")
-    output.PointData.append(rho_inf * output.PointData["rho_tilde"], "rho")
-    output.PointData.append(a_inf*a_inf*rho_inf*output.PointData["p_tilde"] / (rho_inf*output.PointData["rho_tilde"]*R_gas), "T")
+    output.PointData.append({a_inf} * {a_inf} * {rho_inf} * output.PointData["p_tilde"], "p")
+    output.PointData.append({rho_inf} * output.PointData["rho_tilde"], "rho")
+    output.PointData.append({a_inf}*{a_inf}*{rho_inf}*output.PointData["p_tilde"] / ({rho_inf}*output.PointData["rho_tilde"]*R_gas), "T")
     output.PointData.append((abs(gamma * R_gas * output.PointData["T"]))**0.5, "a")
     output.PointData.append((output.PointData["U"]**2 + output.PointData["V"]**2 + output.PointData["W"]**2)**0.5, "V_mag")
     output.PointData.append(output.PointData["V_mag"]/output.PointData["a"], "M")"""
@@ -137,14 +166,30 @@ def process_components_file():
     spreadSheetView1.GenerateCellConnectivity = 1
 
     # export view
-    print("  Saving point data.")
-    ExportView("points.csv", view=spreadSheetView1)
+    if verbosity > 0:
+        print("  Saving point data.")
+    points_filename = os.path.join(root_dir, "points.csv")
+    ExportView(points_filename, view=spreadSheetView1)
 
     # Properties modified on spreadSheetView1
     spreadSheetView1.FieldAssociation = "Cell Data"
 
     # export view
-    print("  Saving cell data.")
-    ExportView("cells.csv", view=spreadSheetView1)
+    if verbosity > 0:
+        print("  Saving cell data.")
+    cells_filename = os.path.join(root_dir, "cells.csv")
+    ExportView(cells_filename, view=spreadSheetView1)
 
-    print("Complete.")
+    if verbosity > 0:
+        print("Complete.")
+
+    # Read the files to Pandas DataFrames
+    points = pd.read_csv(points_filename)
+    cells = pd.read_csv(cells_filename)
+
+    if not write_data:
+        # Delete the files
+        os.remove(points_filename)
+        os.remove(cells_filename)
+
+    return points, cells

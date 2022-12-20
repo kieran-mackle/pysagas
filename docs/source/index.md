@@ -1,10 +1,13 @@
 # **PySAGAS** Documentation
 
-PySAGAS is a Python package for the generation of **S**ensitivity **A**pproximations
-for **G**eometric and **A**erodynamic **Surface** properties.
 
-See the [Getting Started](documentation/getting-started) guide, or have a look
-at the [examples](examples/ramp_3d.md).
+```{include} ../../README.md
+:start-after: <!-- start intro -->
+:end-before: <!-- end intro -->
+```
+
+See the [Getting Started](documentation/getting-started) guide, 
+or have a look at the [examples](examples/ramp_3d.md).
 
 
 ```{toctree}
@@ -13,6 +16,7 @@ at the [examples](examples/ramp_3d.md).
 :caption: DOCUMENTATION
 
 Getting Started <documentation/getting-started>
+Usage <documentation/usage>
 Theory <documentation/theory>
 Definitions <documentation/definitions>
 ```
@@ -23,7 +27,7 @@ Definitions <documentation/definitions>
 :hidden:
 :caption: Case Studies
 
-3D Ramp <examples/ramp_3d>
+Inclined Ramp <examples/ramp_3d>
 Sharp Wedge <examples/sharp_wedge>
 ```
 
@@ -36,4 +40,15 @@ Sharp Wedge <examples/sharp_wedge>
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
 Utilities Module <api_ref/utilities>
+Wrappers <api_ref/wrappers/index>
+```
+
+
+```{toctree}
+:maxdepth: 3
+:hidden:
+:caption: Source Code
+
+Contributing <documentation/contributing_docs/index>
+Changelog <documentation/changelog>
 ```

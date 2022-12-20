@@ -86,6 +86,9 @@ def cell_dfdp(cell: Cell, dPdp_method: Callable, **kwargs) -> np.array:
             )
             sensitivities[p_i, i] = dir_sens
 
+    # Append to cell
+    cell.sensitivities = sensitivities
+
     return sensitivities
 
 
@@ -103,27 +106,29 @@ def panel_dPdp(cell: Cell, p_i, **kwargs):
 def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     the isentropic flow relation directly."""
-    # TODO - direct Pressure method. Unsure what to use for P_inf
     gamma = cell.flowstate.gamma
     power = (gamma + 1) / (gamma - 1)
-    dPdW = (
-        kwargs["P_inf"]
-        * gamma
-        * (2 * cell.flowstate.a + cell.flowstate.v * (gamma - 1)) ** power
-    ) / (2**power * cell.flowstate.a ** (2 * gamma / (gamma - 1)))
-    dWdn = cell.flowstate.v
+    dPdW = (cell.flowstate.P * gamma / cell.flowstate.a) * (
+        1 + cell.flowstate.v * (gamma - 1) / (2 * cell.flowstate.a)
+    ) ** power
+    dWdn = -cell.flowstate.vec
     dndp = cell.dndp[:, p_i]
-    dPdp = np.linalg.multi_dot(arrays=[dPdW, dWdn, dndp])
+    dPdp = dPdW * np.dot(dWdn, dndp)
     return dPdp
 
 
-def all_dfdp(cells: List[Cell], dPdp_method: Callable = panel_dPdp) -> np.array:
+def all_dfdp(
+    cells: List[Cell], dPdp_method: Callable = panel_dPdp, **kwargs
+) -> np.array:
     """Calcualtes the force sensitivities for a list of Cells.
 
     Parameters
     ----------
     cells : list[Cell]
         The cells to be analysed.
+    dPdp_method : Callable, optional
+        The method used to calculate the pressure/parameter sensitivities.
+        The default is the Panel method approximation panel_dPdp (see below).
 
     Returns
     --------
@@ -133,10 +138,12 @@ def all_dfdp(cells: List[Cell], dPdp_method: Callable = panel_dPdp) -> np.array:
     See Also
     --------
     cell_dfdp : the force sensitivity per cell
+    panel_dPdp : pressure sensitivities calculated using Panel method
+        approximations
     """
     dFdp = 0
     for cell in cells:
         # Calculate force sensitivity
-        dFdp += cell_dfdp(cell=cell, dPdp_method=dPdp_method)
+        dFdp += cell_dfdp(cell=cell, dPdp_method=dPdp_method, **kwargs)
 
     return dFdp

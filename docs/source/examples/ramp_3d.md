@@ -1,11 +1,19 @@
-# 3D Ramp Example
+# Inclined Ramp Example
 
-A simple test case is a ramp at angle $\theta$, with length $L$ and 
-width $W$. The parameters of this problem are
- $\mathbf{p} = [\theta, \, L, \, W]$
+This page covers a simple test case of an inclined ramp.
 
 
-## Free Stream Conditions
+## Problem Definition
+
+The parameters of this problem are 
+$\mathbf{p} = [\theta, \, L, \, W]$, shown
+diagramatically in the figure below. The geometry is
+built from two [cells](cell-definition), sharing a common edge.
+
+
+![Inclined Ramp Example Study](../_static/ramp.png)
+
+### Free Stream Conditions
 The freestream conditions are defined below.
 
 $$\gamma = 1.4$$
@@ -17,35 +25,92 @@ $$ P_{freestream} = 700 Pa$$
 $$ T_{freestream} = 70 K$$
 
 
-
-## Calculate sensitivities using local piston theory
-
-### Step 1: Work out $\frac{d \, \mathbf{n}}{d \, \mathbf{p}}$
-
-This is done in a two stage process:
-
-$$ \frac{d \, \mathbf{n}}{d \, \mathbf{p}} = \frac{d \, \mathbf{n}}{d \, \mathbf{pos}} \cdot \frac{d \, \mathbf{pos}}{d \, \mathbf{p}} $$
+## Analytical Solution
+This problem can be solved analytically using simple
+isentropic flow relations and shock expansion theory. 
+This solution will later serve as validation for the 
+results obtained using *PySAGAS*.
 
 
-
-## Step 2: Do pressure Caculation and differentiate $\frac{d \, P}{d \, \mathbf{p}}$
-
-This is a straightforward calculation:
-
-$$ P = P_l + \rho_l \, a_l \, \mathbf{V}_l \cdot \left( \mathbf{n}_0 - \mathbf{n} \right)$$
-
-Hence
-
-$$ \frac{d \, P}{d \, \mathbf{p}} = \rho_l \, a_l \, \mathbf{V}_l \cdot  \left(- \frac{d \, \mathbf{n}}{d \, \mathbf{p}} \right)$$
+### Oblique Shock Relations
+The nominal ramp conditions are solved using 
+[oblique shock wave theory](http://brennen.caltech.edu/fluidbook/basicfluiddynamics/compressibleflow/obliqueshock.pdf).
 
 
+$$
+\frac{p_2}{p_1} = 1 + \frac{2\gamma}{\gamma+1} (M_1^2 \sin^2\beta - 1)
+$$
 
-## Step 3: Integrate to get force contribution (actually summation) $\frac{d \, F_i}{d \, \mathbf{p}}$
+$$
+\frac{\rho_2}{\rho_1} = \frac{(\gamma + 1)M_1^2 \sin^2 \beta}
+{(\gamma - 1)M_1^2 \sin^2 \beta + 2}
+$$
 
-$$ F_x = P(p) \, A(p) \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T $$
+$$
+\frac{T_2}{T_1} = \frac{p_2}{p_1} \frac{\rho_1}{\rho_2}
+$$
 
-$$ \frac{d}{d \, \mathbf{p}}(F_x) = \frac{d \, P}{d \, \mathbf{p}} \, A(p) \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T 
-                      + P(p) \, \frac{d \, A}{d \, \mathbf{p}} \, \mathbf{n}(p) \cdot [1, \, 0, \, 0]^T
-                      + P(p) \, A(p) \, \frac{d \, \mathbf{n}}{d \, \mathbf{p}} \cdot [1, \, 0, \, 0]^T $$
+$$
+M_2 = \frac{1}{\sin(\beta - \theta)} \sqrt{
+    \frac{1 + \frac{\gamma-1}{2}M_1^2 \sin^2\beta}
+    {\gamma M_1^2\sin^2\beta - \frac{\gamma-1}{2}}
+}
+$$
+
+The oblique shock angle is found by solving the $\theta-\beta-M$ 
+equation, shown below for reference.
+
+$$
+\tan \theta = 2 \cot \beta \frac{M_1^2\sin^2\beta - 1}
+{M_1^2 (\gamma + \cos2\beta) + 2}
+$$
+
+
+### Calculating Ramp Conditions
+Using the oblique shock relations presented above, the following 
+conditions on the ramp surface can be calculated.
+
+
+|  Property       | Ramp Value | 
+|-----------------|-----------|
+|  $M_{ramp}$     |  4.65      |
+|  $P_{ramp}$     |  2567.41 Pa |
+|  $T_{ramp}$     |  107.89 K   |
+|  $\rho_{ramp}$  |  0.0829 kg/m^3 |
+
+
+### Sensitivity Results
+The force sensitivities for each ramp design parameter can
+be calculated using the method of finite differencing. Performing
+such a study produces the results shown in the table below.
+
+$$
+F = P \times A \times \mathbf{n}_{ramp} \cdot \mathbf{u}
+$$
+
+
+|  Parameter $p$  | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
+|-----------------|-----------|-----------|-----------|
+|  $\theta$       |  1.07  |  -3.11   |  0  |
+|  $L$            |  8.92  |  -50.57  |  0  |
+|  $W$            |  4.46  |  -25.28  |  0  |
+
+
+
+## PySAGAS Solution
+Given the surface properties on the ramp calculated using
+the analytical solution, the parameter sensitivities can
+be approximated using *PySAGAS*. Note, the error of each 
+sensitivitiy, as calculated using the analytical solution
+for reference, is shown in brackets.
+
+
+|  Parameter $p$  | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
+|-----------------|-----------|-----------|-----------|
+|  $\theta$       |  1.09 (-1.6%) | -3.20 (-3.1%)  |  0 (0%) |
+|  $L$            |  8.92 (0%) | -50.57 (0%)  |  0 (0%) |
+|  $W$            |  4.46 (0%) | -25.28 (0%)  |  0 (0%) |
+
+
 
 
