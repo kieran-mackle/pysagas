@@ -17,12 +17,17 @@ def run_main(data_path):
     sensitivity_filepath = os.path.join(data_path, "combined.csv")
     components_filepath = os.path.join(data_path, "Components.i.plt")
 
+    # Data
+    pointdata = pd.read_csv(os.path.join(data_path, "points.csv"))
+    celldata = pd.read_csv(os.path.join(data_path, "cells.csv"))
+
     # Create PySAGAS wrapper
     wrapper = Cart3DWrapper(
         a_inf=a_inf,
         rho_inf=rho_inf,
         sensitivity_filepath=sensitivity_filepath,
-        components_filepath=components_filepath,
+        pointdata=pointdata,
+        celldata=celldata,
     )
     F_sense = wrapper.calculate()
 
