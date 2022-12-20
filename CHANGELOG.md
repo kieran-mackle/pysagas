@@ -1,3 +1,25 @@
+## v0.5.0 (2022-12-20)
+
+### Feat
+
+- **Cart3DWrapper**: allow directly providing point and cell data frames
+- added sensitivities to transcribed cells
+- modularised dPdp method
+
+### Fix
+
+- **test_cart3d.py**: name of test function
+- **isentropic_dPdp**: calculation of pressure sensitivity
+
+### Refactor
+
+- improved flow of cart3d wrapper
+- improved wrapper interface
+
+### Perf
+
+- **Wrapper**: check if cells have already been transcribed
+
 ## v0.4.0 (2022-12-08)
 
 ### Feat
