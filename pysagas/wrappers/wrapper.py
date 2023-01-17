@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from typing import List, Callable
 from abc import ABC, abstractmethod
 from pysagas.utilities import all_dfdp, panel_dPdp
@@ -62,7 +63,7 @@ class Wrapper(AbstractWrapper):
         # Cell data
         self.cells = None
 
-    def calculate(self, dPdp_method: Callable = panel_dPdp, **kwargs) -> np.array:
+    def calculate(self, dPdp_method: Callable = panel_dPdp, **kwargs) -> pd.DataFrame:
         """Calculate the force sensitivities of the surface to the
         parameters.
         """
@@ -78,7 +79,11 @@ class Wrapper(AbstractWrapper):
         # Calculate force sensitivity
         F_sense = all_dfdp(cells=self.cells, dPdp_method=dPdp_method, **kwargs)
 
-        return F_sense
+        df = pd.DataFrame(
+            F_sense, columns=["dFx/dP", "dFy/dP", "dFz/dP"], index=parameters
+        )
+
+        return df
 
     def to_csv(self):
         """Dumps the sensitivity data to CSV file."""
