@@ -1,3 +1,9 @@
+## v0.6.0 (2023-01-18)
+
+### Feat
+
+- **Wrapper**: return sensitivities as dataframe
+
 ## v0.5.0 (2022-12-20)
 
 ### Feat
