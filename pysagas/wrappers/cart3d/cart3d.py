@@ -148,5 +148,5 @@ class Cart3DWrapper(Wrapper):
             e: str
             if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
                 # Sensitivity coluns
-                parameters.add("".join(e.split("d")[2:]))
+                parameters.add(e[3:])
         return list(parameters)
