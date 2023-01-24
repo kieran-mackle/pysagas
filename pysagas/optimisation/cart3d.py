@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from random import random
 from typing import List, Dict
+import matplotlib.pyplot as plt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
 from hypervehicle.utilities import SensitivityStudy
@@ -238,6 +239,7 @@ class ShapeOpt:
         x_df = pd.read_csv(os.path.join(iter_dir, "parameters.csv"), index_col=0)
 
         # Construct output (note sorting of coef_sens!)
+        # TODO - allow controlling what is extracted here
         obj = loads_dict["C_D-entire"]
         jac = coef_sens.loc[param_names]["dFx/dP"].values
         x = x_df.loc[param_names]["0"].values
@@ -376,7 +378,9 @@ class ShapeOpt:
             print("Iteration complete:")
             print("Objective function:", obj)
             print("Step size:", gamma)
-            print(f"New guess for next iteration: {x0}\n")
+            print("New guess for next iteration:")
+            print(pd.Series(x0, index=param_names, name="Parameters").to_string())
+            print("")
 
         # Finished
         print(f"\nExited with change = {change}")
@@ -392,7 +396,7 @@ class ShapeOpt:
             os.chdir(self.root_dir)
             raise Exception(e)
 
-    def post_process(self):
+    def post_process(self, plot_convergence: bool = True) -> pd.DataFrame:
         """Crawls through iteration directories to compile results."""
         iteration_dirs = [
             i
@@ -418,6 +422,15 @@ class ShapeOpt:
                 results.append(iter_result.set_index("Unnamed: 0").to_dict()["0"])
 
         df = pd.DataFrame(results).set_index("iteration").sort_index()
+
+        if plot_convergence:
+            plt.plot(df.index, df["objective"])
+            plt.title("Convergence of Objective Function")
+            plt.xlabel("Iteration")
+            plt.ylabel("Objective Function")
+
+            plt.grid()
+            plt.show()
 
         return df
 
