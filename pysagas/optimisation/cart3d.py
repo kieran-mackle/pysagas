@@ -1,6 +1,7 @@
 import os
 import time
 import glob
+import numpy as np
 import pandas as pd
 from random import random
 from typing import List, Dict
@@ -213,8 +214,7 @@ class ShapeOpt:
                 sim_dir, target_adapt, "FLOW/Components.i.plt"
             )
 
-            # Create PySAGAS wrapper
-            print(os.getcwd())
+            # Create PySAGAS wrapper and run
             wrapper = Cart3DWrapper(
                 a_inf=self.a_inf,
                 rho_inf=self.rho_inf,
@@ -347,17 +347,21 @@ class ShapeOpt:
             )
 
             # Calculate step size
-            gamma = gamma_0
-            # if x_older is None:
-            #     gamma = gamma_0
-            # else:
-            #     gamma = np.transpose(x_old - x_older)*(jac - jac_older) / np.linalg.norm(jac - jac_older)**2
+            # TODO - pick previous gamma up on warmstart
+            if x_older is None:
+                gamma = gamma_0
+            else:
+                gamma = (
+                    np.linalg.norm((x_old - x_older) * (jac - jac_older))
+                    / np.linalg.norm(jac - jac_older) ** 2
+                )
 
             # Update x0
             x0 = x_old - gamma * jac
 
             # Calculate change
-            change = abs(obj - obj_prev)
+            change = abs((obj - obj_prev) / obj_prev)
+            # TODO - detect divergence?
 
             # Break out of warmstart routine
             warmstart = False
@@ -388,12 +392,12 @@ class ShapeOpt:
             os.chdir(self.root_dir)
             raise Exception(e)
 
-    def post_process(self, working_dir: str):
+    def post_process(self):
         """Crawls through iteration directories to compile results."""
         iteration_dirs = [
             i
-            for i in os.listdir(working_dir)
-            if os.path.isdir(os.path.join(working_dir, i))
+            for i in os.listdir(self.working_dir)
+            if os.path.isdir(os.path.join(self.working_dir, i))
         ]
 
         results = []
@@ -401,7 +405,7 @@ class ShapeOpt:
             iteration = int(directory)
 
             completion_file = os.path.join(
-                working_dir, directory, self.completion_filename
+                self.working_dir, directory, self.completion_filename
             )
             if os.path.exists(completion_file):
                 # This iteration completed, load the results
