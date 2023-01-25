@@ -5,6 +5,7 @@ from tqdm import tqdm
 from typing import Union, List
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector, Cell
+from pysagas.geometry import DegenerateCell
 from pysagas.wrappers.wrapper import Wrapper
 from pysagas.wrappers.cart3d.utilities import process_components_file
 
@@ -114,7 +115,12 @@ class Cart3DWrapper(Wrapper):
                         r += 1
 
             # Create Cell
-            newcell = Cell.from_points(vertices)
+            try:
+                newcell = Cell.from_points(vertices)
+            except DegenerateCell:
+                # Bad cell, skip it
+                pbar.update(1)
+                continue
 
             # Add geometry sensitivity information
             newcell._add_sensitivities(np.array(dvdp))
@@ -136,6 +142,7 @@ class Cart3DWrapper(Wrapper):
 
             # Update progress bar
             pbar.update(1)
+
         pbar.close()
         if self.verbosity > 0:
             print("Done.")

@@ -110,7 +110,12 @@ class Vector:
     @property
     def unit(self) -> Vector:
         """The unit vector associated with the Vector."""
-        return self / np.linalg.norm(self.vec)
+        return self / self.norm
+
+    @property
+    def norm(self) -> Vector:
+        """The norm associated with the Vector."""
+        return np.linalg.norm(self.vec)
 
     @classmethod
     def from_coordinates(cls, coordinates: np.array) -> Vector:
@@ -241,6 +246,10 @@ class Cell:
 
         # Construct normal vector
         normal = Vector(x=Nx, y=Ny, z=Nz)
+
+        if normal.norm == 0:
+            # Degenerate cell
+            raise DegenerateCell()
 
         # Convert to unit vector
         unit_normal = normal / np.linalg.norm(normal.vec)
@@ -579,3 +588,11 @@ def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
     )
     n = n / np.sqrt(np.sum(n**2))
     return n
+
+
+class DegenerateCell(Exception):
+    """Exception raised for degenerate cells."""
+
+    def __init__(self, message="Degenerate cell"):
+        self.message = message
+        super().__init__(self.message)
