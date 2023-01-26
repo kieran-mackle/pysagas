@@ -208,11 +208,7 @@ class ShapeOpt:
 
             # Create all_components_sensitivity.csv
             if not os.path.exists(self.sensitivity_filename):
-                append_sensitivities_to_tri(
-                    dp_filenames=glob.glob("*sensitivity*"),
-                    components_filepath=components_filepath,
-                    verbosity=0,
-                )
+                self._combine_sense_data(components_filepath)
 
             # Run Cart3D and await result
             os.chdir(sim_dir)
@@ -550,6 +546,32 @@ class ShapeOpt:
             for line in lines:
                 if line.find("set n_adapt_cycles") != -1:
                     return f"adapt{int(line.split('=')[-1]):02d}"
+
+    def _combine_sense_data(
+        self, components_filepath: str, match_target: float = 0.9, max_tol: float = 1e-1
+    ):
+        """Combine the component sensitivity data for intersected geometry."""
+        match_frac = 0
+        tol = 1e-5
+        while match_frac < match_target:
+            # Run matching algorithm
+            match_frac = append_sensitivities_to_tri(
+                dp_filenames=glob.glob("*sensitivity*"),
+                components_filepath=components_filepath,
+                match_tolerance=tol,
+                verbosity=0,
+            )
+
+            # Reduce matching tolerance
+            tol *= 10
+
+            # Check new tolerance
+            if tol > max_tol:
+                raise Exception("Cannot combine sensitivity data.")
+
+            if match_frac < match_target:
+                print("Failed to combine sensitivity data.")
+                print("  Reducing matching tolerance and trying again.")
 
 
 class _C3DPrep:
