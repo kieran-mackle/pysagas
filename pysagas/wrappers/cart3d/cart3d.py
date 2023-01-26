@@ -92,11 +92,11 @@ class Cart3DWrapper(Wrapper):
         # Construct cells
         if self.verbosity > 0:
             print("\nTranscribing cells from Components.i.plt...")
-        pbar = tqdm(
-            total=len(self.celldata.index),
-            position=0,
-            leave=True,
-        )
+            pbar = tqdm(
+                total=len(self.celldata.index),
+                position=0,
+                leave=True,
+            )
         cells = []
         for cell in self.celldata.index:
             vertex_ids = cell_vertex_ids.loc[cell].values
@@ -119,7 +119,8 @@ class Cart3DWrapper(Wrapper):
                 newcell = Cell.from_points(vertices)
             except DegenerateCell:
                 # Bad cell, skip it
-                pbar.update(1)
+                if self.verbosity > 0:
+                    pbar.update(1)
                 continue
 
             # Add geometry sensitivity information
@@ -141,10 +142,11 @@ class Cart3DWrapper(Wrapper):
             cells.append(newcell)
 
             # Update progress bar
-            pbar.update(1)
+            if self.verbosity > 0:
+                pbar.update(1)
 
-        pbar.close()
         if self.verbosity > 0:
+            pbar.close()
             print("Done.")
 
         return cells

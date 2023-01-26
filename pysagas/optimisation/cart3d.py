@@ -4,11 +4,15 @@ import glob
 import numpy as np
 import pandas as pd
 from random import random
+from pysagas import banner
 from typing import List, Dict
 import matplotlib.pyplot as plt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
-from hypervehicle.utilities import SensitivityStudy
+from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
+
+
+np.seterr(all="ignore")
 
 
 class ShapeOpt:
@@ -22,24 +26,27 @@ class ShapeOpt:
         V_inf: float,
         A_ref: float,
         generator: Generator,
+        sensitivity_filename: str = "all_components_sensitivity.csv",
         working_dir_name: str = "working_dir",
         sim_dir_name: str = "simulation",
         basefiles_dir_name: str = "basefiles",
         c3d_logname: str = "C3D_log",
     ) -> None:
 
-        self.root_dir = home_dir
-
         # Construct paths
+        self.root_dir = home_dir
         self.basefiles_dir = os.path.join(home_dir, basefiles_dir_name)
         self.working_dir = os.path.join(home_dir, working_dir_name)
         self.sim_dir_name = sim_dir_name
-
+        self.sensitivity_filename = sensitivity_filename
         self.completion_filename = "ITERATION_COMPLETE"
+        self.parameters_filename = "parameters.csv"
+        self.jacobian_filename = "jacobian.csv"
 
         self.generator = generator
 
         self.c3d_logname = c3d_logname
+        self.loads_key = None
 
         # TODO - pass as flowstate
         self.rho_inf = rho_inf
@@ -50,10 +57,14 @@ class ShapeOpt:
         # Create instance of Cart3D prepper
         self._c3dprepper = _C3DPrep(logfile=c3d_logname)
 
-    def prepare(self, warmstart: bool):
+    def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
         problem.
         """
+        # Initialise 'older' results
+        x_older = None
+        jac_older = None
+
         # Check base files directory exist
         if not os.path.exists(self.basefiles_dir):
             raise Exception("Cart3D base file directory does not exist!")
@@ -81,6 +92,24 @@ class ShapeOpt:
                 if warmstart:
                     # Warmstarting, load results from this iteration
                     current_iter = max(iteration_dirs)
+                    print(f"\n\x1B[3mWarmstarting from iteration {current_iter}\x1B[0m")
+
+                    # Look for x_older
+                    prev_iter_dir = os.path.join(
+                        self.working_dir, f"{int(current_iter-1):04d}"
+                    )
+                    x_older_path = os.path.join(prev_iter_dir, self.parameters_filename)
+                    jac_older_path = os.path.join(prev_iter_dir, self.jacobian_filename)
+                    if os.path.exists(x_older_path):
+                        # Older iteration directory exists, pick up x_older
+                        x_older = pd.read_csv(x_older_path, index_col=0).values
+
+                        # Also load previous jacobian
+                        F_sense = pd.read_csv(jac_older_path, index_col=0)
+                        coef_sens = F_sense / (
+                            0.5 * self.rho_inf * self.A_ref * self.V_inf**2
+                        )
+                        jac_older = coef_sens.loc[param_names]["dFx/dP"].values
 
                 else:
                     # Not warmstarting, and this iteration completed: move to next
@@ -89,17 +118,20 @@ class ShapeOpt:
                     # raise Exception("Old iterations detected. Either delete them, "+\
                     #     "or resume by setting warmstart to True.")
                     current_iter = max(iteration_dirs) + 1
-                    print(f"Moving onto iteration {current_iter}.")
+                    print(f"\n\x1B[3mMoving onto iteration {current_iter}\x1B[0m")
 
             else:
                 # This iteration did not complete, try resume it
                 current_iter = max(iteration_dirs)
-                print(f"Resuming from iteration {current_iter}.")
+                print(f"\n\x1B[3mResuming from iteration {current_iter}\x1B[0m")
 
         else:
             # First iteration
             current_iter = 0
-            print(f"Beggining iteration {current_iter}.")
+
+        # Print iteration header
+        its = f"Iteration {int(current_iter)}".center(43, " ")
+        print(f"{'':=>43}\n{its}\n{'':=>43}")
 
         # Define the current iteration directory
         iter_dir = os.path.join(self.working_dir, f"{int(current_iter):04d}")
@@ -107,9 +139,9 @@ class ShapeOpt:
             # Create the directory
             os.mkdir(iter_dir)
 
-        return iter_dir
+        return iter_dir, x_older, jac_older
 
-    def run_sensitivity_study(
+    def _run_sensitivity_study(
         self, iter_dir: str, param_names: List[str], x: List[float]
     ):
         # Change into iteration directory
@@ -124,7 +156,9 @@ class ShapeOpt:
             parameters = dict(zip(param_names, x))
 
             # Save these parameters for future reference
-            pd.Series(parameters).to_csv(os.path.join(iter_dir, "parameters.csv"))
+            pd.Series(parameters).to_csv(
+                os.path.join(iter_dir, self.parameters_filename)
+            )
 
             # Run sensitivity study
             ss = SensitivityStudy(vehicle_constructor=self.generator)
@@ -134,21 +168,20 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def run_simulation(self, basefiles_dir: str, iter_dir: str):
+    def _run_simulation(self, basefiles_dir: str, iter_dir: str):
 
         target_adapt = self._infer_adapt()
 
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
+        components_filepath = os.path.join(sim_dir, "Components.i.tri")
         if not os.path.exists(sim_dir):
             os.mkdir(sim_dir)
             run_intersect = True
         else:
             # Check for intersected file
-            run_intersect = not os.path.exists(
-                os.path.join(sim_dir, "Components.i.tri")
-            )
+            run_intersect = not os.path.exists(components_filepath)
             intersected = True
             print("Intersected components located.")
 
@@ -156,8 +189,9 @@ class ShapeOpt:
         if run_intersect:
             intersected = self._c3dprepper.intersect_stls()
 
+        # Check for intersection
         if intersected:
-            # Intersect was successful, proceed
+            # Prepare rest of sim
             if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
                 # Prepare remaining C3D files
                 os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
@@ -172,12 +206,22 @@ class ShapeOpt:
                     f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
                 )
 
+            # Create all_components_sensitivity.csv
+            if not os.path.exists(self.sensitivity_filename):
+                append_sensitivities_to_tri(
+                    dp_filenames=glob.glob("*sensitivity*"),
+                    components_filepath=components_filepath,
+                    verbosity=0,
+                )
+
             # Run Cart3D and await result
             os.chdir(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
-
             if not os.path.exists(c3d_donefile):
-                print("\nStarting Cart3D, awaiting", c3d_donefile)
+                print(
+                    "\nStarting Cart3D, awaiting",
+                    os.sep.join(c3d_donefile.split(os.sep)[-6:]),
+                )
 
                 os.system(f"./aero.csh >> {self.c3d_logname} 2>&1")
                 while not os.path.exists(c3d_donefile):
@@ -194,7 +238,7 @@ class ShapeOpt:
 
         return complete
 
-    def process_results(self, param_names: List[str], iter_dir: str):
+    def _process_results(self, param_names: List[str], iter_dir: str):
 
         target_adapt = self._infer_adapt()
 
@@ -203,14 +247,14 @@ class ShapeOpt:
 
         # Extract drag coefficient of geometry
         loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
-        loads_dict = self.read_c3d_loads(loads_filepath)
+        loads_dict = self._read_c3d_loads(loads_filepath)
 
         # Approximate flow sensitivities
-        jacobian_filepath = os.path.join(iter_dir, "jacobian.csv")
+        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
         if not os.path.exists(jacobian_filepath):
 
             # Filepaths
-            sensitivity_filepath = os.path.join(iter_dir, "fuselage_1_sensitivity.csv")
+            sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
             components_filepath = os.path.join(
                 sim_dir, target_adapt, "FLOW/Components.i.plt"
             )
@@ -221,6 +265,7 @@ class ShapeOpt:
                 rho_inf=self.rho_inf,
                 sensitivity_filepath=sensitivity_filepath,
                 components_filepath=components_filepath,
+                verbosity=0,
             )
             F_sense = wrapper.calculate()
 
@@ -236,17 +281,21 @@ class ShapeOpt:
         coef_sens = F_sense / (0.5 * self.rho_inf * self.A_ref * self.V_inf**2)
 
         # Load parameter values
-        x_df = pd.read_csv(os.path.join(iter_dir, "parameters.csv"), index_col=0)
+        x_df = pd.read_csv(
+            os.path.join(iter_dir, self.parameters_filename), index_col=0
+        )
 
         # Construct output (note sorting of coef_sens!)
-        # TODO - allow controlling what is extracted here
-        obj = loads_dict["C_D-entire"]
+        # TODO - search for "dFx/dP" (jac_older) - this needs to be dynamic
+        obj = loads_dict[self.loads_key]
         jac = coef_sens.loc[param_names]["dFx/dP"].values
         x = x_df.loc[param_names]["0"].values
 
+        # TODO - also return step size?
+
         return obj, jac, x
 
-    def read_c3d_loads(
+    def _read_c3d_loads(
         self,
         loadsCC_filepath: str,
         b_frame: bool = True,
@@ -285,7 +334,9 @@ class ShapeOpt:
 
         return load_dict
 
-    def iterate(self, x: List[float], param_names: List[str], warmstart: bool):
+    def _iterate(
+        self, x: List[float], param_names: List[str], warmstart: bool, gamma: float
+    ):
         """Wrapper function to perform an iteration of the
         shape optimisation problem.
 
@@ -296,22 +347,22 @@ class ShapeOpt:
             Return the objective function and gradient.
         """
         # Prepare this iteration
-        iter_dir = self.prepare(warmstart)
+        iter_dir, x_older, jac_older = self._prepare(warmstart, param_names)
 
         # Run the sensitivity study
-        self.run_sensitivity_study(iter_dir, param_names, x)
+        self._run_sensitivity_study(iter_dir, param_names, x)
 
         # Run simulation
-        success = self.run_simulation(self.basefiles_dir, iter_dir)
+        success = self._run_simulation(self.basefiles_dir, iter_dir)
 
         if success:
             # Simulation completed successfully
-            obj, jac, x = self.process_results(param_names, iter_dir)
+            obj, jac, x = self._process_results(param_names, iter_dir)
 
             # Create completion file
-            pd.Series({"objective": obj, **dict(zip(param_names, x))}).to_csv(
-                os.path.join(iter_dir, self.completion_filename)
-            )
+            pd.Series(
+                {"objective": obj, "gamma": gamma, **dict(zip(param_names, x))}
+            ).to_csv(os.path.join(iter_dir, self.completion_filename))
 
         else:
             raise Exception("Simulation failed.")
@@ -319,44 +370,62 @@ class ShapeOpt:
         # Change back to root dir
         os.chdir(self.root_dir)
 
-        return obj, jac, x
+        return obj, jac, x, x_older, jac_older
 
-    def gradient_search(self, parameters: Dict[str, float], warmstart: bool = False):
-        """Performs a steepest descent search."""
+    def _gradient_search(self, parameters: Dict[str, float], warmstart: bool = False):
+        """Performs a steepest descent search.
+
+        Parameters
+        ----------
+        parameters: Dict[str, float]
+            A dictionary of geometric parameters to pass to the vehicle generator.
+        warmstart : bool, optional
+            If you are resuming a previous run, set to True. This will accelerate
+            convergence by improving the step size. The default is Fale.
+        """
 
         param_names = list(parameters.keys())
         x0 = list(parameters.values())
 
-        gamma_0 = 0.05
+        # Define initial step size
+        gamma = 0.05
+
+        # Constrain iterations
         max_iterations = 10
 
         # Iteration parameters
         i = 0
         tolerance = 1e-3
         change = 2 * tolerance
-
         obj_prev = 10 * tolerance
-        x_older = None
 
         while change > tolerance:
             if i + 1 > max_iterations:
                 # Exit now
                 break
 
+            # Start timer
+            _start = time.time()
+
             # Get objective and jacobian
-            obj, jac, x_old = self.iterate(
-                x=x0, param_names=param_names, warmstart=warmstart
+            obj, jac, x_old, x_older, jac_older = self._iterate(
+                x=x0,
+                param_names=param_names,
+                warmstart=warmstart,
+                gamma=gamma,
             )
 
             # Calculate step size
-            # TODO - pick previous gamma up on warmstart
-            if x_older is None:
-                gamma = gamma_0
-            else:
-                gamma = (
+            if x_older is not None:
+                _gamma = (
                     np.linalg.norm((x_old - x_older) * (jac - jac_older))
                     / np.linalg.norm(jac - jac_older) ** 2
                 )
+
+                # Correct for nan
+                if not np.isnan(_gamma):
+                    # Update gamma
+                    gamma = _gamma
 
             # Update x0
             x0 = x_old - gamma * jac
@@ -369,13 +438,15 @@ class ShapeOpt:
             warmstart = False
 
             # Update iteration
+            _end = time.time()
             i += 1
             obj_prev = obj
             jac_older = jac
             x_older = x_old
 
             # Print Information
-            print("Iteration complete:")
+            print("\nIteration complete:")
+            print(f"Time to complete: {(_end-_start):.2f} s")
             print("Objective function:", obj)
             print("Step size:", gamma)
             print("New guess for next iteration:")
@@ -385,16 +456,45 @@ class ShapeOpt:
         # Finished
         print(f"\nExited with change = {change}")
 
-    def optimise(self, parameters: Dict[str, float], warmstart: bool = False):
-        """Wrapper method."""
+    def optimise(
+        self,
+        parameters: Dict[str, float],
+        loads_key: str = "C_D-entire",
+        warmstart: bool = True,
+    ):
+        """Performs a steepest descent search.
+
+        Parameters
+        ----------
+        parameters: Dict[str, float]
+            A dictionary of geometric parameters to pass to the vehicle generator.
+        loads_key : str, optional
+            The key to use for extracting the objective from the Cart3D loads file.
+            The default is 'C_D-entire'.
+        warmstart : bool, optional
+            If you are resuming a previous run, set to True. This will accelerate
+            convergence by improving the step size. The default is True.
+        """
+        # Print banner
+        banner()
+        print("\033[4mCart3D Shape Optimisation\033[0m".center(50, " "))
+
+        # Save loadsCC key for objective function
+        self.loads_key = loads_key
+
+        # Run
+        _opt_start = time.time()
         try:
-            self.gradient_search(parameters=parameters, warmstart=warmstart)
+            self._gradient_search(parameters=parameters, warmstart=warmstart)
         except KeyboardInterrupt:
             # Change back to root dir and exit
             os.chdir(self.root_dir)
         except Exception as e:
             os.chdir(self.root_dir)
             raise Exception(e)
+
+        _opt_end = time.time()
+        print(f"Total run time: {(_opt_end-_opt_start):.2f}")
 
     def post_process(self, plot_convergence: bool = True) -> pd.DataFrame:
         """Crawls through iteration directories to compile results."""
@@ -521,7 +621,7 @@ class _C3DPrep:
     def _run_comp2tri(self, tri_files):
         tri_files_str = " ".join(tri_files)
         os.system(
-            f"comp2tri -inflate -makeGMPtags {tri_files_str} -config >> {self.logfile} 2>&1"
+            f"comp2tri -makeGMPtags {tri_files_str} -config >> {self.logfile} 2>&1"
         )
 
     def _run_intersect(self):
@@ -537,6 +637,10 @@ class _C3DPrep:
         for file in all_files:
             if file.split(".")[-1] == "stl":
                 stl_files.append(file)
+
+        # Sort files
+        stl_files.sort()
+
         return stl_files
 
     @staticmethod
