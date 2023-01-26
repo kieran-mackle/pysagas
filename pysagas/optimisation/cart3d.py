@@ -419,7 +419,7 @@ class ShapeOpt:
 
             # Check for non-zero Jacobian
             if np.linalg.norm(jac) == 0:
-                print("ERROR: Exiting due to zero-norm Jacobian.")
+                print("\033[1mERROR\033[0m: Exiting due to zero-norm Jacobian.")
                 bailout = True
                 break
 
@@ -503,7 +503,7 @@ class ShapeOpt:
             raise Exception(e)
 
         _opt_end = time.time()
-        print(f"Total run time: {(_opt_end-_opt_start):.2f}")
+        print(f"\nTotal run time: {(_opt_end-_opt_start):.2f}")
 
     def post_process(self, plot_convergence: bool = True) -> pd.DataFrame:
         """Crawls through iteration directories to compile results."""
