@@ -18,7 +18,11 @@ np.seterr(all="ignore")
 class ShapeOpt:
     """A wrapper to perform shape optimisation with Cart3D."""
 
-    C3D_errors = ["==> ADAPT failed", "Check cart3d.out in AD_A_J for more clues"]
+    C3D_errors = [
+        "==> ADAPT failed",
+        "Check cart3d.out in AD_A_J for more clues",
+        "==> adjointErrorEst_quad failed again, status = 1",
+    ]
 
     def __init__(
         self,
@@ -387,7 +391,12 @@ class ShapeOpt:
 
         return obj, jac, x, x_older, jac_older
 
-    def _gradient_search(self, parameters: Dict[str, float], warmstart: bool = False):
+    def _gradient_search(
+        self,
+        parameters: Dict[str, float],
+        warmstart: bool = False,
+        max_step: float = None,
+    ):
         """Performs a steepest descent search.
 
         Parameters
@@ -414,6 +423,7 @@ class ShapeOpt:
         change = 2 * tolerance
         obj_prev = 10 * tolerance
         bailout = False
+        max_step = max_step if max_step is not None else 1e9
 
         while change > tolerance:
             if i + 1 > max_iterations:
@@ -450,6 +460,9 @@ class ShapeOpt:
                     # Update gamma
                     gamma = _gamma
 
+            # Adjust gamma
+            gamma = min(gamma, max_step)
+
             # Update x0
             x0 = x_old - gamma * jac
 
@@ -485,6 +498,7 @@ class ShapeOpt:
         parameters: Dict[str, float],
         loads_key: str = "C_D-entire",
         warmstart: bool = True,
+        max_step: float = None,
     ):
         """Performs a steepest descent search.
 
@@ -498,6 +512,9 @@ class ShapeOpt:
         warmstart : bool, optional
             If you are resuming a previous run, set to True. This will accelerate
             convergence by improving the step size. The default is True.
+        max_step : float, optional
+            The maximum step size. If None, there will be no upper limit. The
+            default is None.
         """
         # Print banner
         banner()
@@ -509,7 +526,9 @@ class ShapeOpt:
         # Run
         _opt_start = time.time()
         try:
-            self._gradient_search(parameters=parameters, warmstart=warmstart)
+            self._gradient_search(
+                parameters=parameters, warmstart=warmstart, max_step=max_step
+            )
         except KeyboardInterrupt:
             # Change back to root dir and exit
             os.chdir(self.root_dir)
