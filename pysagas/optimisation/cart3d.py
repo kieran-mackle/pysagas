@@ -398,10 +398,12 @@ class ShapeOpt:
         tolerance = 1e-3
         change = 2 * tolerance
         obj_prev = 10 * tolerance
+        bailout = False
 
         while change > tolerance:
             if i + 1 > max_iterations:
                 # Exit now
+                bailout = True
                 break
 
             # Start timer
@@ -414,6 +416,12 @@ class ShapeOpt:
                 warmstart=warmstart,
                 gamma=gamma,
             )
+
+            # Check for non-zero Jacobian
+            if np.linalg.norm(jac) == 0:
+                print("ERROR: Exiting due to zero-norm Jacobian.")
+                bailout = True
+                break
 
             # Calculate step size
             if x_older is not None:
@@ -454,7 +462,8 @@ class ShapeOpt:
             print("")
 
         # Finished
-        print(f"\nExited with change = {change}")
+        if not bailout:
+            print(f"\nExited with change = {change}")
 
     def optimise(
         self,
