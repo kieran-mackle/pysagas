@@ -33,6 +33,7 @@ class ShapeOpt:
         sim_dir_name: str = "simulation",
         basefiles_dir_name: str = "basefiles",
         c3d_logname: str = "C3D_log",
+        matching_tolerance: float = 1e-5,
     ) -> None:
 
         # Construct paths
@@ -58,6 +59,9 @@ class ShapeOpt:
 
         # Create instance of Cart3D prepper
         self._c3dprepper = _C3DPrep(logfile=c3d_logname)
+
+        # Other settings
+        self._matching_tolerance = matching_tolerance
 
     def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
@@ -90,35 +94,14 @@ class ShapeOpt:
                     self.completion_filename,
                 )
             ):
-                # This iteration ran to completion
+                # The latest iteration ran to completion
                 if warmstart:
                     # Warmstarting, load results from this iteration
                     current_iter = max(iteration_dirs)
                     print(f"\n\x1B[3mWarmstarting from iteration {current_iter}\x1B[0m")
 
-                    # Look for x_older
-                    prev_iter_dir = os.path.join(
-                        self.working_dir, f"{int(current_iter-1):04d}"
-                    )
-                    x_older_path = os.path.join(prev_iter_dir, self.parameters_filename)
-                    jac_older_path = os.path.join(prev_iter_dir, self.jacobian_filename)
-                    if os.path.exists(x_older_path):
-                        # Older iteration directory exists, pick up x_older
-                        x_older = pd.read_csv(x_older_path, index_col=0).values
-
-                        # Also load previous jacobian
-                        F_sense = pd.read_csv(jac_older_path, index_col=0)
-                        coef_sens = F_sense / (
-                            0.5 * self.rho_inf * self.A_ref * self.V_inf**2
-                        )
-                        jac_older = coef_sens.loc[param_names]["dFx/dP"].values
-
                 else:
-                    # Not warmstarting, and this iteration completed: move to next
-                    # But if we are here, we should be warmstarting...
-                    # Not unless we've just picked up the previous...
-                    # raise Exception("Old iterations detected. Either delete them, "+\
-                    #     "or resume by setting warmstart to True.")
+                    # Start next iteration
                     current_iter = max(iteration_dirs) + 1
                     print(f"\n\x1B[3mMoving onto iteration {current_iter}\x1B[0m")
 
@@ -126,6 +109,21 @@ class ShapeOpt:
                 # This iteration did not complete, try resume it
                 current_iter = max(iteration_dirs)
                 print(f"\n\x1B[3mResuming from iteration {current_iter}\x1B[0m")
+
+            # Look for x_older and jac_older
+            prev_iter_dir = os.path.join(self.working_dir, f"{int(current_iter-1):04d}")
+            x_older_path = os.path.join(prev_iter_dir, self.parameters_filename)
+            jac_older_path = os.path.join(prev_iter_dir, self.jacobian_filename)
+            if os.path.exists(x_older_path):
+                # Older iteration directory exists, pick up x_older
+                x_older = pd.read_csv(x_older_path, index_col=0).values
+
+                # Also load previous jacobian
+                F_sense = pd.read_csv(jac_older_path, index_col=0)
+                coef_sens = F_sense / (
+                    0.5 * self.rho_inf * self.A_ref * self.V_inf**2
+                )
+                jac_older = coef_sens.loc[param_names]["dFx/dP"].values
 
         else:
             # First iteration
@@ -210,17 +208,21 @@ class ShapeOpt:
 
             # Create all_components_sensitivity.csv
             if not os.path.exists(self.sensitivity_filename):
-                self._combine_sense_data(components_filepath)
+                self._combine_sense_data(
+                    components_filepath, tol_0=self._matching_tolerance
+                )
 
             # Run Cart3D and await result
             os.chdir(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
             if not os.path.exists(c3d_donefile):
+                # Cart3D has not started / didn't finish
                 print(
                     "\nStarting Cart3D, awaiting",
                     os.sep.join(c3d_donefile.split(os.sep)[-6:]),
                 )
 
+                _start = time.time()
                 os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
                 while not os.path.exists(c3d_donefile):
                     # Wait...
@@ -234,7 +236,12 @@ class ShapeOpt:
                         print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                         os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
 
-            print("Cart3D simulations complete.")
+                _end = time.time()
+                print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
+
+            else:
+                # Cart3D already finished for this iteration
+                print("Cart3D DONE file located.")
 
             complete = True
 
@@ -266,6 +273,7 @@ class ShapeOpt:
             )
 
             # Create PySAGAS wrapper and run
+            print("\nEvaluating sensitivities.")
             wrapper = Cart3DWrapper(
                 a_inf=self.a_inf,
                 rho_inf=self.rho_inf,
@@ -274,6 +282,7 @@ class ShapeOpt:
                 verbosity=0,
             )
             F_sense = wrapper.calculate()
+            print("  Done.")
 
             # Save Jacobian
             F_sense.to_csv(jacobian_filepath)
@@ -557,12 +566,16 @@ class ShapeOpt:
                 if line.find("set n_adapt_cycles") != -1:
                     return f"adapt{int(line.split('=')[-1]):02d}"
 
+    @staticmethod
     def _combine_sense_data(
-        self, components_filepath: str, match_target: float = 0.9, max_tol: float = 1e-1
+        components_filepath: str,
+        match_target: float = 0.9,
+        tol_0: float = 1e-5,
+        max_tol: float = 1e-1,
     ):
         """Combine the component sensitivity data for intersected geometry."""
         match_frac = 0
-        tol = 1e-5
+        tol = tol_0
         while match_frac < match_target:
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
@@ -580,8 +593,12 @@ class ShapeOpt:
                 raise Exception("Cannot combine sensitivity data.")
 
             if match_frac < match_target:
-                print("Failed to combine sensitivity data.")
+                print(
+                    f"Failed to combine sensitivity data ({100*match_frac:.02f}% match rate)."
+                )
                 print("  Reducing matching tolerance and trying again.")
+
+        print("Component sensitivity data combined successfully.")
 
     def _c3d_running(self) -> bool:
         with open(self.c3d_logname) as f:
