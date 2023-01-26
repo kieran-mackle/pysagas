@@ -18,7 +18,7 @@ np.seterr(all="ignore")
 class ShapeOpt:
     """A wrapper to perform shape optimisation with Cart3D."""
 
-    C3D_errors = ["==> ADAPT failed"]
+    C3D_errors = ["==> ADAPT failed", "Check cart3d.out in AD_A_J for more clues"]
 
     def __init__(
         self,
