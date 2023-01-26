@@ -635,29 +635,29 @@ class ShapeOpt:
 
 
 class _C3DPrep:
-    def __init__(self, logfile) -> None:
-        self.logfile = logfile
+    def __init__(self, logfile, jitter_denom: float = 1000) -> None:
+        self._logfile = logfile
+        self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
 
     def _run_stl2tri(self, stl_files: list):
         tri_files = []
         for file in stl_files:
             prefix = file.split(".")[0]
             tri_file = prefix + ".tri"
-            os.system(f"stl2tri.pl {file} {tri_file} >> {self.logfile} 2>&1")
+            os.system(f"stl2tri.pl {file} {tri_file} >> {self._logfile} 2>&1")
             tri_files.append(tri_file)
 
-        os.system(f"rm *.comp.tri *.off >> {self.logfile} 2>&1")
+        os.system(f"rm *.comp.tri *.off >> {self._logfile} 2>&1")
         return tri_files
 
     def _jitter_tri_files(self, tri_files):
         for file in tri_files:
             prefix = file.split(".")[0]
-            denom = 1000  # Max of 0.0001, min of 0
-            x_pert = random() / denom
-            y_pert = random() / denom
-            z_pert = random() / denom
+            x_pert = random() / self._jitter_denom
+            y_pert = random() / self._jitter_denom
+            z_pert = random() / self._jitter_denom
             os.system(
-                f"trix -x {x_pert} -y {y_pert} -z {z_pert} -o {prefix} {file} >> {self.logfile} 2>&1"
+                f"trix -x {x_pert} -y {y_pert} -z {z_pert} -o {prefix} {file} >> {self._logfile} 2>&1"
             )
 
     def _shift_all(
@@ -678,11 +678,11 @@ class _C3DPrep:
             prefix = file.split(".")[0]
             if reverse:
                 os.system(
-                    f"trix -x {-x_shift} -y {-y_shift} -z {-z_shift} -o {prefix} {file} >> {self.logfile} 2>&1"
+                    f"trix -x {-x_shift} -y {-y_shift} -z {-z_shift} -o {prefix} {file} >> {self._logfile} 2>&1"
                 )
             else:
                 os.system(
-                    f"trix -x {x_shift} -y {y_shift} -z {z_shift} -o {prefix} {file} >> {self.logfile} 2>&1"
+                    f"trix -x {x_shift} -y {y_shift} -z {z_shift} -o {prefix} {file} >> {self._logfile} 2>&1"
                 )
 
     def _rotate_all(
@@ -694,30 +694,45 @@ class _C3DPrep:
         component: str = None,
         reverse: bool = False,
     ):
+        # Define rotations dict
+        rotations = {
+            "x": x_rot,
+            "y": y_rot,
+            "z": z_rot,
+        }
+
+        # Determine files to be transformed
         if component is None:
+            # Rotate all .tri files (as provided)
             transform_files = tri_files
         else:
+            # Rotate the single component
             transform_files = [component]
 
         for file in transform_files:
             prefix = file.split(".")[0]
+
+            # Check order of operations
             if reverse:
                 order = ["z", "y", "x"]
             else:
                 order = ["x", "y", "z"]
 
+            # Apply rotations
             for axis in order:
-                rotation = vars()[f"{axis}_rot"]
-                os.system(f"trix -r{axis} {rotation} -o {prefix} {file}")
+                rotation = rotations[axis]
+                os.system(
+                    f"trix -r{axis} {rotation} -o {prefix} {file} >> {self._logfile} 2>&1"
+                )
 
     def _run_comp2tri(self, tri_files):
         tri_files_str = " ".join(tri_files)
         os.system(
-            f"comp2tri -makeGMPtags {tri_files_str} -config >> {self.logfile} 2>&1"
+            f"comp2tri -makeGMPtags {tri_files_str} -config >> {self._logfile} 2>&1"
         )
 
     def _run_intersect(self):
-        os.system(f"intersect >> {self.logfile} 2>&1")
+        os.system(f"intersect >> {self._logfile} 2>&1")
 
     @staticmethod
     def _get_stl_files():
@@ -758,7 +773,8 @@ class _C3DPrep:
         if successful:
             return True
 
-        # First attempt failed, try jittering components
+        # That failed, try jittering components
+        self._log("Attempting jittered components.")
         self._jitter_tri_files(tri_files)
         self._run_comp2tri(tri_files)
         self._run_intersect()
@@ -766,7 +782,8 @@ class _C3DPrep:
         if successful:
             return True
 
-        # That also failed, try arbitrary shift away
+        # That failed, try arbitrary shifts away
+        self._log("Attempting arbitrary rotations.")
         for attempt in range(3):
             # Define shifts
             x_shift = random() * 10  # Max of 10, min of 0
@@ -779,10 +796,12 @@ class _C3DPrep:
             z_rot = random() * 10  # Max of 10, min of 0
 
             # Apply transformations
-            self._shift_all(tri_files, x_shift, y_shift, z_shift)
-            self._rotate_all(tri_files, x_rot, y_rot, z_rot)
+            self._shift_all(
+                tri_files=tri_files, x_shift=x_shift, y_shift=y_shift, z_shift=z_shift
+            )
+            self._rotate_all(tri_files=tri_files, x_rot=x_rot, y_rot=y_rot, z_rot=z_rot)
 
-            # Make attempt
+            # Make intersect attempt
             self._run_comp2tri(tri_files)
             self._run_intersect()
             successful = self._check_for_success()
@@ -790,15 +809,35 @@ class _C3DPrep:
             if successful:
                 # Move configuration back to original location
                 self._shift_all(
-                    tri_files, x_shift, y_shift, z_shift, "Components.i.tri", True
+                    tri_files=tri_files,
+                    x_shift=x_shift,
+                    y_shift=y_shift,
+                    z_shift=z_shift,
+                    component="Components.i.tri",
+                    reverse=True,
                 )
                 self._rotate_all(
-                    tri_files, x_rot, y_rot, z_rot, "Components.i.tri", True
+                    tri_files=tri_files,
+                    x_rot=x_rot,
+                    y_rot=y_rot,
+                    z_rot=z_rot,
+                    component="Components.i.tri",
+                    reverse=True,
                 )
                 if successful:
                     return True
             else:
                 # Need to reset tri files
+                self._log(f"Arbitrary shift attempt {attempt} failed.")
                 tri_files = self._run_stl2tri(stl_files)
 
+        # Finish log
+        self._log("Unsuccessful.")
+
         return False
+
+    def _log(self, msg: str):
+        with open(self._logfile, "a") as f:
+            f.write("\n")
+            f.write(msg)
+            f.write("\n")
