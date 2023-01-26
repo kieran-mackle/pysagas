@@ -18,6 +18,8 @@ np.seterr(all="ignore")
 class ShapeOpt:
     """A wrapper to perform shape optimisation with Cart3D."""
 
+    C3D_errors = ["==> ADAPT failed"]
+
     def __init__(
         self,
         home_dir: str,
@@ -219,10 +221,18 @@ class ShapeOpt:
                     os.sep.join(c3d_donefile.split(os.sep)[-6:]),
                 )
 
-                os.system(f"./aero.csh >> {self.c3d_logname} 2>&1")
+                os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
                 while not os.path.exists(c3d_donefile):
                     # Wait...
                     time.sleep(5)
+
+                    # Check for C3D failure
+                    running, e = self._c3d_running()
+
+                    if not running:
+                        # C3D failed, try restart it
+                        print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
+                        os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
 
             print("Cart3D simulations complete.")
 
@@ -573,6 +583,20 @@ class ShapeOpt:
                 print("Failed to combine sensitivity data.")
                 print("  Reducing matching tolerance and trying again.")
 
+    def _c3d_running(self) -> bool:
+        with open(self.c3d_logname) as f:
+            # Get last line in log file
+            for line in f:
+                pass
+
+            # Check if if it is in the known errors
+            for e in ShapeOpt.C3D_errors:
+                if e in line:
+                    return False, e
+
+        # No errors
+        return True, None
+
 
 class _C3DPrep:
     def __init__(self, logfile) -> None:
@@ -592,9 +616,10 @@ class _C3DPrep:
     def _jitter_tri_files(self, tri_files):
         for file in tri_files:
             prefix = file.split(".")[0]
-            x_pert = random() / 100  # Max of 0.001, min of 0
-            y_pert = random() / 100  # Max of 0.001, min of 0
-            z_pert = random() / 100  # Max of 0.001, min of 0
+            denom = 1000  # Max of 0.0001, min of 0
+            x_pert = random() / denom
+            y_pert = random() / denom
+            z_pert = random() / denom
             os.system(
                 f"trix -x {x_pert} -y {y_pert} -z {z_pert} -o {prefix} {file} >> {self.logfile} 2>&1"
             )
