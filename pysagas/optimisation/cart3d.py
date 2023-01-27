@@ -198,6 +198,7 @@ class ShapeOpt:
             # Prepare rest of sim
             if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
                 # Prepare remaining C3D files
+                # TODO - should this be in _C3DPrep?
                 os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
 
                 # Move files to simulation directory
@@ -539,7 +540,9 @@ class ShapeOpt:
         _opt_end = time.time()
         print(f"\nTotal run time: {(_opt_end-_opt_start):.2f}")
 
-    def post_process(self, plot_convergence: bool = True) -> pd.DataFrame:
+    def post_process(
+        self, plot_convergence: bool = True, theoretical_convergence: float = None
+    ) -> pd.DataFrame:
         """Crawls through iteration directories to compile results."""
         iteration_dirs = [
             i
@@ -567,11 +570,20 @@ class ShapeOpt:
         df = pd.DataFrame(results).set_index("iteration").sort_index()
 
         if plot_convergence:
-            plt.plot(df.index, df["objective"])
+            plt.plot(df.index, df["objective"], label="PySAGAS ShapeOpt convergence")
             plt.title("Convergence of Objective Function")
             plt.xlabel("Iteration")
             plt.ylabel("Objective Function")
 
+            if theoretical_convergence:
+                plt.axhline(
+                    theoretical_convergence,
+                    c="k",
+                    ls="--",
+                    label="Theoretical convergence",
+                )
+
+            plt.legend()
             plt.grid()
             plt.show()
 
