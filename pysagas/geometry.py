@@ -139,7 +139,35 @@ class Vector:
 
 
 class Cell:
-    """A triangular cell object."""
+    """A triangular cell object.
+
+    Attributes
+    -----------
+    p0 : Vector
+        The first vertex of the cell.
+    p1 : Vector
+        The second vertex of the cell.
+    p2 : Vector
+        The third vertex of the cell.
+    A : float
+        The cell face area.
+    n : Vector
+        The cell normal.
+    dndv : np.array
+        The sensitivity of the cell's normal vector to each vertex.
+    dAdv : np.array
+        The sensitivity of the cell's area to each vertex.
+    dvdp : np.array
+        The sensitivity of the cell's vertices to each geometric parameter.
+    dndp : np.array
+        The sensitivity of the cell's normal vector to each geometric parameter.
+    dAdp : np.array
+        The sensitivity of the cell's area to each geometric parameter.
+    flowstate : FlowState
+        The flowstate associated with the cell.
+    sensitivities : np.array
+        An array containing the [x,y,z] force sensitivities of the cell.
+    """
 
     def __init__(self, p0: Vector, p1: Vector, p2: Vector):
         """Constructs a cell, defined by three points.
