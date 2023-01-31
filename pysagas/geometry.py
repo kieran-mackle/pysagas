@@ -186,10 +186,10 @@ class Cell:
         self.p1 = p1
         self.p2 = p2
 
-        # Calculate normal vector
-        # TODO - assess validity of negating below
+        # Calculate cell properites
         self.n = -self.calc_normal(p0, p1, p2)
         self.A = self.calc_area(p0, p1, p2)
+        self.c = self.calc_centroid(p0, p1, p2)
 
         # Calculate geometric sensitivities
         self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
@@ -205,6 +205,7 @@ class Cell:
 
         # Sensitivities
         self.sensitivities = None
+        self.moment_sensitivities = None
 
     def to_dict(self):
         """Returns the Cell as a dictionary."""
@@ -313,6 +314,33 @@ class Cell:
         # Calculate area
         S = 0.5 * np.linalg.norm(np.cross(A.vec, B.vec))
         return S
+
+    @staticmethod
+    def calc_centroid(p0: Vector, p1: Vector, p2: Vector) -> Vector:
+        """Calculates the centroid of a cell defined by three points.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        --------
+        c : Vector
+            The centroid of the cell defined by the points.
+
+        References
+        -----------
+        https://en.wikipedia.org/wiki/Centroid
+        """
+        cx = (p0.x + p1.x + p2.x) / 3
+        cy = (p0.y + p1.y + p2.y) / 3
+        cz = (p0.z + p1.z + p2.z) / 3
+        return Vector(cx, cy, cz)
 
     @staticmethod
     def n_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
