@@ -1,6 +1,7 @@
 import os as os
 import numpy as np
 import pandas as pd
+from pysagas.geometry import Vector
 from pysagas.wrappers import Cart3DWrapper
 
 
@@ -30,7 +31,10 @@ def run_main(data_path):
         pointdata=pointdata,
         celldata=celldata,
     )
-    F_sense, M_sense = wrapper.calculate()
+
+    # Calculate sensitivities
+    cog = Vector(2.25, 0, 0)
+    F_sense, M_sense = wrapper.calculate(cog=cog)
 
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)
@@ -75,6 +79,8 @@ def cart3d_fd(data_path):
     pc1 = (data.iloc[4] - data.iloc[3]) / (
         data.iloc[4]["thickness"] - data.iloc[3]["thickness"]
     )
+
+    return pc1
 
 
 def test_cart3d_wedge():

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from abc import ABC, abstractmethod
+from pysagas.geometry import Vector
 from typing import List, Callable, Tuple
 from pysagas.utilities import all_dfdp, panel_dPdp
 
@@ -64,7 +65,10 @@ class Wrapper(AbstractWrapper):
         self.cells = None
 
     def calculate(
-        self, dPdp_method: Callable = panel_dPdp, **kwargs
+        self,
+        dPdp_method: Callable = panel_dPdp,
+        cog: Vector = Vector(0, 0, 0),
+        **kwargs,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Calculate the force sensitivities of the surface to the
         parameters.
@@ -79,7 +83,9 @@ class Wrapper(AbstractWrapper):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense, M_sense = all_dfdp(cells=self.cells, dPdp_method=dPdp_method, **kwargs)
+        F_sense, M_sense = all_dfdp(
+            cells=self.cells, dPdp_method=dPdp_method, cog=cog, **kwargs
+        )
 
         # Construct dataframes to return
         df_f = pd.DataFrame(
