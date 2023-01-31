@@ -29,6 +29,7 @@ Definitions <documentation/definitions>
 
 Inclined Ramp <examples/ramp_3d>
 Sharp Wedge <examples/sharp_wedge>
+Nose Cone Shape Optimisation <examples/nose_cone>
 ```
 
 
