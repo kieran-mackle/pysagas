@@ -22,6 +22,7 @@ class ShapeOpt:
         "==> ADAPT failed",
         "Check cart3d.out in AD_A_J for more clues",
         "==> adjointErrorEst_quad failed again, status = 1",
+        "ERROR: CUBES failed",
     ]
 
     def __init__(
