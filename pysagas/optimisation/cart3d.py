@@ -127,7 +127,7 @@ class ShapeOpt:
                 coef_sens = F_sense / (
                     0.5 * self.rho_inf * self.A_ref * self.V_inf**2
                 )
-                jac_older = coef_sens.loc[param_names]["dFx/dP"].values
+                jac_older = coef_sens.loc[param_names]["dFx/dp"].values
 
         else:
             # First iteration
@@ -286,7 +286,7 @@ class ShapeOpt:
                 components_filepath=components_filepath,
                 verbosity=0,
             )
-            F_sense = wrapper.calculate()
+            F_sense, M_sense = wrapper.calculate()
             print("  Done.")
 
             # Save Jacobian
@@ -308,7 +308,7 @@ class ShapeOpt:
         # Construct output (note sorting of coef_sens!)
         # TODO - search for "dFx/dP" (jac_older) - this needs to be dynamic
         obj = loads_dict[self.loads_key]
-        jac = coef_sens.loc[param_names]["dFx/dP"].values
+        jac = coef_sens.loc[param_names]["dFx/dp"].values
         x = x_df.loc[param_names]["0"].values
 
         # TODO - also return step size?
