@@ -639,11 +639,9 @@ class ShapeOpt:
                     new_file.write(line)
 
         # Replace original aero.csh file with updated file
+        shutil.copymode(original, new)
         os.remove(original)
         os.rename(new, original)
-
-        # Also allow executing new file
-        os.chmod(original, 0o777)
 
     @staticmethod
     def _combine_sense_data(
@@ -802,9 +800,47 @@ class _C3DPrep:
 
     def _run_comp2tri(self, tri_files):
         tri_files_str = " ".join(tri_files)
+
+        if os.path.exists("Config.xml"):
+            # Remove old config file
+            os.remove("Config.xml")
+
+        # Run command
         os.system(
             f"comp2tri -makeGMPtags {tri_files_str} -config >> {self._logfile} 2>&1"
         )
+
+        # Await Config.xml
+        while not os.path.exists("Config.xml"):
+            time.sleep(0.2)
+
+        # Overwrite Config.xml Component names using tri files
+        original = os.path.join("Config.xml")
+        new = os.path.join("temp_config.xml")
+        with open(new, "w+") as new_file:
+            with open(original, "r") as original_file:
+                for line in original_file:
+                    if "Component Name" in line:
+                        # Get component number
+                        name_prefix = "Component_"
+                        name_start = line.index(name_prefix)
+                        comp_no = line.split('"')[1].split("_")[-1]
+                        tri_prefix = tri_files[int(comp_no) - 1].split(".")[0]
+
+                        # Update line
+                        line = (
+                            line[:name_start]
+                            + tri_prefix
+                            + line[name_start + len(name_prefix) + 1 :]
+                        )
+
+                    # Write line to new file
+                    new_file.write(line)
+
+        # # Replace original aero.csh file with updated file
+        shutil.copymode(original, new)
+        os.remove(original)
+        os.rename(new, original)
 
     def _run_intersect(self):
         os.system(f"intersect >> {self._logfile} 2>&1")
