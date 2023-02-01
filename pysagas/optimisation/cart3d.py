@@ -39,7 +39,6 @@ class ShapeOpt:
         c3d_logname: str = "C3D_log",
         matching_tolerance: float = 1e-5,
     ) -> None:
-
         # Construct paths
         self.root_dir = home_dir
         self.basefiles_dir = os.path.join(home_dir, basefiles_dir_name)
@@ -173,7 +172,6 @@ class ShapeOpt:
             print("Sensitivity study already run.")
 
     def _run_simulation(self, basefiles_dir: str, iter_dir: str):
-
         target_adapt = self._infer_adapt()
 
         # Make simulation directory
@@ -257,7 +255,6 @@ class ShapeOpt:
         return complete
 
     def _process_results(self, param_names: List[str], iter_dir: str):
-
         target_adapt = self._infer_adapt()
 
         # Construct simulation directory
@@ -270,7 +267,6 @@ class ShapeOpt:
         # Approximate flow sensitivities
         jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
         if not os.path.exists(jacobian_filepath):
-
             # Filepaths
             sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
             components_filepath = os.path.join(
