@@ -39,7 +39,6 @@ class ShapeOpt:
         c3d_logname: str = "C3D_log",
         matching_tolerance: float = 1e-5,
     ) -> None:
-
         # Construct paths
         self.root_dir = home_dir
         self.basefiles_dir = os.path.join(home_dir, basefiles_dir_name)
@@ -62,7 +61,7 @@ class ShapeOpt:
         self.A_ref = A_ref
 
         # Create instance of Cart3D prepper
-        self._c3dprepper = _C3DPrep(logfile=c3d_logname)
+        self._c3dprepper = C3DPrep(logfile=c3d_logname)
 
         # Other settings
         self._matching_tolerance = matching_tolerance
@@ -173,7 +172,6 @@ class ShapeOpt:
             print("Sensitivity study already run.")
 
     def _run_simulation(self, basefiles_dir: str, iter_dir: str):
-
         target_adapt = self._infer_adapt()
 
         # Make simulation directory
@@ -257,7 +255,6 @@ class ShapeOpt:
         return complete
 
     def _process_results(self, param_names: List[str], iter_dir: str):
-
         target_adapt = self._infer_adapt()
 
         # Construct simulation directory
@@ -270,7 +267,6 @@ class ShapeOpt:
         # Approximate flow sensitivities
         jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
         if not os.path.exists(jacobian_filepath):
-
             # Filepaths
             sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
             components_filepath = os.path.join(
@@ -646,7 +642,7 @@ class ShapeOpt:
         return True, None
 
 
-class _C3DPrep:
+class C3DPrep:
     def __init__(self, logfile, jitter_denom: float = 1000) -> None:
         self._logfile = logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
@@ -770,6 +766,7 @@ class _C3DPrep:
         return success
 
     def intersect_stls(self) -> bool:
+        """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
             return True

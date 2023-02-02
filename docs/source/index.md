@@ -44,8 +44,9 @@ Shape Optimisation <examples/nose_cone>
 
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
-Utilities Module <api_ref/utilities>
+Utilities <api_ref/utilities>
 Wrappers <api_ref/wrappers/index>
+Optimisation <api_ref/optimisation/index>
 ```
 
 
