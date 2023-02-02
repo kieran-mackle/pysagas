@@ -29,37 +29,47 @@ the figure below.
 
 ```{seealso}
 The Cell definition shown below is consistent with the
-[Cell](pysagas.geometry.Cell) object.
+{py:class}`.Cell` object.
 ```
 
 ![Nominal Cell definition](../_static/nominal_tri.png)
 
 
+(normal-area-vertex-sens)=
+## Cell Normal and Area Sensitivities
 
-## Vertex Sensitivities
+<!-- TODO - update this section with links to code methods -->
+<!-- should be called Cell normal and area sensitivities -->
 
-Given the definition of a [Cell](pysagas.geometry.Cell) above,
-the cell vertex sensitivities can be defined. These sensitivities
-include the cell normal/vertex sensitivity 
-$\frac{d\mathbf{n}}{d\mathbf{v}}$, and the cell area/vertex 
-sensitivity $\frac{dA}{d\mathbf{v}}$. 
 
-The figure below illustrates how a cell's normal vector and area
+Given the definition of a cell above, the sensitivities of the 
+cell normal and the cell area to the cell's vertices can be
+determined. That is, $\frac{d\mathbf{n}}{d\mathbf{v}}$ and 
+$\frac{dA}{d\mathbf{v}}$, respectively. The figure below 
+exemplifies how a cell's normal vector and area
 changes with variations in one of its vertices, $\mathbf{v_2}$
 to $\mathbf{v_2}'$.
 
 ![Vertex Sensitivity](../_static/d_dv.png)
 
 
-These sensitivities are calculated using analytical derivitives. The 
-output of this is a matrix for each sensitivity, of the dimensionality
-shown below.
+These sensitivities can be calculated using analytical derivitives. 
+The output of this is a matrix for each sensitivity, of the 
+dimensionality shown below. 
 
 ![Normal-Vertex Sensitivity](../_static/eq_dndv.svg)
 
 ![Area-Vertex Sensitivity](../_static/eq_dAdv.svg)
 
+```{seealso}
+The calculations of $\frac{d\mathbf{n}}{d\mathbf{v}}$ and 
+$\frac{dA}{d\mathbf{v}}$ are implemented in 
+{py:meth}`.n_sensitivity` and {py:meth}`.A_sensitivity`,
+respectively.
+```
 
+
+(geom-param-sens)=
 ## Geometric Parameter Sensitivities
 
 Although users of *PySAGAS* are required to provide their own geometric

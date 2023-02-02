@@ -1,3 +1,4 @@
+(example-nose-opt)=
 # Nose Cone Shape Optimisation
 This page illustrates how *pysagas* can be used for design 
 optimisation. The example is applied to a nose cone at an
@@ -76,6 +77,7 @@ This package allows a user to parametrically define a vehicle
 and output STL files for aerodynamic modelling.
 
 
+(nose-cart3d-modelling)=
 ### Aerodynamic Modelling
 
 Given the STL files from the geometry generation module, the geometry
