@@ -83,6 +83,9 @@ def cell_dfdp(
     # Calculate moment arm
     r = cell.c - cog
 
+    # Calculate force on cell
+    F = cell.flowstate.P * cell.A * cell.n.vec
+
     # For each parameter
     for p_i in range(cell.dndp.shape[1]):
         # Calculate pressure sensitivity
@@ -100,7 +103,9 @@ def cell_dfdp(
         # Now evaluate moment sensitivities for each direction
         moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
         for i, direction in enumerate(all_directions):
-            m_sens = np.dot(direction.vec, np.cross(r.vec, sensitivities[p_i, :]))
+            m_sens = np.dot(
+                direction.vec, np.cross(r.vec, sensitivities[p_i, :])
+            ) + np.dot(direction.vec, np.cross(cell.dcdp.T[0], F))
             moment_sensitivities[p_i, i] = m_sens
 
     # Append to cell

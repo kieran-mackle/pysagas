@@ -194,11 +194,13 @@ class Cell:
         # Calculate geometric sensitivities
         self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
         self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
+        self.dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
 
         # Parameter sensitivities
         self.dvdp = None  # vertex-parameter sensitivities
         self.dndp = None  # normal-parameter sensitivities
         self.dAdp = None  # area-parameter sensitivities
+        self.dcdp = None  # centroid-parameter sensitivities
 
         # FlowState
         self.flowstate: pysagas.flow.FlowState = None
@@ -241,6 +243,7 @@ class Cell:
         self.dvdp = dvdp
         self.dndp = np.dot(self.dndv, self.dvdp)
         self.dAdp = np.dot(self.dAdv, self.dvdp)
+        self.dcdp = np.dot(self.dcdv, self.dvdp)
 
     @staticmethod
     def calc_normal(p0: Vector, p1: Vector, p2: Vector) -> Vector:
@@ -619,6 +622,36 @@ class Cell:
             A_sense[col] = 0.5 * (1 / 2) * g ** (-1 / 2) * g_dash
 
         return A_sense
+
+    @staticmethod
+    def c_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
+        """Calculates the sensitivity of a cell's centroid to the
+        points defining the cell.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        -------
+        sensitivity : np.array
+            The sensitivity matrix with size m x n x p. Rows m refer to
+            the vertices, columns n refer to the vertex coordinates, and
+            slices p refer to the components of the centroid point.
+        """
+        c_sens = np.array(
+            [
+                [1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3, 0, 0],
+                [0, 1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3, 0],
+                [0, 0, 1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3],
+            ]
+        )
+        return c_sens
 
 
 def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
