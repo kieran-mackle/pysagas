@@ -77,13 +77,13 @@ def cell_dfdp(
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
+    # Initialisation
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
     sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
 
-    # Calculate moment arm
+    # Calculate moment dependencies
     r = cell.c - cog
-
-    # Calculate force on cell
     F = cell.flowstate.P * cell.A * cell.n.vec
 
     # For each parameter
@@ -93,20 +93,17 @@ def cell_dfdp(
 
         # Evaluate for sensitivities for each direction
         for i, direction in enumerate(all_directions):
-            dir_sens = (
+            dF = (
                 dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
                 + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
                 + cell.flowstate.P * cell.A * np.dot(-cell.dndp[:, p_i], direction.vec)
             )
-            sensitivities[p_i, i] = dir_sens
+            sensitivities[p_i, i] = dF
 
-        # Now evaluate moment sensitivities for each direction
-        moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
-        for i, direction in enumerate(all_directions):
-            m_sens = np.dot(
-                direction.vec, np.cross(r.vec, sensitivities[p_i, :])
-            ) + np.dot(direction.vec, np.cross(cell.dcdp.T[0], F))
-            moment_sensitivities[p_i, i] = m_sens
+        # Now evaluate moment sensitivities
+        moment_sensitivities[p_i, :] = np.cross(
+            r.vec, sensitivities[p_i, :]
+        ) + np.cross(cell.dcdp[:, p_i], F)
 
     # Append to cell
     cell.sensitivities = sensitivities

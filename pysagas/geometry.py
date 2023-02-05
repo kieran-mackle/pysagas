@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import pysagas.flow
 from typing import Union, List
+from numpy.typing import ArrayLike
 
 
 class Vector:
@@ -163,6 +164,8 @@ class Cell:
         The sensitivity of the cell's normal vector to each geometric parameter.
     dAdp : np.array
         The sensitivity of the cell's area to each geometric parameter.
+    dcdp : np.array
+        The sensitivity of the centroid to each geometric parameter.
     flowstate : FlowState
         The flowstate associated with the cell.
     sensitivities : np.array
@@ -197,10 +200,10 @@ class Cell:
         self.dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
 
         # Parameter sensitivities
-        self.dvdp = None  # vertex-parameter sensitivities
-        self.dndp = None  # normal-parameter sensitivities
-        self.dAdp = None  # area-parameter sensitivities
-        self.dcdp = None  # centroid-parameter sensitivities
+        self.dvdp: ArrayLike = None  # vertex-parameter sensitivities
+        self.dndp: ArrayLike = None  # normal-parameter sensitivities
+        self.dAdp: ArrayLike = None  # area-parameter sensitivities
+        self.dcdp: ArrayLike = None  # centroid-parameter sensitivities
 
         # FlowState
         self.flowstate: pysagas.flow.FlowState = None
