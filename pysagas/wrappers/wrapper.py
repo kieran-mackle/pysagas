@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
-from typing import List, Callable
 from abc import ABC, abstractmethod
+from pysagas.geometry import Vector
+from typing import List, Callable, Tuple
 from pysagas.utilities import all_dfdp, panel_dPdp
 
 
@@ -63,7 +64,12 @@ class Wrapper(AbstractWrapper):
         # Cell data
         self.cells = None
 
-    def calculate(self, dPdp_method: Callable = panel_dPdp, **kwargs) -> pd.DataFrame:
+    def calculate(
+        self,
+        dPdp_method: Callable = panel_dPdp,
+        cog: Vector = Vector(0, 0, 0),
+        **kwargs,
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Calculate the force sensitivities of the surface to the
         parameters.
         """
@@ -77,13 +83,19 @@ class Wrapper(AbstractWrapper):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense = all_dfdp(cells=self.cells, dPdp_method=dPdp_method, **kwargs)
-
-        df = pd.DataFrame(
-            F_sense, columns=["dFx/dP", "dFy/dP", "dFz/dP"], index=parameters
+        F_sense, M_sense = all_dfdp(
+            cells=self.cells, dPdp_method=dPdp_method, cog=cog, **kwargs
         )
 
-        return df
+        # Construct dataframes to return
+        df_f = pd.DataFrame(
+            F_sense, columns=["dFx/dp", "dFy/dp", "dFz/dp"], index=parameters
+        )
+        df_m = pd.DataFrame(
+            M_sense, columns=["dMx/dp", "dMy/dp", "dMz/dp"], index=parameters
+        )
+
+        return df_f, df_m
 
     def to_csv(self):
         """Dumps the sensitivity data to CSV file."""

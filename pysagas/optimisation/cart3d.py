@@ -1,12 +1,13 @@
 import os
 import time
 import glob
+import shutil
 import numpy as np
 import pandas as pd
 from random import random
 from pysagas import banner
-from typing import List, Dict
 import matplotlib.pyplot as plt
+from typing import List, Dict, Optional
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
@@ -22,6 +23,7 @@ class ShapeOpt:
         "==> ADAPT failed",
         "Check cart3d.out in AD_A_J for more clues",
         "==> adjointErrorEst_quad failed again, status = 1",
+        "ERROR: CUBES failed",
     ]
 
     def __init__(
@@ -126,7 +128,7 @@ class ShapeOpt:
                 coef_sens = F_sense / (
                     0.5 * self.rho_inf * self.A_ref * self.V_inf**2
                 )
-                jac_older = coef_sens.loc[param_names]["dFx/dP"].values
+                jac_older = coef_sens.loc[param_names]["dFx/dp"].values
 
         else:
             # First iteration
@@ -209,6 +211,10 @@ class ShapeOpt:
                     f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
                 )
 
+                # Modify iteration aero.csh using max_adapt
+                if max_adapt:
+                    self._overwrite_adapt(sim_dir, max_adapt)
+
             # Create all_components_sensitivity.csv
             if not os.path.exists(self.sensitivity_filename):
                 self._combine_sense_data(
@@ -217,6 +223,7 @@ class ShapeOpt:
 
             # Run Cart3D and await result
             os.chdir(sim_dir)
+            target_adapt = self._infer_adapt(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
             if not os.path.exists(c3d_donefile):
                 # Cart3D has not started / didn't finish
@@ -259,6 +266,7 @@ class ShapeOpt:
 
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
+        target_adapt = self._infer_adapt(sim_dir)
 
         # Extract drag coefficient of geometry
         loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
@@ -282,7 +290,7 @@ class ShapeOpt:
                 components_filepath=components_filepath,
                 verbosity=0,
             )
-            F_sense = wrapper.calculate()
+            F_sense, M_sense = wrapper.calculate()
             print("  Done.")
 
             # Save Jacobian
@@ -304,7 +312,7 @@ class ShapeOpt:
         # Construct output (note sorting of coef_sens!)
         # TODO - search for "dFx/dP" (jac_older) - this needs to be dynamic
         obj = loads_dict[self.loads_key]
-        jac = coef_sens.loc[param_names]["dFx/dP"].values
+        jac = coef_sens.loc[param_names]["dFx/dp"].values
         x = x_df.loc[param_names]["0"].values
 
         # TODO - also return step size?
@@ -351,7 +359,12 @@ class ShapeOpt:
         return load_dict
 
     def _iterate(
-        self, x: List[float], param_names: List[str], warmstart: bool, gamma: float
+        self,
+        x: List[float],
+        param_names: List[str],
+        warmstart: bool,
+        gamma: float,
+        max_adapt: int = None,
     ):
         """Wrapper function to perform an iteration of the
         shape optimisation problem.
@@ -369,7 +382,7 @@ class ShapeOpt:
         self._run_sensitivity_study(iter_dir, param_names, x)
 
         # Run simulation
-        success = self._run_simulation(self.basefiles_dir, iter_dir)
+        success = self._run_simulation(self.basefiles_dir, iter_dir, max_adapt)
 
         if success:
             # Simulation completed successfully
@@ -393,6 +406,7 @@ class ShapeOpt:
         parameters: Dict[str, float],
         warmstart: bool = False,
         max_step: float = None,
+        adapt_schedule: List[int] = None,
     ):
         """Performs a steepest descent search.
 
@@ -415,7 +429,7 @@ class ShapeOpt:
         max_iterations = 10
 
         # Iteration parameters
-        i = 0
+        i = self._get_last_iteration(self.working_dir)
         tolerance = 1e-3
         change = 2 * tolerance
         obj_prev = 10 * tolerance
@@ -431,12 +445,20 @@ class ShapeOpt:
             # Start timer
             _start = time.time()
 
+            # Get adapt number for this iteration
+            if adapt_schedule:
+                max_adapt = adapt_schedule[min(len(adapt_schedule) - 1, i)]
+            else:
+                # Do not adjust adapt cycle numbers
+                max_adapt = None
+
             # Get objective and jacobian
             obj, jac, x_old, x_older, jac_older = self._iterate(
                 x=x0,
                 param_names=param_names,
                 warmstart=warmstart,
                 gamma=gamma,
+                max_adapt=max_adapt,
             )
 
             # Check for non-zero Jacobian
@@ -496,6 +518,7 @@ class ShapeOpt:
         loads_key: str = "C_D-entire",
         warmstart: bool = True,
         max_step: float = None,
+        adapt_schedule: Optional[List[int]] = None,
     ):
         """Performs a steepest descent search.
 
@@ -512,7 +535,16 @@ class ShapeOpt:
         max_step : float, optional
             The maximum step size. If None, there will be no upper limit. The
             default is None.
+        adapt_schedule : List[int], optional
+            The schedule to follow for setting Cart3D adapt cycles for each
+            iteration of the optimiser. For example, to run the first iteration
+            to adapt01, the second to adapt03, and to adapt06 for all subsequent
+            iterations, set adapt_schedule=[1, 3, 6]. If adapt_cycle=None, the
+            adapt cycle will be static, to whatever it is set to in the basefile.
+            The default is None.
         """
+        # TODO - allow automatic adpative adapt_schedule
+
         # Print banner
         banner()
         print("\033[4mCart3D Shape Optimisation\033[0m".center(50, " "))
@@ -524,7 +556,10 @@ class ShapeOpt:
         _opt_start = time.time()
         try:
             self._gradient_search(
-                parameters=parameters, warmstart=warmstart, max_step=max_step
+                parameters=parameters,
+                warmstart=warmstart,
+                max_step=max_step,
+                adapt_schedule=adapt_schedule,
             )
         except KeyboardInterrupt:
             # Change back to root dir and exit
@@ -585,13 +620,32 @@ class ShapeOpt:
 
         return df
 
-    def _infer_adapt(self) -> str:
-        with open(f"{self.basefiles_dir}/aero.csh", "r") as f:
+    def _infer_adapt(self, sim_dir) -> str:
+        with open(f"{sim_dir}/aero.csh", "r") as f:
             lines = f.readlines()
 
             for line in lines:
                 if line.find("set n_adapt_cycles") != -1:
                     return f"adapt{int(line.split('=')[-1]):02d}"
+
+    def _overwrite_adapt(self, sim_dir: str, max_adapt: int) -> str:
+        """Overwrites the adapt cycle in the iteration directory."""
+        original = os.path.join(sim_dir, "aero.csh")
+        new = os.path.join(sim_dir, "temp_aero.csh")
+        with open(new, "w+") as new_file:
+            with open(original, "r") as original_file:
+                for line in original_file:
+                    if line.startswith("set n_adapt_cycles"):
+                        # This is the line setting the adapt number
+                        line = f"{line.split('=')[0]}= {max_adapt}"
+
+                    # Write line to new file
+                    new_file.write(line)
+
+        # Replace original aero.csh file with updated file
+        shutil.copymode(original, new)
+        os.remove(original)
+        os.rename(new, original)
 
     @staticmethod
     def _combine_sense_data(
@@ -640,6 +694,21 @@ class ShapeOpt:
 
         # No errors
         return True, None
+
+    @staticmethod
+    def _get_last_iteration(working_dir: str) -> int:
+        """Returns the number of last iteration performed."""
+        if not os.path.exists(working_dir):
+            # Working directory doesn't exist yet
+            return 0
+
+        # Collect iteration directories in working directory
+        iteration_dirs = [
+            int(i)
+            for i in os.listdir(working_dir)
+            if os.path.isdir(os.path.join(working_dir, i))
+        ]
+        return max(iteration_dirs) if iteration_dirs else 0
 
 
 class C3DPrep:
@@ -735,9 +804,47 @@ class C3DPrep:
 
     def _run_comp2tri(self, tri_files):
         tri_files_str = " ".join(tri_files)
+
+        if os.path.exists("Config.xml"):
+            # Remove old config file
+            os.remove("Config.xml")
+
+        # Run command
         os.system(
             f"comp2tri -makeGMPtags {tri_files_str} -config >> {self._logfile} 2>&1"
         )
+
+        # Await Config.xml
+        while not os.path.exists("Config.xml"):
+            time.sleep(0.2)
+
+        # Overwrite Config.xml Component names using tri files
+        original = os.path.join("Config.xml")
+        new = os.path.join("temp_config.xml")
+        with open(new, "w+") as new_file:
+            with open(original, "r") as original_file:
+                for line in original_file:
+                    if "Component Name" in line:
+                        # Get component number
+                        name_prefix = "Component_"
+                        name_start = line.index(name_prefix)
+                        comp_no = line.split('"')[1].split("_")[-1]
+                        tri_prefix = tri_files[int(comp_no) - 1].split(".")[0]
+
+                        # Update line
+                        line = (
+                            line[:name_start]
+                            + tri_prefix
+                            + line[name_start + len(name_prefix) + 1 :]
+                        )
+
+                    # Write line to new file
+                    new_file.write(line)
+
+        # # Replace original aero.csh file with updated file
+        shutil.copymode(original, new)
+        os.remove(original)
+        os.rename(new, original)
 
     def _run_intersect(self):
         os.system(f"intersect >> {self._logfile} 2>&1")

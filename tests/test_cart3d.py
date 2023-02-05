@@ -1,6 +1,7 @@
 import os as os
 import numpy as np
 import pandas as pd
+from pysagas.geometry import Vector
 from pysagas.wrappers import Cart3DWrapper
 
 
@@ -8,6 +9,7 @@ def run_main(data_path):
     """Analyse the Cart3D solution."""
     # Define flow conditions
     M_inf = 6
+    L_ref = 1  # m
     A_ref = 1  # m2
     a_inf = 299.499  # m/s
     rho_inf = 0.0308742  # kg/m3
@@ -29,10 +31,14 @@ def run_main(data_path):
         pointdata=pointdata,
         celldata=celldata,
     )
-    F_sense = wrapper.calculate()
+
+    # Calculate sensitivities
+    cog = Vector(2.25, 0, 0)
+    F_sense, M_sense = wrapper.calculate(cog=cog)
 
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)
+    M_coef_sens = M_sense / (0.5 * rho_inf * A_ref * L_ref * V_inf**2)
 
     print("\nCart 3D Finite Difference Result:")
     c3d_sens = np.array([[0.147517, 0.126153, 0]])
@@ -40,8 +46,9 @@ def run_main(data_path):
 
     # Print results
     print("\nPySAGAS Result:")
-    print("      dFx/dP           dFy/dP          dFz/dP")
     print(coef_sens)
+    print("")
+    print(M_coef_sens)
 
     print("\nError (%):")
     errors = np.nan_to_num(100 * (coef_sens - c3d_sens) / c3d_sens, posinf=0, neginf=0)
@@ -73,6 +80,8 @@ def cart3d_fd(data_path):
         data.iloc[4]["thickness"] - data.iloc[3]["thickness"]
     )
 
+    return pc1
+
 
 def test_cart3d_wedge():
     """Run the test."""
@@ -84,6 +93,7 @@ def test_cart3d_wedge():
 
 
 if __name__ == "__main__":
+    # cart3d_fd("tests/data")
     np.seterr(all="ignore")
     data_path = "tests/data"
     run_main(data_path)

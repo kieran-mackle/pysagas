@@ -1,7 +1,7 @@
 import numpy as np
-from typing import List, Callable
 import gdtk.ideal_gas_flow as igf
 from pysagas.flow import FlowState
+from typing import List, Callable, Tuple
 from pysagas.geometry import Vector, Cell
 
 
@@ -52,13 +52,20 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
-def cell_dfdp(cell: Cell, dPdp_method: Callable, **kwargs) -> np.array:
+def cell_dfdp(
+    cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
+) -> Tuple[np.array, np.array]:
     """Calculates all direction force sensitivities.
 
     Parameters
     ----------
     cell : Cell
         The cell.
+    dPdp_method : Callable
+        The method to use when calculating the pressure sensitivities.
+    cog : Vector, optiona
+        The reference centre of gravity, used in calculating the moment
+        sensitivities. The defualt is Vector(0,0,0).
 
     Returns
     --------
@@ -70,26 +77,39 @@ def cell_dfdp(cell: Cell, dPdp_method: Callable, **kwargs) -> np.array:
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
+    # Initialisation
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-
     sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+
+    # Calculate moment dependencies
+    r = cell.c - cog
+    F = cell.flowstate.P * cell.A * cell.n.vec
+
+    # For each parameter
     for p_i in range(cell.dndp.shape[1]):
         # Calculate pressure sensitivity
         dPdp = dPdp_method(cell=cell, p_i=p_i, **kwargs)
 
-        # Evaluate force sensitivity for each direction
+        # Evaluate for sensitivities for each direction
         for i, direction in enumerate(all_directions):
-            dir_sens = (
+            dF = (
                 dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
                 + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
                 + cell.flowstate.P * cell.A * np.dot(-cell.dndp[:, p_i], direction.vec)
             )
-            sensitivities[p_i, i] = dir_sens
+            sensitivities[p_i, i] = dF
+
+        # Now evaluate moment sensitivities
+        moment_sensitivities[p_i, :] = np.cross(
+            r.vec, sensitivities[p_i, :]
+        ) + np.cross(cell.dcdp[:, p_i], F)
 
     # Append to cell
     cell.sensitivities = sensitivities
+    cell.moment_sensitivities = moment_sensitivities
 
-    return sensitivities
+    return sensitivities, moment_sensitivities
 
 
 def panel_dPdp(cell: Cell, p_i, **kwargs):
@@ -118,8 +138,11 @@ def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
 
 
 def all_dfdp(
-    cells: List[Cell], dPdp_method: Callable = panel_dPdp, **kwargs
-) -> np.array:
+    cells: List[Cell],
+    dPdp_method: Callable = panel_dPdp,
+    cog: Vector = Vector(0, 0, 0),
+    **kwargs
+) -> Tuple[np.array, np.array]:
     """Calcualtes the force sensitivities for a list of Cells.
 
     Parameters
@@ -129,11 +152,16 @@ def all_dfdp(
     dPdp_method : Callable, optional
         The method used to calculate the pressure/parameter sensitivities.
         The default is the Panel method approximation panel_dPdp (see below).
+    cog : Vector, optiona
+        The reference centre of gravity, used in calculating the moment
+        sensitivities. The defualt is Vector(0,0,0).
 
     Returns
     --------
     dFdp : np.array
         The force sensitivity matrix with respect to the parameters.
+    dMdp : np.array
+        The moment sensitivity matrix with respect to the parameters.
 
     See Also
     --------
@@ -142,8 +170,14 @@ def all_dfdp(
         approximations
     """
     dFdp = 0
+    dMdp = 0
     for cell in cells:
         # Calculate force sensitivity
-        dFdp += cell_dfdp(cell=cell, dPdp_method=dPdp_method, **kwargs)
+        dFdp_c, dMdp_c = cell_dfdp(
+            cell=cell, dPdp_method=dPdp_method, cog=cog, **kwargs
+        )
 
-    return dFdp
+        dFdp += dFdp_c
+        dMdp += dMdp_c
+
+    return dFdp, dMdp
