@@ -5,6 +5,7 @@ from tqdm import tqdm
 from typing import Union, List
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector, Cell
+from pysagas.geometry import DegenerateCell
 from pysagas.wrappers.wrapper import Wrapper
 from pysagas.wrappers.cart3d.utilities import process_components_file
 
@@ -91,12 +92,13 @@ class Cart3DWrapper(Wrapper):
         # Construct cells
         if self.verbosity > 0:
             print("\nTranscribing cells from Components.i.plt...")
-        pbar = tqdm(
-            total=len(self.celldata.index),
-            position=0,
-            leave=True,
-        )
+            pbar = tqdm(
+                total=len(self.celldata.index),
+                position=0,
+                leave=True,
+            )
         cells = []
+        degen_cells = 0
         for cell in self.celldata.index:
             vertex_ids = cell_vertex_ids.loc[cell].values
             cell_v_coords = [coordinates.loc[v_id].values for v_id in vertex_ids]
@@ -114,7 +116,17 @@ class Cart3DWrapper(Wrapper):
                         r += 1
 
             # Create Cell
-            newcell = Cell.from_points(vertices)
+            try:
+                newcell = Cell.from_points(vertices)
+            except DegenerateCell:
+                # Bad cell, skip it
+                degen_cells += 1
+                if self.verbosity > 0:
+                    pbar.update(1)
+
+                    if self.verbosity > 2:
+                        print("\033[1mWarning\033[0m: Degenerate cell.")
+                continue
 
             # Add geometry sensitivity information
             newcell._add_sensitivities(np.array(dvdp))
@@ -135,10 +147,16 @@ class Cart3DWrapper(Wrapper):
             cells.append(newcell)
 
             # Update progress bar
-            pbar.update(1)
-        pbar.close()
+            if self.verbosity > 0:
+                pbar.update(1)
+
         if self.verbosity > 0:
+            pbar.close()
             print("Done.")
+
+            if self.verbosity > 1:
+                if degen_cells > 0:
+                    print(f"{100*degen_cells/len(self.celldata):.2f}% degenerate cells")
 
         return cells
 
@@ -148,5 +166,5 @@ class Cart3DWrapper(Wrapper):
             e: str
             if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
                 # Sensitivity coluns
-                parameters.add("".join(e.split("d")[2:]))
+                parameters.add(e[3:])
         return list(parameters)

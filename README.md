@@ -7,7 +7,7 @@
 for **G**eometric and **A**erodynamic **Surface** properties.
 It provides a computationally-efficient method for generating 
 surface sensitivity approximations from existing flow solutions,
-to use in geometric parameter optimisation studies.
+to use in aerodynamic shape optimisation studies.
 <!-- end intro -->
 
 <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
@@ -158,13 +158,13 @@ PySAGAS is being developed along the following roadmap.
 
 * [x] Modularisation of models
 * [x] API for convenient, generalised usage
-* [ ] Visualisation of sensitivities on mesh (cell-wise)
+* [x] Integration with [hypervehicle](https://github.com/kieran-mackle/hypervehicle) for shape optimisation
 * [ ] Moment sensitivities
+* [ ] Visualisation of sensitivities on mesh (cell-wise)
 * [ ] Implementation of higher-fidelity correction models
 * [ ] Control over surface tags / faces being analysed
 * [ ] CLI
 * [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
-* [ ] Integration with [hypervehicle](https://github.com/kieran-mackle/hypervehicle)
 
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>

@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import pandas as pd
 from typing import Tuple
 
@@ -165,6 +166,15 @@ def process_components_file(
     # Properties modified on spreadSheetView1
     spreadSheetView1.GenerateCellConnectivity = 1
 
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
+    # Properties modified on spreadSheetView1
+    spreadSheetView1.FieldAssociation = "Point Data"
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
+
     # export view
     if verbosity > 0:
         print("  Saving point data.")
@@ -173,6 +183,9 @@ def process_components_file(
 
     # Properties modified on spreadSheetView1
     spreadSheetView1.FieldAssociation = "Cell Data"
+
+    # update the view to ensure updated data information
+    spreadSheetView1.Update()
 
     # export view
     if verbosity > 0:

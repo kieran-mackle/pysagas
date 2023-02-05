@@ -2,6 +2,7 @@ from __future__ import annotations
 import numpy as np
 import pysagas.flow
 from typing import Union, List
+from numpy.typing import ArrayLike
 
 
 class Vector:
@@ -110,7 +111,12 @@ class Vector:
     @property
     def unit(self) -> Vector:
         """The unit vector associated with the Vector."""
-        return self / np.linalg.norm(self.vec)
+        return self / self.norm
+
+    @property
+    def norm(self) -> Vector:
+        """The norm associated with the Vector."""
+        return np.linalg.norm(self.vec)
 
     @classmethod
     def from_coordinates(cls, coordinates: np.array) -> Vector:
@@ -134,7 +140,37 @@ class Vector:
 
 
 class Cell:
-    """A triangular cell object."""
+    """A triangular cell object.
+
+    Attributes
+    -----------
+    p0 : Vector
+        The first vertex of the cell.
+    p1 : Vector
+        The second vertex of the cell.
+    p2 : Vector
+        The third vertex of the cell.
+    A : float
+        The cell face area.
+    n : Vector
+        The cell normal.
+    dndv : np.array
+        The sensitivity of the cell's normal vector to each vertex.
+    dAdv : np.array
+        The sensitivity of the cell's area to each vertex.
+    dvdp : np.array
+        The sensitivity of the cell's vertices to each geometric parameter.
+    dndp : np.array
+        The sensitivity of the cell's normal vector to each geometric parameter.
+    dAdp : np.array
+        The sensitivity of the cell's area to each geometric parameter.
+    dcdp : np.array
+        The sensitivity of the centroid to each geometric parameter.
+    flowstate : FlowState
+        The flowstate associated with the cell.
+    sensitivities : np.array
+        An array containing the [x,y,z] force sensitivities of the cell.
+    """
 
     def __init__(self, p0: Vector, p1: Vector, p2: Vector):
         """Constructs a cell, defined by three points.
@@ -153,25 +189,28 @@ class Cell:
         self.p1 = p1
         self.p2 = p2
 
-        # Calculate normal vector
-        # TODO - assess validity of negating below
+        # Calculate cell properites
         self.n = -self.calc_normal(p0, p1, p2)
         self.A = self.calc_area(p0, p1, p2)
+        self.c = self.calc_centroid(p0, p1, p2)
 
         # Calculate geometric sensitivities
         self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
         self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
+        self.dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
 
         # Parameter sensitivities
-        self.dvdp = None  # vertex-parameter sensitivities
-        self.dndp = None  # normal-parameter sensitivities
-        self.dAdp = None  # area-parameter sensitivities
+        self.dvdp: ArrayLike = None  # vertex-parameter sensitivities
+        self.dndp: ArrayLike = None  # normal-parameter sensitivities
+        self.dAdp: ArrayLike = None  # area-parameter sensitivities
+        self.dcdp: ArrayLike = None  # centroid-parameter sensitivities
 
         # FlowState
         self.flowstate: pysagas.flow.FlowState = None
 
         # Sensitivities
         self.sensitivities = None
+        self.moment_sensitivities = None
 
     def to_dict(self):
         """Returns the Cell as a dictionary."""
@@ -207,6 +246,7 @@ class Cell:
         self.dvdp = dvdp
         self.dndp = np.dot(self.dndv, self.dvdp)
         self.dAdp = np.dot(self.dAdv, self.dvdp)
+        self.dcdp = np.dot(self.dcdv, self.dvdp)
 
     @staticmethod
     def calc_normal(p0: Vector, p1: Vector, p2: Vector) -> Vector:
@@ -242,6 +282,10 @@ class Cell:
         # Construct normal vector
         normal = Vector(x=Nx, y=Ny, z=Nz)
 
+        if normal.norm == 0:
+            # Degenerate cell
+            raise DegenerateCell()
+
         # Convert to unit vector
         unit_normal = normal / np.linalg.norm(normal.vec)
 
@@ -276,6 +320,33 @@ class Cell:
         # Calculate area
         S = 0.5 * np.linalg.norm(np.cross(A.vec, B.vec))
         return S
+
+    @staticmethod
+    def calc_centroid(p0: Vector, p1: Vector, p2: Vector) -> Vector:
+        """Calculates the centroid of a cell defined by three points.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        --------
+        c : Vector
+            The centroid of the cell defined by the points.
+
+        References
+        -----------
+        https://en.wikipedia.org/wiki/Centroid
+        """
+        cx = (p0.x + p1.x + p2.x) / 3
+        cy = (p0.y + p1.y + p2.y) / 3
+        cz = (p0.z + p1.z + p2.z) / 3
+        return Vector(cx, cy, cz)
 
     @staticmethod
     def n_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
@@ -555,6 +626,36 @@ class Cell:
 
         return A_sense
 
+    @staticmethod
+    def c_sensitivity(p0: Vector, p1: Vector, p2: Vector) -> np.array:
+        """Calculates the sensitivity of a cell's centroid to the
+        points defining the cell.
+
+        Parameters
+        ----------
+        p0 : Vector
+            The first point defining the cell.
+        p1 : Vector
+            The second point defining the cell.
+        p2 : Vector
+            The third point defining the cell.
+
+        Returns
+        -------
+        sensitivity : np.array
+            The sensitivity matrix with size m x n x p. Rows m refer to
+            the vertices, columns n refer to the vertex coordinates, and
+            slices p refer to the components of the centroid point.
+        """
+        c_sens = np.array(
+            [
+                [1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3, 0, 0],
+                [0, 1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3, 0],
+                [0, 0, 1 / 3, 0, 0, 1 / 3, 0, 0, 1 / 3],
+            ]
+        )
+        return c_sens
+
 
 def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
     """Calculates the normal vector of a plane defined by 3 points.
@@ -579,3 +680,11 @@ def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
     )
     n = n / np.sqrt(np.sum(n**2))
     return n
+
+
+class DegenerateCell(Exception):
+    """Exception raised for degenerate cells."""
+
+    def __init__(self, message="Degenerate cell"):
+        self.message = message
+        super().__init__(self.message)
