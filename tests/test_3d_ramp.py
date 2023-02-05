@@ -99,7 +99,7 @@ def run_main():
     B.flowstate = ramp_fs
 
     # Calculate force sensitivity
-    F_sense = all_dfdp(cells=[A, B])
+    F_sense, _ = all_dfdp(cells=[A, B])
 
     # Calculate error with finite differencing method
     fd_F_sense = calc_fd_sens(parameters, freestream)
