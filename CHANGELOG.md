@@ -1,3 +1,37 @@
+## v0.7.0 (2023-02-05)
+
+### Feat
+
+- implemented moment sensitivities
+- **_C3DPrep**: overwrite Config.xml with tri files prefix
+- **ShapeOpt**: implemented c3d adapt cycle scheduling
+- **ShapeOpt**: added cubes failure to c3d errors to catch
+- **cell_dfdp**: added mechanism to calculate moment sensitivities
+- **ShapeOpt**: optionally provide theoretical convergence limit to post process
+- **_C3DPrep**: added control over jitter
+- **ShapeOpt**: implemented max step size argument
+- **ShapeOpt**: added C3D error to recovery
+- **ShapeOpt**: added error handling for C3D crashes
+- **ShapeOpt**: added iterative matching tol reduction
+- **ShapeOpt**: catch zero norm jacobian and bail
+- **Cart3D**: improved verbosity output
+- **DegenerateCell**: implemented exception for degenerate cells
+- option to show plot in post for c3d shapeopt
+- **ShapeOpt**: implemented automated step size
+- **optimisation**: implemented basic shape optimisation wrapper for cart3d
+
+### Fix
+
+- **cell_dfdp**: include dr/dp in moment sensitivity calculation
+- **ShapeOpt**: updated output of wrapper.calculate and sensitivity notation
+- **ShapeOpt**: warmstart continuity of x_older and jac_older
+- **process_components**: enforce paraview to point data in spreadsheet view
+- **Cart3DWrapper**: improved parameter extraction
+
+### Refactor
+
+- **Wrapper**: allow passing c.o.g. as arg to calculate
+
 ## v0.6.0 (2023-01-18)
 
 ### Feat
