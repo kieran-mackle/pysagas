@@ -6,8 +6,12 @@
 :end-before: <!-- end intro -->
 ```
 
-See the [Getting Started](documentation/getting-started) guide, 
+To learn more about the theory behind *PySAGAS*, see the 
+[theory documentation](theory-docs). Otherwise, see the 
+[Getting Started](documentation/getting-started) guide, 
 or have a look at the [examples](examples/ramp_3d.md).
+
+![ReFEX CFD](_static/refex-sim.png)
 
 
 ```{toctree}
@@ -29,6 +33,7 @@ Definitions <documentation/definitions>
 
 Inclined Ramp <examples/ramp_3d>
 Sharp Wedge <examples/sharp_wedge>
+Shape Optimisation <examples/nose_cone>
 ```
 
 
@@ -39,8 +44,9 @@ Sharp Wedge <examples/sharp_wedge>
 
 Geometry Module <api_ref/geometry>
 Flow Module <api_ref/flow>
-Utilities Module <api_ref/utilities>
+Utilities <api_ref/utilities>
 Wrappers <api_ref/wrappers/index>
+Optimisation <api_ref/optimisation/index>
 ```
 
 

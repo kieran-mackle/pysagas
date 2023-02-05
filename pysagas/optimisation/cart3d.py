@@ -63,7 +63,7 @@ class ShapeOpt:
         self.A_ref = A_ref
 
         # Create instance of Cart3D prepper
-        self._c3dprepper = _C3DPrep(logfile=c3d_logname)
+        self._c3dprepper = C3DPrep(logfile=c3d_logname)
 
         # Other settings
         self._matching_tolerance = matching_tolerance
@@ -173,7 +173,9 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
+    def _run_simulation(self, basefiles_dir: str, iter_dir: str):
+        target_adapt = self._infer_adapt()
+
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
@@ -260,6 +262,8 @@ class ShapeOpt:
         return complete
 
     def _process_results(self, param_names: List[str], iter_dir: str):
+        target_adapt = self._infer_adapt()
+
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         target_adapt = self._infer_adapt(sim_dir)
@@ -707,7 +711,7 @@ class ShapeOpt:
         return max(iteration_dirs) if iteration_dirs else 0
 
 
-class _C3DPrep:
+class C3DPrep:
     def __init__(self, logfile, jitter_denom: float = 1000) -> None:
         self._logfile = logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
@@ -869,6 +873,7 @@ class _C3DPrep:
         return success
 
     def intersect_stls(self) -> bool:
+        """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
             return True

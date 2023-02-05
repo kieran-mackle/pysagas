@@ -1,3 +1,4 @@
+(example-inclined-ramp)=
 # Inclined Ramp Example
 
 This page covers a simple test case of an inclined ramp.
@@ -32,6 +33,7 @@ This solution will later serve as validation for the
 results obtained using *PySAGAS*.
 
 
+(oblique-shock-relations)=
 ### Oblique Shock Relations
 The nominal ramp conditions are solved using 
 [oblique shock wave theory](http://brennen.caltech.edu/fluidbook/basicfluiddynamics/compressibleflow/obliqueshock.pdf).
