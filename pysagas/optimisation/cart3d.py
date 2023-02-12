@@ -173,7 +173,7 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def _run_simulation(self, basefiles_dir: str, iter_dir: str):
+    def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
         target_adapt = self._infer_adapt()
 
         # Make simulation directory
