@@ -7,9 +7,9 @@ import pandas as pd
 from random import random
 from pysagas import banner
 import matplotlib.pyplot as plt
-from typing import List, Dict, Optional
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
+from typing import List, Dict, Optional, Tuple, Callable
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -49,12 +49,18 @@ class ShapeOpt:
         self.sensitivity_filename = sensitivity_filename
         self.completion_filename = "ITERATION_COMPLETE"
         self.parameters_filename = "parameters.csv"
+        self.f_sense_filename = "F_sensitivities.csv"
         self.jacobian_filename = "jacobian.csv"
+        self.objective_filename = "objective.txt"
 
         self.generator = generator
 
         self.c3d_logname = c3d_logname
-        self.loads_key = None
+        self.minimum_volume = None
+
+        # Save callback function
+        # TODO - implement standard functions (eg. min drag, L/D, etc.)
+        self._obj_jac_cb = None
 
         # TODO - pass as flowstate
         self.rho_inf = rho_inf
@@ -124,11 +130,8 @@ class ShapeOpt:
                 x_older = pd.read_csv(x_older_path, index_col=0).values
 
                 # Also load previous jacobian
-                F_sense = pd.read_csv(jac_older_path, index_col=0)
-                coef_sens = F_sense / (
-                    0.5 * self.rho_inf * self.A_ref * self.V_inf**2
-                )
-                jac_older = coef_sens.loc[param_names]["dFx/dp"].values
+                jac_df = pd.read_csv(jac_older_path, index_col=0)["0"]
+                jac_older = jac_df.loc[param_names].values
 
         else:
             # First iteration
@@ -153,7 +156,7 @@ class ShapeOpt:
         os.chdir(iter_dir)
 
         # Check if sensitivity study has been run
-        sens_files = glob.glob(f"{iter_dir}/*sensitivity*")
+        sens_files = glob.glob(f"{iter_dir}{os.sep}*sensitivity*")
         if len(sens_files) == 0:
             print("Running sensitivity study.")
 
@@ -174,8 +177,6 @@ class ShapeOpt:
             print("Sensitivity study already run.")
 
     def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
-        target_adapt = self._infer_adapt()
-
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
@@ -244,6 +245,7 @@ class ShapeOpt:
                     if not running:
                         # C3D failed, try restart it
                         print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
+                        print("  Restarting Cart3D.")
                         os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
 
                 _end = time.time()
@@ -261,9 +263,20 @@ class ShapeOpt:
 
         return complete
 
-    def _process_results(self, param_names: List[str], iter_dir: str):
-        target_adapt = self._infer_adapt()
+    def _calculate_penalty(self):
+        """Calculate the objective function penalty due to constraint
+        violation of input parameters.
+        """
+        # TODO - implement
+        # What dimensionality should this take? Ideally same as the parameter
+        # space. But what if the constraint is on a non-controlled variable
+        # (eg. volume)? Then the penalty should be applied to all parameters?
+        # But what if one parameter influences the volume more than the
+        # others...
+        penalty = 0
+        return penalty
 
+    def _process_results(self, param_names: List[str], iter_dir: str):
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         target_adapt = self._infer_adapt(sim_dir)
@@ -273,8 +286,8 @@ class ShapeOpt:
         loads_dict = self._read_c3d_loads(loads_filepath)
 
         # Approximate flow sensitivities
-        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
-        if not os.path.exists(jacobian_filepath):
+        f_sense_filename = os.path.join(iter_dir, self.f_sense_filename)
+        if not os.path.exists(f_sense_filename):
             # Filepaths
             sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
             components_filepath = os.path.join(
@@ -290,16 +303,16 @@ class ShapeOpt:
                 components_filepath=components_filepath,
                 verbosity=0,
             )
-            F_sense, M_sense = wrapper.calculate()
+            F_sense, _ = wrapper.calculate()
             print("  Done.")
 
-            # Save Jacobian
-            F_sense.to_csv(jacobian_filepath)
+            # Save F_sense
+            F_sense.to_csv(f_sense_filename)
 
         else:
-            # Load Jacobian
-            F_sense = pd.read_csv(jacobian_filepath, index_col=0)
-            print("Jacobian loaded from file.")
+            # Load F_sense
+            F_sense = pd.read_csv(f_sense_filename, index_col=0)
+            print("Force sensitivities loaded from file.")
 
         # Non-dimensionalise
         coef_sens = F_sense / (0.5 * self.rho_inf * self.A_ref * self.V_inf**2)
@@ -308,12 +321,44 @@ class ShapeOpt:
         x_df = pd.read_csv(
             os.path.join(iter_dir, self.parameters_filename), index_col=0
         )
-
-        # Construct output (note sorting of coef_sens!)
-        # TODO - search for "dFx/dP" (jac_older) - this needs to be dynamic
-        obj = loads_dict[self.loads_key]
-        jac = coef_sens.loc[param_names]["dFx/dp"].values
         x = x_df.loc[param_names]["0"].values
+
+        # Get objective function and Jacobian
+        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
+        if not os.path.exists(jacobian_filepath):
+            # Load data
+            vm = pd.read_csv(
+                glob.glob(f"{iter_dir}{os.sep}*volmass.csv")[0], index_col=0
+            )["0"]
+            vm_sens = pd.read_csv(
+                os.path.join(iter_dir, "volmass_sensitivity.csv"), index_col=0
+            )[param_names]
+
+            # Call function
+            obj, jac_df = self._obj_jac_cb(
+                param_names=param_names,
+                coef_sens=coef_sens,
+                loads_dict=loads_dict,
+                volmass=vm,
+                volmass_sens=vm_sens,
+            )
+
+            # TODO - dimensionality check?
+
+            # Save
+            with open(os.path.join(iter_dir, self.objective_filename), "w") as f:
+                f.write(f"objective: {obj}\n")
+            jac_df.to_csv(jacobian_filepath)
+
+        else:
+            # Load from file
+            with open(os.path.join(iter_dir, self.objective_filename), "r") as f:
+                lines = f.readlines()
+                obj = float(lines[0].strip().split(":")[-1])
+            jac_df = pd.read_csv(jacobian_filepath, index_col=0)["0"]
+
+        # Extract ordered jacobian values
+        jac = jac_df.loc[param_names].values
 
         # TODO - also return step size?
 
@@ -388,9 +433,18 @@ class ShapeOpt:
             # Simulation completed successfully
             obj, jac, x = self._process_results(param_names, iter_dir)
 
+            # Calculate constraint penalty
+            # TODO - implement penalised constraints
+            penalty = self._calculate_penalty()
+
             # Create completion file
             pd.Series(
-                {"objective": obj, "gamma": gamma, **dict(zip(param_names, x))}
+                {
+                    "objective": obj,
+                    "penalty": penalty,
+                    "gamma": gamma,
+                    **dict(zip(param_names, x)),
+                }
             ).to_csv(os.path.join(iter_dir, self.completion_filename))
 
         else:
@@ -515,7 +569,9 @@ class ShapeOpt:
     def optimise(
         self,
         parameters: Dict[str, float],
-        loads_key: str = "C_D-entire",
+        obj_jac_cb: Callable,
+        constraints=None,
+        minimum_volume: float = None,
         warmstart: bool = True,
         max_step: float = None,
         adapt_schedule: Optional[List[int]] = None,
@@ -526,9 +582,14 @@ class ShapeOpt:
         ----------
         parameters: Dict[str, float]
             A dictionary of geometric parameters to pass to the vehicle generator.
-        loads_key : str, optional
-            The key to use for extracting the objective from the Cart3D loads file.
-            The default is 'C_D-entire'.
+        obj_jac_cb : Callable
+            The function to generate the objective function and the Jacobian.
+        constraints : optional
+            The constraints to be applied as penalties to the objective. Not
+            implemented yet.
+        minimum_volume : float, optional
+            The minimum allowable volume of the geometry. This will be enforced
+            via a penalty function on the objective. The default is None.
         warmstart : bool, optional
             If you are resuming a previous run, set to True. This will accelerate
             convergence by improving the step size. The default is True.
@@ -550,7 +611,10 @@ class ShapeOpt:
         print("\033[4mCart3D Shape Optimisation\033[0m".center(50, " "))
 
         # Save loadsCC key for objective function
-        self.loads_key = loads_key
+        self.minimum_volume = minimum_volume
+
+        # Save objective jacobian callback function
+        self._obj_jac_cb = obj_jac_cb
 
         # Run
         _opt_start = time.time()
@@ -709,6 +773,17 @@ class ShapeOpt:
             if os.path.isdir(os.path.join(working_dir, i))
         ]
         return max(iteration_dirs) if iteration_dirs else 0
+
+    @staticmethod
+    def _body_to_aero(body_forces, aoa):
+        """Converts the body forces into aero forces."""
+        Cl_sens = body_forces["dFy/dp"] * np.cos(aoa) - body_forces["dFx/dp"] * np.sin(
+            aoa
+        )
+        Cd_sens = body_forces["dFy/dp"] * np.sin(aoa) + body_forces["dFx/dp"] * np.cos(
+            aoa
+        )
+        return Cl_sens, Cd_sens
 
 
 class C3DPrep:
