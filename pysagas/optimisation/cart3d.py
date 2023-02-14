@@ -736,7 +736,10 @@ class ShapeOpt:
         while match_frac < match_target:
             # Check tolerance
             if tol > max_tol:
-                raise Exception("Cannot combine sensitivity data.")
+                raise Exception(
+                    "Cannot combine sensitivity data (match fraction: "
+                    + f"{match_frac}, tolerance: {tol}, max tolerance: {max_tol})."
+                )
 
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
