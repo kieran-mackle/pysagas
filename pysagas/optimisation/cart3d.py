@@ -751,11 +751,12 @@ class ShapeOpt:
 
             if match_frac < match_target:
                 print(
-                    f"Failed to combine sensitivity data ({100*match_frac:.02f}% match rate)."
+                    "Failed to combine sensitivity data "
+                    f"({100*match_frac:.02f}% match rate)."
                 )
-                print("  Reducing matching tolerance and trying again.")
+                print("  Increasing matching tolerance and trying again.")
 
-            # Reduce matching tolerance
+            # Increase matching tolerance
             tol *= 10
 
         print("Component sensitivity data combined successfully.")
@@ -845,7 +846,7 @@ class C3DPrep:
             transform_files = [component]
 
         for file in transform_files:
-            prefix = file.split(".")[0]
+            prefix = ".".join(file.split(".")[:-1])
             if reverse:
                 os.system(
                     f"trix -x {-x_shift} -y {-y_shift} -z {-z_shift} -o {prefix} {file} >> {self._logfile} 2>&1"
@@ -880,7 +881,7 @@ class C3DPrep:
             transform_files = [component]
 
         for file in transform_files:
-            prefix = file.split(".")[0]
+            prefix = ".".join(file.split(".")[:-1])
 
             # Check order of operations
             if reverse:
@@ -1010,6 +1011,10 @@ class C3DPrep:
             )
             self._rotate_all(tri_files=tri_files, x_rot=x_rot, y_rot=y_rot, z_rot=z_rot)
 
+            if attempt > 0:
+                # Also jitter
+                self._jitter_tri_files(tri_files)
+
             # Make intersect attempt
             self._run_comp2tri(tri_files)
             self._run_intersect()
@@ -1027,14 +1032,14 @@ class C3DPrep:
                 )
                 self._rotate_all(
                     tri_files=tri_files,
-                    x_rot=x_rot,
-                    y_rot=y_rot,
-                    z_rot=z_rot,
+                    x_rot=-x_rot,
+                    y_rot=-y_rot,
+                    z_rot=-z_rot,
                     component="Components.i.tri",
                     reverse=True,
                 )
-                if successful:
-                    return True
+                return True
+
             else:
                 # Need to reset tri files
                 self._log(f"Arbitrary shift attempt {attempt} failed.")
@@ -1048,5 +1053,5 @@ class C3DPrep:
     def _log(self, msg: str):
         with open(self._logfile, "a") as f:
             f.write("\n")
-            f.write(msg)
+            f.write("C3DPrep: " + msg)
             f.write("\n")
