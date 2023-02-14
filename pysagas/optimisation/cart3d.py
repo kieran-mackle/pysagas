@@ -193,81 +193,85 @@ class ShapeOpt:
             intersected = True
             print("Intersected components located.")
 
-        # Run intersect
-        if run_intersect:
-            intersected = self._c3dprepper.intersect_stls()
+        # Attempt component intersection
+        N = 3
+        for attempt in range(N):
+            # Run intersect
+            if run_intersect:
+                intersected = self._c3dprepper.intersect_stls()
 
-        # Check for intersection
-        if intersected:
-            # Prepare rest of sim
-            if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
-                # Prepare remaining C3D files
-                # TODO - should this be in _C3DPrep?
-                os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
+            # Check for intersection
+            if intersected:
+                # Prepare rest of sim
+                if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
+                    # Prepare remaining C3D files
+                    # TODO - should this be in _C3DPrep?
+                    os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
 
-                # Move files to simulation directory
-                os.system(
-                    f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
-                )
+                    # Move files to simulation directory
+                    os.system(
+                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                    )
 
-                # Copy sim files
-                os.system(
-                    f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
-                )
+                    # Copy sim files
+                    os.system(
+                        f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
+                    )
 
-                # Modify iteration aero.csh using max_adapt
-                if max_adapt:
-                    self._overwrite_adapt(sim_dir, max_adapt)
+                    # Modify iteration aero.csh using max_adapt
+                    if max_adapt:
+                        self._overwrite_adapt(sim_dir, max_adapt)
 
-            # Create all_components_sensitivity.csv
-            if not os.path.exists(self.sensitivity_filename):
-                self._combine_sense_data(
-                    components_filepath,
-                    match_target=self._matching_target,
-                    tol_0=self._matching_tolerance,
-                    max_tol=self._max_matching_tol,
-                )
+                # Create all_components_sensitivity.csv
+                if not os.path.exists(self.sensitivity_filename):
+                    self._combine_sense_data(
+                        components_filepath,
+                        match_target=self._matching_target,
+                        tol_0=self._matching_tolerance,
+                        max_tol=self._max_matching_tol,
+                    )
 
-            # Run Cart3D and await result
-            os.chdir(sim_dir)
-            target_adapt = self._infer_adapt(sim_dir)
-            c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
-            if not os.path.exists(c3d_donefile):
-                # Cart3D has not started / didn't finish
-                print(
-                    "\nStarting Cart3D, awaiting",
-                    os.sep.join(c3d_donefile.split(os.sep)[-6:]),
-                )
+                # Run Cart3D and await result
+                os.chdir(sim_dir)
+                target_adapt = self._infer_adapt(sim_dir)
+                c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                if not os.path.exists(c3d_donefile):
+                    # Cart3D has not started / didn't finish
+                    print(
+                        "\nStarting Cart3D, awaiting",
+                        os.sep.join(c3d_donefile.split(os.sep)[-6:]),
+                    )
 
-                _start = time.time()
-                os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
-                while not os.path.exists(c3d_donefile):
-                    # Wait...
-                    time.sleep(5)
+                    _start = time.time()
+                    os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                    while not os.path.exists(c3d_donefile):
+                        # Wait...
+                        time.sleep(5)
 
-                    # Check for C3D failure
-                    running, e = self._c3d_running()
+                        # Check for C3D failure
+                        running, e = self._c3d_running()
 
-                    if not running:
-                        # C3D failed, try restart it
-                        print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
-                        print("  Restarting Cart3D.")
-                        os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                        if not running:
+                            # C3D failed, try restart it
+                            print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
+                            print("  Restarting Cart3D.")
+                            os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
 
-                _end = time.time()
-                print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
+                    _end = time.time()
+                    print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
+
+                else:
+                    # Cart3D already finished for this iteration
+                    print("Cart3D DONE file located.")
+
+                return True
 
             else:
-                # Cart3D already finished for this iteration
-                print("Cart3D DONE file located.")
-
-            complete = True
-
-        else:
-            print("Could not intersect components.")
-            complete = False
-
-        return complete
+                if attempt < N - 1:
+                    print("Could not intersect components. Trying again.")
+                else:
+                    print("Could not intersect components. Exiting.")
+                    return False
 
     def _calculate_penalty(self):
         """Calculate the objective function penalty due to constraint
