@@ -795,9 +795,12 @@ class ShapeOpt:
 
 
 class C3DPrep:
-    def __init__(self, logfile, jitter_denom: float = 1000) -> None:
+    def __init__(
+        self, logfile, jitter_denom: float = 1000, rotation_attempts: int = 6
+    ) -> None:
         self._logfile = logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
+        self._rotation_attempts = rotation_attempts
 
     def _run_stl2tri(self, stl_files: list):
         tri_files = []
@@ -983,7 +986,7 @@ class C3DPrep:
 
         # That failed, try arbitrary shifts away
         self._log("Attempting arbitrary rotations.")
-        for attempt in range(3):
+        for attempt in range(self._rotation_attempts):
             # Define shifts
             x_shift = random() * 10  # Max of 10, min of 0
             y_shift = random() * 10  # Max of 10, min of 0
