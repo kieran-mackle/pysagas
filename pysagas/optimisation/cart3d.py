@@ -24,6 +24,7 @@ class ShapeOpt:
         "Check cart3d.out in AD_A_J for more clues",
         "==> adjointErrorEst_quad failed again, status = 1",
         "ERROR: CUBES failed",
+        "ERROR: ADAPT failed with status = 1",
     ]
 
     def __init__(
@@ -73,6 +74,8 @@ class ShapeOpt:
 
         # Other settings
         self._matching_tolerance = matching_tolerance
+        self._max_matching_tol = 0.1
+        self._matching_target = 0.9
 
     def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
@@ -219,7 +222,10 @@ class ShapeOpt:
             # Create all_components_sensitivity.csv
             if not os.path.exists(self.sensitivity_filename):
                 self._combine_sense_data(
-                    components_filepath, tol_0=self._matching_tolerance
+                    components_filepath,
+                    match_target=self._matching_target,
+                    tol_0=self._matching_tolerance,
+                    max_tol=self._max_matching_tol,
                 )
 
             # Run Cart3D and await result
@@ -327,11 +333,13 @@ class ShapeOpt:
         jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
         if not os.path.exists(jacobian_filepath):
             # Load data
+            properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")[0]
+            scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
             vm = pd.read_csv(
-                glob.glob(f"{iter_dir}{os.sep}*volmass.csv")[0], index_col=0
+                glob.glob(os.path.join(properties_dir, "*volmass.csv"))[0], index_col=0
             )["0"]
             vm_sens = pd.read_csv(
-                os.path.join(iter_dir, "volmass_sensitivity.csv"), index_col=0
+                os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"), index_col=0
             )[param_names]
 
             # Call function
@@ -722,6 +730,10 @@ class ShapeOpt:
         match_frac = 0
         tol = tol_0
         while match_frac < match_target:
+            # Check tolerance
+            if tol > max_tol:
+                raise Exception("Cannot combine sensitivity data.")
+
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
                 dp_filenames=glob.glob("*sensitivity*"),
@@ -730,18 +742,14 @@ class ShapeOpt:
                 verbosity=0,
             )
 
-            # Reduce matching tolerance
-            tol *= 10
-
-            # Check new tolerance
-            if tol > max_tol:
-                raise Exception("Cannot combine sensitivity data.")
-
             if match_frac < match_target:
                 print(
                     f"Failed to combine sensitivity data ({100*match_frac:.02f}% match rate)."
                 )
                 print("  Reducing matching tolerance and trying again.")
+
+            # Reduce matching tolerance
+            tol *= 10
 
         print("Component sensitivity data combined successfully.")
 
