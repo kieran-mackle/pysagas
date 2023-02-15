@@ -236,6 +236,7 @@ class ShapeOpt:
                 os.chdir(sim_dir)
                 target_adapt = self._infer_adapt(sim_dir)
                 c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                _restarts = 0
                 if not os.path.exists(c3d_donefile):
                     # Cart3D has not started / didn't finish
                     print(
@@ -254,9 +255,14 @@ class ShapeOpt:
 
                         if not running:
                             # C3D failed, try restart it
+                            if _restarts > 3:
+                                print("Too many Cart3D failures... Something is wrong.")
+                                return False
+
                             print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                             print("  Restarting Cart3D.")
                             os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                            _restarts += 1
 
                     _end = time.time()
                     print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
