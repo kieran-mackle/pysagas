@@ -25,6 +25,7 @@ class ShapeOpt:
         "==> adjointErrorEst_quad failed again, status = 1",
         "ERROR: CUBES failed",
         "ERROR: ADAPT failed with status = 1",
+        "ERROR",
     ]
 
     def __init__(
