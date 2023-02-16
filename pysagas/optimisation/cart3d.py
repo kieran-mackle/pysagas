@@ -9,7 +9,7 @@ from pysagas import banner
 import matplotlib.pyplot as plt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
-from typing import List, Dict, Optional, Tuple, Callable
+from typing import List, Dict, Optional, Optional, Callable
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -313,13 +313,35 @@ class ShapeOpt:
 
             # Create PySAGAS wrapper and run
             print("\nEvaluating sensitivities.")
-            wrapper = Cart3DWrapper(
-                a_inf=self.a_inf,
-                rho_inf=self.rho_inf,
-                sensitivity_filepath=sensitivity_filepath,
-                components_filepath=components_filepath,
-                verbosity=0,
-            )
+            try:
+                wrapper = Cart3DWrapper(
+                    a_inf=self.a_inf,
+                    rho_inf=self.rho_inf,
+                    sensitivity_filepath=sensitivity_filepath,
+                    components_filepath=components_filepath,
+                    verbosity=0,
+                )
+
+            except ValueError:
+                # The sensitivity data does not match the point data, regenerate it
+                tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
+                self._combine_sense_data(
+                    tri_components_filepath,
+                    match_target=self._matching_target,
+                    tol_0=self._matching_tolerance,
+                    max_tol=self._max_matching_tol,
+                    outdir=iter_dir,
+                )
+
+                # Re-instantiate the wrapper
+                wrapper = Cart3DWrapper(
+                    a_inf=self.a_inf,
+                    rho_inf=self.rho_inf,
+                    sensitivity_filepath=sensitivity_filepath,
+                    components_filepath=components_filepath,
+                    verbosity=0,
+                )
+
             F_sense, _ = wrapper.calculate()
             print("  Done.")
 
@@ -736,6 +758,7 @@ class ShapeOpt:
         match_target: float = 0.9,
         tol_0: float = 1e-5,
         max_tol: float = 1e-1,
+        outdir: Optional[str] = None,
     ):
         """Combine the component sensitivity data for intersected geometry."""
         match_frac = 0
@@ -754,6 +777,7 @@ class ShapeOpt:
                 components_filepath=components_filepath,
                 match_tolerance=tol,
                 verbosity=0,
+                outdir=outdir,
             )
 
             if match_frac < match_target:
