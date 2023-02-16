@@ -64,6 +64,10 @@ class Cart3DWrapper(Wrapper):
             )
         self.verbosity = verbosity
 
+        # Check dimensionality
+        if len(self.sensdata) != len(self.pointdata):
+            raise ValueError("The sensitivity data does not match the point data.")
+
         super().__init__(**kwargs)
 
     def _transcribe_cells(self, parameters: List[str]) -> List[Cell]:
