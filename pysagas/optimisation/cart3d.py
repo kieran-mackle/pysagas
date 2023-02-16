@@ -227,6 +227,7 @@ class ShapeOpt:
                 if not os.path.exists(self.sensitivity_filename):
                     self._combine_sense_data(
                         components_filepath,
+                        sensitivity_files=glob.glob("*sensitivity*"),
                         match_target=self._matching_target,
                         tol_0=self._matching_tolerance,
                         max_tol=self._max_matching_tol,
@@ -325,8 +326,10 @@ class ShapeOpt:
             except ValueError:
                 # The sensitivity data does not match the point data, regenerate it
                 tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
+                sensitivity_files = glob.glob(os.path.join(iter_dir, "*sensitivity*"))
                 self._combine_sense_data(
                     tri_components_filepath,
+                    sensitivity_files=sensitivity_files,
                     match_target=self._matching_target,
                     tol_0=self._matching_tolerance,
                     max_tol=self._max_matching_tol,
@@ -755,6 +758,7 @@ class ShapeOpt:
     @staticmethod
     def _combine_sense_data(
         components_filepath: str,
+        sensitivity_files: List[str],
         match_target: float = 0.9,
         tol_0: float = 1e-5,
         max_tol: float = 1e-1,
@@ -773,7 +777,7 @@ class ShapeOpt:
 
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
-                dp_filenames=glob.glob("*sensitivity*"),
+                dp_filenames=sensitivity_files,
                 components_filepath=components_filepath,
                 match_tolerance=tol,
                 verbosity=0,
