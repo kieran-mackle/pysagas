@@ -41,6 +41,7 @@ class ShapeOpt:
         sim_dir_name: str = "simulation",
         basefiles_dir_name: str = "basefiles",
         c3d_logname: str = "C3D_log",
+        c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
     ) -> None:
         # Construct paths
@@ -71,7 +72,7 @@ class ShapeOpt:
         self.A_ref = A_ref
 
         # Create instance of Cart3D prepper
-        self._c3dprepper = C3DPrep(logfile=c3d_logname)
+        self._c3dprepper = C3DPrep(logfile=c3d_logname, info_file=c3d_info_file)
 
         # Other settings
         self._matching_tolerance = matching_tolerance
@@ -227,6 +228,7 @@ class ShapeOpt:
                 if not os.path.exists(self.sensitivity_filename):
                     self._combine_sense_data(
                         components_filepath,
+                        sensitivity_files=glob.glob("*sensitivity*"),
                         match_target=self._matching_target,
                         tol_0=self._matching_tolerance,
                         max_tol=self._max_matching_tol,
@@ -325,8 +327,10 @@ class ShapeOpt:
             except ValueError:
                 # The sensitivity data does not match the point data, regenerate it
                 tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
+                sensitivity_files = glob.glob(os.path.join(iter_dir, "*sensitivity*"))
                 self._combine_sense_data(
                     tri_components_filepath,
+                    sensitivity_files=sensitivity_files,
                     match_target=self._matching_target,
                     tol_0=self._matching_tolerance,
                     max_tol=self._max_matching_tol,
@@ -755,6 +759,7 @@ class ShapeOpt:
     @staticmethod
     def _combine_sense_data(
         components_filepath: str,
+        sensitivity_files: List[str],
         match_target: float = 0.9,
         tol_0: float = 1e-5,
         max_tol: float = 1e-1,
@@ -773,7 +778,7 @@ class ShapeOpt:
 
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
-                dp_filenames=glob.glob("*sensitivity*"),
+                dp_filenames=sensitivity_files,
                 components_filepath=components_filepath,
                 match_tolerance=tol,
                 verbosity=0,
@@ -835,9 +840,14 @@ class ShapeOpt:
 
 class C3DPrep:
     def __init__(
-        self, logfile, jitter_denom: float = 1000, rotation_attempts: int = 6
+        self,
+        logfile,
+        jitter_denom: float = 1000,
+        rotation_attempts: int = 6,
+        info_file: str = None,
     ) -> None:
         self._logfile = logfile
+        self._info = info_file if info_file is not None else self._logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
         self._rotation_attempts = rotation_attempts
 
@@ -1082,7 +1092,7 @@ class C3DPrep:
         return False
 
     def _log(self, msg: str):
-        with open(self._logfile, "a") as f:
+        with open(self._info, "a") as f:
             f.write("\n")
             f.write("C3DPrep: " + msg)
             f.write("\n")
