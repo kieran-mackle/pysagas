@@ -1011,6 +1011,7 @@ class C3DPrep:
         """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
+            self._log("Intersected components file already present.")
             return True
 
         # Continue
@@ -1018,23 +1019,26 @@ class C3DPrep:
         tri_files = self._run_stl2tri(stl_files)
 
         # First try intersect original files
+        self._log("Making first attempt to intersect components with no perturbations.")
         self._run_comp2tri(tri_files)
         self._run_intersect()
         successful = self._check_for_success()
         if successful:
+            self._log("Success.")
             return True
 
         # That failed, try jittering components
-        self._log("Attempting jittered components.")
+        self._log("Attempt failed, now attempting to intersect jittered components.")
         self._jitter_tri_files(tri_files)
         self._run_comp2tri(tri_files)
         self._run_intersect()
         successful = self._check_for_success()
         if successful:
+            self._log("Success.")
             return True
 
         # That failed, try arbitrary shifts away
-        self._log("Attempting arbitrary rotations.")
+        self._log("Attempt failed, now attempting random perturbations.")
         for attempt in range(self._rotation_attempts):
             # Define shifts
             x_shift = random() * 10  # Max of 10, min of 0
@@ -1054,6 +1058,7 @@ class C3DPrep:
 
             if attempt > 0:
                 # Also jitter
+                self._log(f"On attempt {attempt+1}, also applying random jitter.")
                 self._jitter_tri_files(tri_files)
 
             # Make intersect attempt
@@ -1063,6 +1068,17 @@ class C3DPrep:
 
             if successful:
                 # Move configuration back to original location
+                self._log(
+                    "Success. Now moving Components.i.tri back to original position."
+                )
+                self._rotate_all(
+                    tri_files=tri_files,
+                    x_rot=-x_rot,
+                    y_rot=-y_rot,
+                    z_rot=-z_rot,
+                    component="Components.i.tri",
+                    reverse=True,  # Perform in reverse order
+                )
                 self._shift_all(
                     tri_files=tri_files,
                     x_shift=x_shift,
@@ -1071,19 +1087,14 @@ class C3DPrep:
                     component="Components.i.tri",
                     reverse=True,
                 )
-                self._rotate_all(
-                    tri_files=tri_files,
-                    x_rot=-x_rot,
-                    y_rot=-y_rot,
-                    z_rot=-z_rot,
-                    component="Components.i.tri",
-                    reverse=True,
-                )
                 return True
 
             else:
                 # Need to reset tri files
-                self._log(f"Arbitrary shift attempt {attempt} failed.")
+                self._log(
+                    f"Random perturbation attempt {attempt+1} failed. Resetting "
+                    + ".tri files and attempting again."
+                )
                 tri_files = self._run_stl2tri(stl_files)
 
         # Finish log
@@ -1093,6 +1104,4 @@ class C3DPrep:
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
-            f.write("\n")
-            f.write("C3DPrep: " + msg)
-            f.write("\n")
+            f.write("\nC3DPrep: " + msg)
