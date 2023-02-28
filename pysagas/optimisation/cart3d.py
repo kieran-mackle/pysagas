@@ -200,6 +200,7 @@ class ShapeOpt:
         for attempt in range(N):
             # Run intersect
             if run_intersect:
+                self._c3dprepper._log(f"SHAPEOPT INTERSECT ATTEMPT {attempt+1}")
                 intersected = self._c3dprepper.intersect_stls()
 
             # Check for intersection
