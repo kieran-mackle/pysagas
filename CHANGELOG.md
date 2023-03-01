@@ -1,3 +1,25 @@
+## v0.8.0 (2023-03-01)
+
+### Feat
+
+- **ShapeOpt**: handle bad combined sens data
+- **ShapeOpt**: limit number of C3D restarts
+- **ShapeOpt**: added general C3D handling for 'ERROR'
+- **C3DPrep**: optionally specify number of rotation attempts before quitting
+- **ShapeOpt**: objective and jacobian provided by user callback function
+
+### Fix
+
+- **ShapeOpt**: explicitly specify sensitivity files when combining
+- **Cart3DWrapper**: raise exception when len(sensdata) != len(pointdata)
+- **C3DPrep**: apply reverse rotations upon intersection
+- **ShapeOpt**: added max_adapt arg back in after merge deletion
+
+### Refactor
+
+- **ShapeOpt**: attempt component intersection multiple times
+- **ShapeOpt**: retrieve vol and mass from properties dir
+
 ## v0.7.0 (2023-02-05)
 
 ### Feat
