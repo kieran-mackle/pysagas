@@ -159,10 +159,10 @@ PySAGAS is being developed along the following roadmap.
 * [x] Modularisation of models
 * [x] API for convenient, generalised usage
 * [x] Integration with [hypervehicle](https://github.com/kieran-mackle/hypervehicle) for shape optimisation
-* [ ] Moment sensitivities
-* [ ] Visualisation of sensitivities on mesh (cell-wise)
+* [x] Moment sensitivities
+* [x] Control over surface tags / faces being analysed
+* [x] Visualisation of sensitivities on mesh (cell-wise)
 * [ ] Implementation of higher-fidelity correction models
-* [ ] Control over surface tags / faces being analysed
 * [ ] CLI
 * [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
 

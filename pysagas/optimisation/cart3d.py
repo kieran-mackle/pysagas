@@ -7,9 +7,9 @@ import pandas as pd
 from random import random
 from pysagas import banner
 import matplotlib.pyplot as plt
-from typing import List, Dict, Optional
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
+from typing import List, Dict, Optional, Optional, Callable
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -24,6 +24,8 @@ class ShapeOpt:
         "Check cart3d.out in AD_A_J for more clues",
         "==> adjointErrorEst_quad failed again, status = 1",
         "ERROR: CUBES failed",
+        "ERROR: ADAPT failed with status = 1",
+        "ERROR",
     ]
 
     def __init__(
@@ -39,6 +41,7 @@ class ShapeOpt:
         sim_dir_name: str = "simulation",
         basefiles_dir_name: str = "basefiles",
         c3d_logname: str = "C3D_log",
+        c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
     ) -> None:
         # Construct paths
@@ -49,12 +52,18 @@ class ShapeOpt:
         self.sensitivity_filename = sensitivity_filename
         self.completion_filename = "ITERATION_COMPLETE"
         self.parameters_filename = "parameters.csv"
+        self.f_sense_filename = "F_sensitivities.csv"
         self.jacobian_filename = "jacobian.csv"
+        self.objective_filename = "objective.txt"
 
         self.generator = generator
 
         self.c3d_logname = c3d_logname
-        self.loads_key = None
+        self.minimum_volume = None
+
+        # Save callback function
+        # TODO - implement standard functions (eg. min drag, L/D, etc.)
+        self._obj_jac_cb = None
 
         # TODO - pass as flowstate
         self.rho_inf = rho_inf
@@ -63,10 +72,12 @@ class ShapeOpt:
         self.A_ref = A_ref
 
         # Create instance of Cart3D prepper
-        self._c3dprepper = C3DPrep(logfile=c3d_logname)
+        self._c3dprepper = C3DPrep(logfile=c3d_logname, info_file=c3d_info_file)
 
         # Other settings
         self._matching_tolerance = matching_tolerance
+        self._max_matching_tol = 0.1
+        self._matching_target = 0.9
 
     def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
@@ -124,11 +135,8 @@ class ShapeOpt:
                 x_older = pd.read_csv(x_older_path, index_col=0).values
 
                 # Also load previous jacobian
-                F_sense = pd.read_csv(jac_older_path, index_col=0)
-                coef_sens = F_sense / (
-                    0.5 * self.rho_inf * self.A_ref * self.V_inf**2
-                )
-                jac_older = coef_sens.loc[param_names]["dFx/dp"].values
+                jac_df = pd.read_csv(jac_older_path, index_col=0)["0"]
+                jac_older = jac_df.loc[param_names].values
 
         else:
             # First iteration
@@ -153,7 +161,7 @@ class ShapeOpt:
         os.chdir(iter_dir)
 
         # Check if sensitivity study has been run
-        sens_files = glob.glob(f"{iter_dir}/*sensitivity*")
+        sens_files = glob.glob(f"{iter_dir}{os.sep}*sensitivity*")
         if len(sens_files) == 0:
             print("Running sensitivity study.")
 
@@ -173,9 +181,7 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def _run_simulation(self, basefiles_dir: str, iter_dir: str):
-        target_adapt = self._infer_adapt()
-
+    def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
@@ -189,81 +195,108 @@ class ShapeOpt:
             intersected = True
             print("Intersected components located.")
 
-        # Run intersect
-        if run_intersect:
-            intersected = self._c3dprepper.intersect_stls()
+        # Attempt component intersection
+        N = 3
+        for attempt in range(N):
+            # Run intersect
+            if run_intersect:
+                self._c3dprepper._log(f"SHAPEOPT INTERSECT ATTEMPT {attempt+1}")
+                intersected = self._c3dprepper.intersect_stls()
 
-        # Check for intersection
-        if intersected:
-            # Prepare rest of sim
-            if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
-                # Prepare remaining C3D files
-                # TODO - should this be in _C3DPrep?
-                os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
+            # Check for intersection
+            if intersected:
+                # Prepare rest of sim
+                if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
+                    # Prepare remaining C3D files
+                    # TODO - should this be in _C3DPrep?
+                    os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
 
-                # Move files to simulation directory
-                os.system(
-                    f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
-                )
+                    # Move files to simulation directory
+                    os.system(
+                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                    )
 
-                # Copy sim files
-                os.system(
-                    f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
-                )
+                    # Copy sim files
+                    os.system(
+                        f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
+                    )
 
-                # Modify iteration aero.csh using max_adapt
-                if max_adapt:
-                    self._overwrite_adapt(sim_dir, max_adapt)
+                    # Modify iteration aero.csh using max_adapt
+                    if max_adapt:
+                        self._overwrite_adapt(sim_dir, max_adapt)
 
-            # Create all_components_sensitivity.csv
-            if not os.path.exists(self.sensitivity_filename):
-                self._combine_sense_data(
-                    components_filepath, tol_0=self._matching_tolerance
-                )
+                # Create all_components_sensitivity.csv
+                if not os.path.exists(self.sensitivity_filename):
+                    self._combine_sense_data(
+                        components_filepath,
+                        sensitivity_files=glob.glob("*sensitivity*"),
+                        match_target=self._matching_target,
+                        tol_0=self._matching_tolerance,
+                        max_tol=self._max_matching_tol,
+                    )
 
-            # Run Cart3D and await result
-            os.chdir(sim_dir)
-            target_adapt = self._infer_adapt(sim_dir)
-            c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
-            if not os.path.exists(c3d_donefile):
-                # Cart3D has not started / didn't finish
-                print(
-                    "\nStarting Cart3D, awaiting",
-                    os.sep.join(c3d_donefile.split(os.sep)[-6:]),
-                )
+                # Run Cart3D and await result
+                os.chdir(sim_dir)
+                target_adapt = self._infer_adapt(sim_dir)
+                c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                _restarts = 0
+                if not os.path.exists(c3d_donefile):
+                    # Cart3D has not started / didn't finish
+                    print(
+                        "\nStarting Cart3D, awaiting",
+                        os.sep.join(c3d_donefile.split(os.sep)[-6:]),
+                    )
 
-                _start = time.time()
-                os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
-                while not os.path.exists(c3d_donefile):
-                    # Wait...
-                    time.sleep(5)
+                    _start = time.time()
+                    os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                    while not os.path.exists(c3d_donefile):
+                        # Wait...
+                        time.sleep(5)
 
-                    # Check for C3D failure
-                    running, e = self._c3d_running()
+                        # Check for C3D failure
+                        running, e = self._c3d_running()
 
-                    if not running:
-                        # C3D failed, try restart it
-                        print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
-                        os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                        if not running:
+                            # C3D failed, try restart it
+                            if _restarts > 3:
+                                print("Too many Cart3D failures... Something is wrong.")
+                                return False
 
-                _end = time.time()
-                print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
+                            print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
+                            print("  Restarting Cart3D.")
+                            os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                            _restarts += 1
+
+                    _end = time.time()
+                    print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
+
+                else:
+                    # Cart3D already finished for this iteration
+                    print("Cart3D DONE file located.")
+
+                return True
 
             else:
-                # Cart3D already finished for this iteration
-                print("Cart3D DONE file located.")
+                if attempt < N - 1:
+                    print("Could not intersect components. Trying again.")
+                else:
+                    print("Could not intersect components. Exiting.")
+                    return False
 
-            complete = True
-
-        else:
-            print("Could not intersect components.")
-            complete = False
-
-        return complete
+    def _calculate_penalty(self):
+        """Calculate the objective function penalty due to constraint
+        violation of input parameters.
+        """
+        # TODO - implement
+        # What dimensionality should this take? Ideally same as the parameter
+        # space. But what if the constraint is on a non-controlled variable
+        # (eg. volume)? Then the penalty should be applied to all parameters?
+        # But what if one parameter influences the volume more than the
+        # others...
+        penalty = 0
+        return penalty
 
     def _process_results(self, param_names: List[str], iter_dir: str):
-        target_adapt = self._infer_adapt()
-
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         target_adapt = self._infer_adapt(sim_dir)
@@ -273,8 +306,8 @@ class ShapeOpt:
         loads_dict = self._read_c3d_loads(loads_filepath)
 
         # Approximate flow sensitivities
-        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
-        if not os.path.exists(jacobian_filepath):
+        f_sense_filename = os.path.join(iter_dir, self.f_sense_filename)
+        if not os.path.exists(f_sense_filename):
             # Filepaths
             sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
             components_filepath = os.path.join(
@@ -283,23 +316,47 @@ class ShapeOpt:
 
             # Create PySAGAS wrapper and run
             print("\nEvaluating sensitivities.")
-            wrapper = Cart3DWrapper(
-                a_inf=self.a_inf,
-                rho_inf=self.rho_inf,
-                sensitivity_filepath=sensitivity_filepath,
-                components_filepath=components_filepath,
-                verbosity=0,
-            )
-            F_sense, M_sense = wrapper.calculate()
+            try:
+                wrapper = Cart3DWrapper(
+                    a_inf=self.a_inf,
+                    rho_inf=self.rho_inf,
+                    sensitivity_filepath=sensitivity_filepath,
+                    components_filepath=components_filepath,
+                    verbosity=0,
+                )
+
+            except ValueError:
+                # The sensitivity data does not match the point data, regenerate it
+                tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
+                sensitivity_files = glob.glob(os.path.join(iter_dir, "*sensitivity*"))
+                self._combine_sense_data(
+                    tri_components_filepath,
+                    sensitivity_files=sensitivity_files,
+                    match_target=self._matching_target,
+                    tol_0=self._matching_tolerance,
+                    max_tol=self._max_matching_tol,
+                    outdir=iter_dir,
+                )
+
+                # Re-instantiate the wrapper
+                wrapper = Cart3DWrapper(
+                    a_inf=self.a_inf,
+                    rho_inf=self.rho_inf,
+                    sensitivity_filepath=sensitivity_filepath,
+                    components_filepath=components_filepath,
+                    verbosity=0,
+                )
+
+            F_sense, _ = wrapper.calculate()
             print("  Done.")
 
-            # Save Jacobian
-            F_sense.to_csv(jacobian_filepath)
+            # Save F_sense
+            F_sense.to_csv(f_sense_filename)
 
         else:
-            # Load Jacobian
-            F_sense = pd.read_csv(jacobian_filepath, index_col=0)
-            print("Jacobian loaded from file.")
+            # Load F_sense
+            F_sense = pd.read_csv(f_sense_filename, index_col=0)
+            print("Force sensitivities loaded from file.")
 
         # Non-dimensionalise
         coef_sens = F_sense / (0.5 * self.rho_inf * self.A_ref * self.V_inf**2)
@@ -308,12 +365,46 @@ class ShapeOpt:
         x_df = pd.read_csv(
             os.path.join(iter_dir, self.parameters_filename), index_col=0
         )
-
-        # Construct output (note sorting of coef_sens!)
-        # TODO - search for "dFx/dP" (jac_older) - this needs to be dynamic
-        obj = loads_dict[self.loads_key]
-        jac = coef_sens.loc[param_names]["dFx/dp"].values
         x = x_df.loc[param_names]["0"].values
+
+        # Get objective function and Jacobian
+        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
+        if not os.path.exists(jacobian_filepath):
+            # Load data
+            properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")[0]
+            scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
+            vm = pd.read_csv(
+                glob.glob(os.path.join(properties_dir, "*volmass.csv"))[0], index_col=0
+            )["0"]
+            vm_sens = pd.read_csv(
+                os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"), index_col=0
+            )[param_names]
+
+            # Call function
+            obj, jac_df = self._obj_jac_cb(
+                param_names=param_names,
+                coef_sens=coef_sens,
+                loads_dict=loads_dict,
+                volmass=vm,
+                volmass_sens=vm_sens,
+            )
+
+            # TODO - dimensionality check?
+
+            # Save
+            with open(os.path.join(iter_dir, self.objective_filename), "w") as f:
+                f.write(f"objective: {obj}\n")
+            jac_df.to_csv(jacobian_filepath)
+
+        else:
+            # Load from file
+            with open(os.path.join(iter_dir, self.objective_filename), "r") as f:
+                lines = f.readlines()
+                obj = float(lines[0].strip().split(":")[-1])
+            jac_df = pd.read_csv(jacobian_filepath, index_col=0)["0"]
+
+        # Extract ordered jacobian values
+        jac = jac_df.loc[param_names].values
 
         # TODO - also return step size?
 
@@ -388,9 +479,18 @@ class ShapeOpt:
             # Simulation completed successfully
             obj, jac, x = self._process_results(param_names, iter_dir)
 
+            # Calculate constraint penalty
+            # TODO - implement penalised constraints
+            penalty = self._calculate_penalty()
+
             # Create completion file
             pd.Series(
-                {"objective": obj, "gamma": gamma, **dict(zip(param_names, x))}
+                {
+                    "objective": obj,
+                    "penalty": penalty,
+                    "gamma": gamma,
+                    **dict(zip(param_names, x)),
+                }
             ).to_csv(os.path.join(iter_dir, self.completion_filename))
 
         else:
@@ -515,7 +615,9 @@ class ShapeOpt:
     def optimise(
         self,
         parameters: Dict[str, float],
-        loads_key: str = "C_D-entire",
+        obj_jac_cb: Callable,
+        constraints=None,
+        minimum_volume: float = None,
         warmstart: bool = True,
         max_step: float = None,
         adapt_schedule: Optional[List[int]] = None,
@@ -526,9 +628,14 @@ class ShapeOpt:
         ----------
         parameters: Dict[str, float]
             A dictionary of geometric parameters to pass to the vehicle generator.
-        loads_key : str, optional
-            The key to use for extracting the objective from the Cart3D loads file.
-            The default is 'C_D-entire'.
+        obj_jac_cb : Callable
+            The function to generate the objective function and the Jacobian.
+        constraints : optional
+            The constraints to be applied as penalties to the objective. Not
+            implemented yet.
+        minimum_volume : float, optional
+            The minimum allowable volume of the geometry. This will be enforced
+            via a penalty function on the objective. The default is None.
         warmstart : bool, optional
             If you are resuming a previous run, set to True. This will accelerate
             convergence by improving the step size. The default is True.
@@ -550,7 +657,10 @@ class ShapeOpt:
         print("\033[4mCart3D Shape Optimisation\033[0m".center(50, " "))
 
         # Save loadsCC key for objective function
-        self.loads_key = loads_key
+        self.minimum_volume = minimum_volume
+
+        # Save objective jacobian callback function
+        self._obj_jac_cb = obj_jac_cb
 
         # Run
         _opt_start = time.time()
@@ -650,34 +760,41 @@ class ShapeOpt:
     @staticmethod
     def _combine_sense_data(
         components_filepath: str,
+        sensitivity_files: List[str],
         match_target: float = 0.9,
         tol_0: float = 1e-5,
         max_tol: float = 1e-1,
+        outdir: Optional[str] = None,
     ):
         """Combine the component sensitivity data for intersected geometry."""
         match_frac = 0
         tol = tol_0
         while match_frac < match_target:
+            # Check tolerance
+            if tol > max_tol:
+                raise Exception(
+                    "Cannot combine sensitivity data (match fraction: "
+                    + f"{match_frac}, tolerance: {tol}, max tolerance: {max_tol})."
+                )
+
             # Run matching algorithm
             match_frac = append_sensitivities_to_tri(
-                dp_filenames=glob.glob("*sensitivity*"),
+                dp_filenames=sensitivity_files,
                 components_filepath=components_filepath,
                 match_tolerance=tol,
                 verbosity=0,
+                outdir=outdir,
             )
-
-            # Reduce matching tolerance
-            tol *= 10
-
-            # Check new tolerance
-            if tol > max_tol:
-                raise Exception("Cannot combine sensitivity data.")
 
             if match_frac < match_target:
                 print(
-                    f"Failed to combine sensitivity data ({100*match_frac:.02f}% match rate)."
+                    "Failed to combine sensitivity data "
+                    f"({100*match_frac:.02f}% match rate)."
                 )
-                print("  Reducing matching tolerance and trying again.")
+                print("  Increasing matching tolerance and trying again.")
+
+            # Increase matching tolerance
+            tol *= 10
 
         print("Component sensitivity data combined successfully.")
 
@@ -710,11 +827,30 @@ class ShapeOpt:
         ]
         return max(iteration_dirs) if iteration_dirs else 0
 
+    @staticmethod
+    def _body_to_aero(body_forces, aoa):
+        """Converts the body forces into aero forces."""
+        Cl_sens = body_forces["dFy/dp"] * np.cos(aoa) - body_forces["dFx/dp"] * np.sin(
+            aoa
+        )
+        Cd_sens = body_forces["dFy/dp"] * np.sin(aoa) + body_forces["dFx/dp"] * np.cos(
+            aoa
+        )
+        return Cl_sens, Cd_sens
+
 
 class C3DPrep:
-    def __init__(self, logfile, jitter_denom: float = 1000) -> None:
+    def __init__(
+        self,
+        logfile,
+        jitter_denom: float = 1000,
+        rotation_attempts: int = 6,
+        info_file: str = None,
+    ) -> None:
         self._logfile = logfile
+        self._info = info_file if info_file is not None else self._logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
+        self._rotation_attempts = rotation_attempts
 
     def _run_stl2tri(self, stl_files: list):
         tri_files = []
@@ -752,7 +888,7 @@ class C3DPrep:
             transform_files = [component]
 
         for file in transform_files:
-            prefix = file.split(".")[0]
+            prefix = ".".join(file.split(".")[:-1])
             if reverse:
                 os.system(
                     f"trix -x {-x_shift} -y {-y_shift} -z {-z_shift} -o {prefix} {file} >> {self._logfile} 2>&1"
@@ -787,7 +923,7 @@ class C3DPrep:
             transform_files = [component]
 
         for file in transform_files:
-            prefix = file.split(".")[0]
+            prefix = ".".join(file.split(".")[:-1])
 
             # Check order of operations
             if reverse:
@@ -876,6 +1012,7 @@ class C3DPrep:
         """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
+            self._log("Intersected components file already present.")
             return True
 
         # Continue
@@ -883,24 +1020,27 @@ class C3DPrep:
         tri_files = self._run_stl2tri(stl_files)
 
         # First try intersect original files
+        self._log("Making first attempt to intersect components with no perturbations.")
         self._run_comp2tri(tri_files)
         self._run_intersect()
         successful = self._check_for_success()
         if successful:
+            self._log("Success.")
             return True
 
         # That failed, try jittering components
-        self._log("Attempting jittered components.")
+        self._log("Attempt failed, now attempting to intersect jittered components.")
         self._jitter_tri_files(tri_files)
         self._run_comp2tri(tri_files)
         self._run_intersect()
         successful = self._check_for_success()
         if successful:
+            self._log("Success.")
             return True
 
         # That failed, try arbitrary shifts away
-        self._log("Attempting arbitrary rotations.")
-        for attempt in range(3):
+        self._log("Attempt failed, now attempting random perturbations.")
+        for attempt in range(self._rotation_attempts):
             # Define shifts
             x_shift = random() * 10  # Max of 10, min of 0
             y_shift = random() * 10  # Max of 10, min of 0
@@ -917,6 +1057,11 @@ class C3DPrep:
             )
             self._rotate_all(tri_files=tri_files, x_rot=x_rot, y_rot=y_rot, z_rot=z_rot)
 
+            if attempt > 0:
+                # Also jitter
+                self._log(f"On attempt {attempt+1}, also applying random jitter.")
+                self._jitter_tri_files(tri_files)
+
             # Make intersect attempt
             self._run_comp2tri(tri_files)
             self._run_intersect()
@@ -924,6 +1069,17 @@ class C3DPrep:
 
             if successful:
                 # Move configuration back to original location
+                self._log(
+                    "Success. Now moving Components.i.tri back to original position."
+                )
+                self._rotate_all(
+                    tri_files=tri_files,
+                    x_rot=-x_rot,
+                    y_rot=-y_rot,
+                    z_rot=-z_rot,
+                    component="Components.i.tri",
+                    reverse=True,  # Perform in reverse order
+                )
                 self._shift_all(
                     tri_files=tri_files,
                     x_shift=x_shift,
@@ -932,19 +1088,14 @@ class C3DPrep:
                     component="Components.i.tri",
                     reverse=True,
                 )
-                self._rotate_all(
-                    tri_files=tri_files,
-                    x_rot=x_rot,
-                    y_rot=y_rot,
-                    z_rot=z_rot,
-                    component="Components.i.tri",
-                    reverse=True,
-                )
-                if successful:
-                    return True
+                return True
+
             else:
                 # Need to reset tri files
-                self._log(f"Arbitrary shift attempt {attempt} failed.")
+                self._log(
+                    f"Random perturbation attempt {attempt+1} failed. Resetting "
+                    + ".tri files and attempting again."
+                )
                 tri_files = self._run_stl2tri(stl_files)
 
         # Finish log
@@ -953,7 +1104,5 @@ class C3DPrep:
         return False
 
     def _log(self, msg: str):
-        with open(self._logfile, "a") as f:
-            f.write("\n")
-            f.write(msg)
-            f.write("\n")
+        with open(self._info, "a") as f:
+            f.write("\nC3DPrep: " + msg)
