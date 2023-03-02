@@ -17,7 +17,6 @@ def run_main(data_path):
 
     # Filepaths
     sensitivity_filepath = os.path.join(data_path, "combined.csv")
-    components_filepath = os.path.join(data_path, "Components.i.plt")
 
     # Data
     pointdata = pd.read_csv(os.path.join(data_path, "points.csv"))
