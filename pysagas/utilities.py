@@ -52,6 +52,39 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
+def newtonian_cp(cell: Cell, v: Vector):
+    """Calculates all direction force sensitivities.
+
+    Parameters
+    ----------
+    cell : Cell
+        The cell.
+    flow : FlowState
+        The freestream flow condition.
+
+    Returns
+    --------
+    Cp : float
+        The non-dimensional pressure coefficient for the cell.
+    """
+    return 2 * np.dot(cell.n.vec, v.unit.vec) ** 2
+
+
+def newtonian_impact_solver(
+    cells: List[Cell], v: Vector, p_inf: float, q_inf: float
+) -> (Vector, np.array):
+    c_ps = [newtonian_cp(c, v) for c in cells]
+    ps = [c_p * q_inf + p_inf for c_p in c_ps]
+
+    # Calculate forces
+    fs = [c.n * ps[i] * c.A for i, c in enumerate(cells)]
+    net_force = Vector(0, 0, 0)
+    for f in fs:
+        net_force += f
+
+    return net_force, None
+
+
 def cell_dfdp(
     cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
 ) -> Tuple[np.array, np.array]:
