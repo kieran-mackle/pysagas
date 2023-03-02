@@ -72,7 +72,7 @@ def newtonian_cp(cell: Cell, v: Vector):
 
 def newtonian_impact_solver(
     cells: List[Cell], v: Vector, p_inf: float, q_inf: float
-) -> (Vector, np.array):
+) -> Tuple[Vector, np.array]:
     c_ps = [newtonian_cp(c, v) for c in cells]
     ps = [c_p * q_inf + p_inf for c_p in c_ps]
 
