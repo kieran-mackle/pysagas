@@ -507,6 +507,7 @@ class ShapeOpt:
         warmstart: bool = False,
         max_step: float = None,
         adapt_schedule: List[int] = None,
+        max_iterations: int = 10,
     ):
         """Performs a steepest descent search.
 
@@ -516,17 +517,21 @@ class ShapeOpt:
             A dictionary of geometric parameters to pass to the vehicle generator.
         warmstart : bool, optional
             If you are resuming a previous run, set to True. This will accelerate
-            convergence by improving the step size. The default is Fale.
+            convergence by improving the step size. The default is False.
+        max_step : float, optional
+            The maximum step size to use when stepping. The default is None.
+        adapt_schedule : List[int], optional
+            The schedule to follow for Cart3D adapt cycles per optimisation
+            iteraton. If None, the max_adapt parameter will be used from the
+            base aero.csh file. The default is None.
+        max_iterations : int, optional
+            The maximum number of iterations to perform. The default is 10.
         """
-
         param_names = list(parameters.keys())
         x0 = list(parameters.values())
 
         # Define initial step size
         gamma = 0.05
-
-        # Constrain iterations
-        max_iterations = 10
 
         # Iteration parameters
         i = self._get_last_iteration(self.working_dir)
@@ -621,6 +626,7 @@ class ShapeOpt:
         warmstart: bool = True,
         max_step: float = None,
         adapt_schedule: Optional[List[int]] = None,
+        max_iterations: int = 10,
     ):
         """Performs a steepest descent search.
 
@@ -649,6 +655,8 @@ class ShapeOpt:
             iterations, set adapt_schedule=[1, 3, 6]. If adapt_cycle=None, the
             adapt cycle will be static, to whatever it is set to in the basefile.
             The default is None.
+        max_iterations : int, optional
+            The maximum number of iterations to perform. The default is 10.
         """
         # TODO - allow automatic adpative adapt_schedule
 
@@ -670,6 +678,7 @@ class ShapeOpt:
                 warmstart=warmstart,
                 max_step=max_step,
                 adapt_schedule=adapt_schedule,
+                max_iterations=max_iterations,
             )
         except KeyboardInterrupt:
             # Change back to root dir and exit
