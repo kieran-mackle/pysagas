@@ -948,7 +948,7 @@ class ShapeOpt:
             for line in lines:
                 if line.find(match) != -1:
                     # Matched line
-                    return f"adapt{int(line.split('=')[-1]):02d}"
+                    return line
 
     @staticmethod
     def _get_last_iteration(working_dir: str) -> int:
