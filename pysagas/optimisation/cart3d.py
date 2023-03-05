@@ -4,6 +4,7 @@ import glob
 import shutil
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from random import random
 from pysagas import banner
 import matplotlib.pyplot as plt
@@ -81,7 +82,8 @@ class ShapeOpt:
 
     def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
-        problem.
+        problem. Checks to see which iteration the solver is up to,
+        and creates a new iteration directory if required.
         """
         # Initialise 'older' results
         x_older = None
@@ -157,6 +159,10 @@ class ShapeOpt:
     def _run_sensitivity_study(
         self, iter_dir: str, param_names: List[str], x: List[float]
     ):
+        """Runs the geometric sensitivity study for the specified iteration
+        directory iter_dir. This method will produce the base geometry STL
+        files, and the sensitivity files.
+        """
         # Change into iteration directory
         os.chdir(iter_dir)
 
@@ -181,7 +187,17 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
+    def _run_simulation(
+        self,
+        basefiles_dir: str,
+        iter_dir: str,
+        max_adapt: int = None,
+        warmstart: Optional[bool] = None,
+    ):
+        """Prepare and run the CFD simulation with Cart3D. The simulation will be
+        run in the 'simulation' subdirectory of the iteration directory. If warmstart
+        is True, the previous iteration will be used to warm-start the solution.
+        """
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
@@ -205,26 +221,6 @@ class ShapeOpt:
 
             # Check for intersection
             if intersected:
-                # Prepare rest of sim
-                if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
-                    # Prepare remaining C3D files
-                    # TODO - should this be in _C3DPrep?
-                    os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
-
-                    # Move files to simulation directory
-                    os.system(
-                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
-                    )
-
-                    # Copy sim files
-                    os.system(
-                        f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
-                    )
-
-                    # Modify iteration aero.csh using max_adapt
-                    if max_adapt:
-                        self._overwrite_adapt(sim_dir, max_adapt)
-
                 # Create all_components_sensitivity.csv
                 if not os.path.exists(self.sensitivity_filename):
                     self._combine_sense_data(
@@ -235,7 +231,36 @@ class ShapeOpt:
                         max_tol=self._max_matching_tol,
                     )
 
+                # Prepare rest of simulation directory
+                if not os.path.exists(os.path.join(sim_dir, "input.cntl")):
+                    # Prepare remaining C3D files
+                    if warmstart:
+                        # Copy necessary files from warm-start directory
+                        warm_iter_dir = (
+                            Path(iter_dir)
+                            .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
+                            .as_posix()
+                        )
+                        self.copy_warmstart_files(warm_iter_dir, iter_dir)
+
+                    else:
+                        # Move files to simulation directory
+                        self._c3dprepper.run_autoinputs()
+                        os.system(
+                            f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                        )
+
+                        # Copy sim files
+                        os.system(
+                            f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
+                        )
+
+                        # Modify iteration aero.csh using max_adapt
+                        if max_adapt:
+                            self._overwrite_adapt(sim_dir, max_adapt)
+
                 # Run Cart3D and await result
+                # TODO - below needs to be updated for warmstarting capabilities
                 os.chdir(sim_dir)
                 target_adapt = self._infer_adapt(sim_dir)
                 c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
@@ -821,6 +846,30 @@ class ShapeOpt:
         # No errors
         return True, None
 
+    def copy_warmstart_files(self, warm_iter_dir: str, new_iter_dir: str):
+        """Copies the files required to warm-start Cart3D."""
+        warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
+        new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
+        warmstart_files = [
+            "input.cntl",
+            "input.c3d",
+            "Config.xml",
+            "BEST/Mesh.c3d.Info",
+            "BEST/Mesh.mg.c3d",
+        ]
+        for file in warmstart_files:
+            shutil.copyfile(
+                os.path.join(warm_sim_dir, file),
+                os.path.join(new_sim_dir, file),
+            )
+
+        # Also copy checkpoint file
+        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        shutil.copyfile(
+            check_fp,
+            os.path.join(new_sim_dir, Path(check_fp).name),
+        )
+
     @staticmethod
     def _get_last_iteration(working_dir: str) -> int:
         """Returns the number of last iteration performed."""
@@ -1111,6 +1160,10 @@ class C3DPrep:
         self._log("Unsuccessful.")
 
         return False
+
+    def run_autoinputs(self):
+        """Runs autoInputs to create input.c3d."""
+        os.system(f"autoInputs -r 2 >> {self._logfile} 2>&1")
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
