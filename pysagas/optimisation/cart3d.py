@@ -4,12 +4,13 @@ import glob
 import shutil
 import numpy as np
 import pandas as pd
+from pathlib import Path
 from random import random
 from pysagas import banner
 import matplotlib.pyplot as plt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
-from typing import List, Dict, Optional, Optional, Callable
+from typing import List, Dict, Optional, Optional, Callable, Tuple
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -81,7 +82,8 @@ class ShapeOpt:
 
     def _prepare(self, warmstart: bool, param_names: List[str]):
         """Prepares the working directory for the optimisation
-        problem.
+        problem. Checks to see which iteration the solver is up to,
+        and creates a new iteration directory if required.
         """
         # Initialise 'older' results
         x_older = None
@@ -157,6 +159,10 @@ class ShapeOpt:
     def _run_sensitivity_study(
         self, iter_dir: str, param_names: List[str], x: List[float]
     ):
+        """Runs the geometric sensitivity study for the specified iteration
+        directory iter_dir. This method will produce the base geometry STL
+        files, and the sensitivity files.
+        """
         # Change into iteration directory
         os.chdir(iter_dir)
 
@@ -181,7 +187,17 @@ class ShapeOpt:
         else:
             print("Sensitivity study already run.")
 
-    def _run_simulation(self, basefiles_dir: str, iter_dir: str, max_adapt: int = None):
+    def _run_simulation(
+        self,
+        basefiles_dir: str,
+        iter_dir: str,
+        max_adapt: int = None,
+        warmstart: bool = False,
+    ):
+        """Prepare and run the CFD simulation with Cart3D. The simulation will be
+        run in the 'simulation' subdirectory of the iteration directory. If warmstart
+        is True, the previous iteration will be used to warm-start the solution.
+        """
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         run_intersect = False
@@ -195,6 +211,14 @@ class ShapeOpt:
             intersected = True
             print("Intersected components located.")
 
+        if warmstart:
+            # Create warm_iter_dir
+            warm_iter_dir = (
+                Path(iter_dir)
+                .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
+                .as_posix()
+            )
+
         # Attempt component intersection
         N = 3
         for attempt in range(N):
@@ -205,25 +229,28 @@ class ShapeOpt:
 
             # Check for intersection
             if intersected:
-                # Prepare rest of sim
-                if not os.path.exists(os.path.join(sim_dir, "aero.csh")):
+                # Prepare rest of simulation directory
+                if not os.path.exists(os.path.join(sim_dir, "input.cntl")):
                     # Prepare remaining C3D files
-                    # TODO - should this be in _C3DPrep?
-                    os.system(f"autoInputs -r 2 >> {self.c3d_logname} 2>&1")
+                    if warmstart:
+                        # Copy necessary files from warm-start directory
+                        self._copy_warmstart_files(warm_iter_dir, iter_dir)
 
-                    # Move files to simulation directory
-                    os.system(
-                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
-                    )
+                    else:
+                        # Move files to simulation directory (including Components.i.tri)
+                        self._c3dprepper.run_autoinputs()
+                        os.system(
+                            f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                        )
 
-                    # Copy sim files
-                    os.system(
-                        f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
-                    )
+                        # Copy sim files
+                        os.system(
+                            f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
+                        )
 
-                    # Modify iteration aero.csh using max_adapt
-                    if max_adapt:
-                        self._overwrite_adapt(sim_dir, max_adapt)
+                        # Modify iteration aero.csh using max_adapt
+                        if max_adapt:
+                            self._overwrite_adapt(sim_dir, max_adapt)
 
                 # Create all_components_sensitivity.csv
                 if not os.path.exists(self.sensitivity_filename):
@@ -235,10 +262,29 @@ class ShapeOpt:
                         max_tol=self._max_matching_tol,
                     )
 
+                # Override warmstart flag
+                if os.path.exists(os.path.join(sim_dir, "aero.csh")) and warmstart:
+                    # Warmstart set to True, but aero.csh file present
+                    warmstart = False
+
                 # Run Cart3D and await result
                 os.chdir(sim_dir)
-                target_adapt = self._infer_adapt(sim_dir)
-                c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                if warmstart:
+                    # Get checkpoint filename and Cart3D commands
+                    warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
+                    checkpoint_filename, commands = self._get_cart_commands(
+                        warm_sim_dir
+                    )
+
+                    # Define wait files and run command
+                    c3d_donefile = os.path.join(sim_dir, "loadsCC.dat")
+                    run_cmd = commands["flowCart"]
+
+                else:
+                    target_adapt = self._infer_adapt(sim_dir)
+                    c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                    run_cmd = "./aero.csh restart"
+
                 _restarts = 0
                 if not os.path.exists(c3d_donefile):
                     # Cart3D has not started / didn't finish
@@ -247,8 +293,19 @@ class ShapeOpt:
                         os.sep.join(c3d_donefile.split(os.sep)[-6:]),
                     )
 
+                    if warmstart:
+                        # Prepare for warm-start
+                        os.system(
+                            f"{commands['cubes']} -remesh >> {self.c3d_logname} 2>&1"
+                        )
+                        os.system(f"{commands['mgPrep']} >> {self.c3d_logname} 2>&1")
+
+                        os.system(
+                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {checkpoint_filename} -q2 Restart.file >> {self.c3d_logname} 2>&1"
+                        )
+
                     _start = time.time()
-                    os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                    os.system(f"{run_cmd} >> {self.c3d_logname} 2>&1")
                     while not os.path.exists(c3d_donefile):
                         # Wait...
                         time.sleep(5)
@@ -264,7 +321,7 @@ class ShapeOpt:
 
                             print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                             print("  Restarting Cart3D.")
-                            os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                            os.system(f"{run_cmd} >> {self.c3d_logname} 2>&1")
                             _restarts += 1
 
                     _end = time.time()
@@ -302,7 +359,16 @@ class ShapeOpt:
         target_adapt = self._infer_adapt(sim_dir)
 
         # Extract drag coefficient of geometry
-        loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
+        if target_adapt is not None:
+            # Adaptation simulation
+            loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
+            components_filepath = os.path.join(
+                sim_dir, target_adapt, "FLOW/Components.i.plt"
+            )
+        else:
+            # Possibly warm-started simulation
+            loads_filepath = os.path.join(sim_dir, "loadsCC.dat")
+            components_filepath = os.path.join(sim_dir, "Components.i.plt")
         loads_dict = self._read_c3d_loads(loads_filepath)
 
         # Approximate flow sensitivities
@@ -310,9 +376,6 @@ class ShapeOpt:
         if not os.path.exists(f_sense_filename):
             # Filepaths
             sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
-            components_filepath = os.path.join(
-                sim_dir, target_adapt, "FLOW/Components.i.plt"
-            )
 
             # Create PySAGAS wrapper and run
             print("\nEvaluating sensitivities.")
@@ -473,7 +536,12 @@ class ShapeOpt:
         self._run_sensitivity_study(iter_dir, param_names, x)
 
         # Run simulation
-        success = self._run_simulation(self.basefiles_dir, iter_dir, max_adapt)
+        success = self._run_simulation(
+            self.basefiles_dir,
+            iter_dir,
+            max_adapt,
+            bool((warmstart and x_older is not None)),
+        )
 
         if success:
             # Simulation completed successfully
@@ -740,12 +808,15 @@ class ShapeOpt:
         return df
 
     def _infer_adapt(self, sim_dir) -> str:
-        with open(f"{sim_dir}/aero.csh", "r") as f:
-            lines = f.readlines()
+        try:
+            with open(f"{sim_dir}/aero.csh", "r") as f:
+                lines = f.readlines()
 
-            for line in lines:
-                if line.find("set n_adapt_cycles") != -1:
-                    return f"adapt{int(line.split('=')[-1]):02d}"
+                for line in lines:
+                    if line.find("set n_adapt_cycles") != -1:
+                        return f"adapt{int(line.split('=')[-1]):02d}"
+        except FileNotFoundError:
+            return None
 
     def _overwrite_adapt(self, sim_dir: str, max_adapt: int) -> str:
         """Overwrites the adapt cycle in the iteration directory."""
@@ -820,6 +891,79 @@ class ShapeOpt:
 
         # No errors
         return True, None
+
+    def _copy_warmstart_files(self, warm_iter_dir: str, new_iter_dir: str):
+        """Copies the files required to warm-start Cart3D."""
+        warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
+        new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
+        warmstart_files = [
+            "input.cntl",
+            "input.c3d",
+            "Config.xml",
+        ]
+        softlinks = [
+            "BEST/Mesh.c3d.Info",
+            "BEST/Mesh.mg.c3d",
+        ]
+
+        # Copy sim files
+        for file in warmstart_files:
+            shutil.copyfile(
+                os.path.join(warm_sim_dir, file),
+                os.path.join(new_sim_dir, file),
+            )
+
+        # Create soft links to Mesh files
+        for file in softlinks:
+            os.symlink(
+                os.path.join(warm_sim_dir, file),
+                os.path.join(new_sim_dir, f"ref{Path(file).name}"),
+            )
+
+        # Move *.tri files
+        tri_files = glob.glob("*.tri")
+        for file in tri_files:
+            shutil.move(file, os.path.join(new_sim_dir, Path(file).name))
+
+        # Also copy checkpoint file
+        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        checkpoint_filename = Path(check_fp).name
+        shutil.copyfile(
+            check_fp,
+            os.path.join(new_sim_dir, checkpoint_filename),
+        )
+
+    @staticmethod
+    def _get_cart_commands(warm_sim_dir) -> Tuple[str, Dict[str, str]]:
+        """Returns the commands used in Cart3D."""
+        # Get checkpoint file
+        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        checkpoint_filename = Path(check_fp).name
+
+        # Fetch run commands
+        commands = {
+            "cubes": ShapeOpt._find_in_file(
+                os.path.join(warm_sim_dir, "BEST/Mesh.c3d.Info"), "====> cubes"
+            ).split("====> ")[-1],
+            "mgPrep": ShapeOpt._find_in_file(
+                os.path.join(warm_sim_dir, "BEST/cart3d.out"), "mgPrep"
+            ),
+            "flowCart": ShapeOpt._find_in_file(
+                os.path.join(warm_sim_dir, "BEST/FLOW/cart3d.out"), "flowCart"
+            ),
+        }
+        return checkpoint_filename, commands
+
+    @staticmethod
+    def _find_in_file(filepath: str, match: str) -> str:
+        """Find and return a line in a file by matching part of
+        the line with a string."""
+        with open(filepath, "r") as f:
+            lines = f.readlines()
+            for line in lines:
+                if line.find(match) != -1:
+                    # Matched line
+                    return line
 
     @staticmethod
     def _get_last_iteration(working_dir: str) -> int:
@@ -1111,6 +1255,10 @@ class C3DPrep:
         self._log("Unsuccessful.")
 
         return False
+
+    def run_autoinputs(self):
+        """Runs autoInputs to create input.c3d."""
+        os.system(f"autoInputs -r 2 >> {self._logfile} 2>&1")
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
