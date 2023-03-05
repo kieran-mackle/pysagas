@@ -359,7 +359,7 @@ class ShapeOpt:
         target_adapt = self._infer_adapt(sim_dir)
 
         # Extract drag coefficient of geometry
-        if os.path.exists(os.path.join(sim_dir, target_adapt, "FLOW")):
+        if target_adapt is not None:
             # Adaptation simulation
             loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
             components_filepath = os.path.join(
@@ -808,12 +808,15 @@ class ShapeOpt:
         return df
 
     def _infer_adapt(self, sim_dir) -> str:
-        with open(f"{sim_dir}/aero.csh", "r") as f:
-            lines = f.readlines()
+        try:
+            with open(f"{sim_dir}/aero.csh", "r") as f:
+                lines = f.readlines()
 
-            for line in lines:
-                if line.find("set n_adapt_cycles") != -1:
-                    return f"adapt{int(line.split('=')[-1]):02d}"
+                for line in lines:
+                    if line.find("set n_adapt_cycles") != -1:
+                        return f"adapt{int(line.split('=')[-1]):02d}"
+        except FileNotFoundError:
+            return None
 
     def _overwrite_adapt(self, sim_dir: str, max_adapt: int) -> str:
         """Overwrites the adapt cycle in the iteration directory."""
