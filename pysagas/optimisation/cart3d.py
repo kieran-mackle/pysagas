@@ -261,6 +261,11 @@ class ShapeOpt:
                         if max_adapt:
                             self._overwrite_adapt(sim_dir, max_adapt)
 
+                # Override warmstart flag
+                if os.path.exists(os.path.join(sim_dir, "aero.csh")) and warmstart:
+                    # Warmstart set to True, but aero.csh file present
+                    warmstart = False
+
                 # Run Cart3D and await result
                 os.chdir(sim_dir)
                 if warmstart:
@@ -275,8 +280,6 @@ class ShapeOpt:
 
                 _restarts = 0
                 if not os.path.exists(c3d_donefile):
-                    # TODO - need a way to distinguish between warmstart and restart...
-                    # Maybe check for aero.csh file
                     # Cart3D has not started / didn't finish
                     print(
                         "\nStarting Cart3D, awaiting",
