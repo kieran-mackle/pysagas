@@ -211,6 +211,14 @@ class ShapeOpt:
             intersected = True
             print("Intersected components located.")
 
+        if warmstart:
+            # Create warm_iter_dir
+            warm_iter_dir = (
+                Path(iter_dir)
+                .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
+                .as_posix()
+            )
+
         # Attempt component intersection
         N = 3
         for attempt in range(N):
@@ -226,14 +234,7 @@ class ShapeOpt:
                     # Prepare remaining C3D files
                     if warmstart:
                         # Copy necessary files from warm-start directory
-                        warm_iter_dir = (
-                            Path(iter_dir)
-                            .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
-                            .as_posix()
-                        )
-                        checkpoint_filename, commands = self._copy_warmstart_files(
-                            warm_iter_dir, iter_dir
-                        )
+                        self._copy_warmstart_files(warm_iter_dir, iter_dir)
 
                     else:
                         # Move files to simulation directory (including Components.i.tri)
@@ -269,10 +270,16 @@ class ShapeOpt:
                 # Run Cart3D and await result
                 os.chdir(sim_dir)
                 if warmstart:
+                    # Get checkpoint filename and Cart3D commands
+                    warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
+                    checkpoint_filename, commands = self._get_cart_commands(
+                        warm_sim_dir
+                    )
+
                     # Define wait files and run command
                     c3d_donefile = os.path.join(sim_dir, "loadsCC.dat")
-                    # TODO - need to handle the case when commands isn't defined here, due to restart
                     run_cmd = commands["flowCart"]
+
                 else:
                     target_adapt = self._infer_adapt(sim_dir)
                     c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
@@ -882,9 +889,7 @@ class ShapeOpt:
         # No errors
         return True, None
 
-    def _copy_warmstart_files(
-        self, warm_iter_dir: str, new_iter_dir: str
-    ) -> Tuple[str, Dict[str, str]]:
+    def _copy_warmstart_files(self, warm_iter_dir: str, new_iter_dir: str):
         """Copies the files required to warm-start Cart3D."""
         warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
         new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
@@ -925,15 +930,22 @@ class ShapeOpt:
             os.path.join(new_sim_dir, checkpoint_filename),
         )
 
+    @staticmethod
+    def _get_cart_commands(warm_sim_dir) -> Tuple[str, Dict[str, str]]:
+        """Returns the commands used in Cart3D."""
+        # Get checkpoint file
+        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        checkpoint_filename = Path(check_fp).name
+
         # Fetch run commands
         commands = {
-            "cubes": self._find_in_file(
+            "cubes": ShapeOpt._find_in_file(
                 os.path.join(warm_sim_dir, "BEST/Mesh.c3d.Info"), "====> cubes"
             ).split("====> ")[-1],
-            "mgPrep": self._find_in_file(
+            "mgPrep": ShapeOpt._find_in_file(
                 os.path.join(warm_sim_dir, "BEST/cart3d.out"), "mgPrep"
             ),
-            "flowCart": self._find_in_file(
+            "flowCart": ShapeOpt._find_in_file(
                 os.path.join(warm_sim_dir, "BEST/FLOW/cart3d.out"), "flowCart"
             ),
         }
