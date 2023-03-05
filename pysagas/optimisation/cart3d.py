@@ -192,7 +192,7 @@ class ShapeOpt:
         basefiles_dir: str,
         iter_dir: str,
         max_adapt: int = None,
-        warmstart: Optional[bool] = None,
+        warmstart: bool = False,
     ):
         """Prepare and run the CFD simulation with Cart3D. The simulation will be
         run in the 'simulation' subdirectory of the iteration directory. If warmstart
@@ -521,7 +521,9 @@ class ShapeOpt:
         self._run_sensitivity_study(iter_dir, param_names, x)
 
         # Run simulation
-        success = self._run_simulation(self.basefiles_dir, iter_dir, max_adapt)
+        success = self._run_simulation(
+            self.basefiles_dir, iter_dir, max_adapt, warmstart
+        )
 
         if success:
             # Simulation completed successfully
