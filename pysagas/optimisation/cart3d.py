@@ -10,7 +10,7 @@ from pysagas import banner
 import matplotlib.pyplot as plt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
-from typing import List, Dict, Optional, Optional, Callable
+from typing import List, Dict, Optional, Optional, Callable, Tuple
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -241,7 +241,9 @@ class ShapeOpt:
                             .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
                             .as_posix()
                         )
-                        commands = self._copy_warmstart_files(warm_iter_dir, iter_dir)
+                        checkpoint_filename, commands = self._copy_warmstart_files(
+                            warm_iter_dir, iter_dir
+                        )
 
                     else:
                         # Move files to simulation directory
@@ -262,20 +264,10 @@ class ShapeOpt:
                 # Run Cart3D and await result
                 os.chdir(sim_dir)
                 if warmstart:
-                    # Prepare for warm-start
-                    os.system(f"{commands['cubes']} -remesh >> {self.c3d_logname} 2>&1")
-                    os.system(f"{commands['mgPrep']} >> {self.c3d_logname} 2>&1")
-
-                    checkfile = ""
-                    refmesh = "refMesh.mg.c3d"
-                    os.system(
-                        f"mesh2mesh -v -m1 {refmesh} -m2 Mesh.mg.c3d -q1 {checkfile} -q2 Restart.file >> {self.c3d_logname} 2>&1"
-                    )
-
                     # Define wait files and run command
                     c3d_donefile = os.path.join(sim_dir, "loadsCC.dat")
+                    # TODO - need to handle the case when commands isn't defined here, due to restart
                     run_cmd = commands["flowCart"]
-
                 else:
                     target_adapt = self._infer_adapt(sim_dir)
                     c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
@@ -283,11 +275,24 @@ class ShapeOpt:
 
                 _restarts = 0
                 if not os.path.exists(c3d_donefile):
+                    # TODO - need a way to distinguish between warmstart and restart...
+                    # Maybe check for aero.csh file
                     # Cart3D has not started / didn't finish
                     print(
                         "\nStarting Cart3D, awaiting",
                         os.sep.join(c3d_donefile.split(os.sep)[-6:]),
                     )
+
+                    if warmstart:
+                        # Prepare for warm-start
+                        os.system(
+                            f"{commands['cubes']} -remesh >> {self.c3d_logname} 2>&1"
+                        )
+                        os.system(f"{commands['mgPrep']} >> {self.c3d_logname} 2>&1")
+
+                        os.system(
+                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {checkpoint_filename} -q2 Restart.file >> {self.c3d_logname} 2>&1"
+                        )
 
                     _start = time.time()
                     os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
@@ -522,7 +527,7 @@ class ShapeOpt:
 
         # Run simulation
         success = self._run_simulation(
-            self.basefiles_dir, iter_dir, max_adapt, warmstart
+            self.basefiles_dir, iter_dir, max_adapt, bool((warmstart and x_older))
         )
 
         if success:
@@ -873,7 +878,7 @@ class ShapeOpt:
 
     def _copy_warmstart_files(
         self, warm_iter_dir: str, new_iter_dir: str
-    ) -> Dict[str, str]:
+    ) -> Tuple[str, Dict[str, str]]:
         """Copies the files required to warm-start Cart3D."""
         warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
         new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
@@ -903,9 +908,10 @@ class ShapeOpt:
 
         # Also copy checkpoint file
         check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        checkpoint_filename = Path(check_fp).name
         shutil.copyfile(
             check_fp,
-            os.path.join(new_sim_dir, Path(check_fp).name),
+            os.path.join(new_sim_dir, checkpoint_filename),
         )
 
         # Fetch run commands
@@ -920,7 +926,7 @@ class ShapeOpt:
                 os.path.join(warm_sim_dir, "BEST/FLOW/cart3d.out"), "flowCart"
             ),
         }
-        return commands
+        return checkpoint_filename, commands
 
     @staticmethod
     def _find_in_file(filepath: str, match: str) -> str:
