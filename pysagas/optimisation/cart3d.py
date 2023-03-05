@@ -221,16 +221,6 @@ class ShapeOpt:
 
             # Check for intersection
             if intersected:
-                # Create all_components_sensitivity.csv
-                if not os.path.exists(self.sensitivity_filename):
-                    self._combine_sense_data(
-                        components_filepath,
-                        sensitivity_files=glob.glob("*sensitivity*"),
-                        match_target=self._matching_target,
-                        tol_0=self._matching_tolerance,
-                        max_tol=self._max_matching_tol,
-                    )
-
                 # Prepare rest of simulation directory
                 if not os.path.exists(os.path.join(sim_dir, "input.cntl")):
                     # Prepare remaining C3D files
@@ -246,7 +236,7 @@ class ShapeOpt:
                         )
 
                     else:
-                        # Move files to simulation directory
+                        # Move files to simulation directory (including Components.i.tri)
                         self._c3dprepper.run_autoinputs()
                         os.system(
                             f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
@@ -260,6 +250,16 @@ class ShapeOpt:
                         # Modify iteration aero.csh using max_adapt
                         if max_adapt:
                             self._overwrite_adapt(sim_dir, max_adapt)
+
+                # Create all_components_sensitivity.csv
+                if not os.path.exists(self.sensitivity_filename):
+                    self._combine_sense_data(
+                        components_filepath,
+                        sensitivity_files=glob.glob("*sensitivity*"),
+                        match_target=self._matching_target,
+                        tol_0=self._matching_tolerance,
+                        max_tol=self._max_matching_tol,
+                    )
 
                 # Override warmstart flag
                 if os.path.exists(os.path.join(sim_dir, "aero.csh")) and warmstart:
@@ -911,6 +911,11 @@ class ShapeOpt:
                 os.path.join(warm_sim_dir, file),
                 os.path.join(new_sim_dir, f"ref{Path(file).name}"),
             )
+
+        # Move *.tri files
+        tri_files = glob.glob("*.tri")
+        for file in tri_files:
+            shutil.move(file, os.path.join(new_sim_dir, Path(file).name))
 
         # Also copy checkpoint file
         check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
