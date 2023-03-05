@@ -527,7 +527,10 @@ class ShapeOpt:
 
         # Run simulation
         success = self._run_simulation(
-            self.basefiles_dir, iter_dir, max_adapt, bool((warmstart and x_older))
+            self.basefiles_dir,
+            iter_dir,
+            max_adapt,
+            bool((warmstart and x_older is not None)),
         )
 
         if success:
