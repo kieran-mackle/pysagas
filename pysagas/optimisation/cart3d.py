@@ -305,7 +305,7 @@ class ShapeOpt:
                         )
 
                     _start = time.time()
-                    os.system(f"./aero.csh restart >> {self.c3d_logname} 2>&1")
+                    os.system(f"{run_cmd} >> {self.c3d_logname} 2>&1")
                     while not os.path.exists(c3d_donefile):
                         # Wait...
                         time.sleep(5)
