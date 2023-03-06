@@ -19,6 +19,7 @@ def get_version(rel_path):
 
 
 # Define extra dependencies
+cli_dep = ["click >= 8.1.3"]
 dev_dep = ["pytest >= 7.1.1", "black >= 22.10.0", "commitizen >= 2.35.0", "pre-commit"]
 docs_dep = [
     "sphinx == 5.3.0",
@@ -28,7 +29,7 @@ docs_dep = [
     "myst-parser >= 0.18.1",
     "sphinx-autobuild >= 2021.3.14",
 ]
-all_dep = dev_dep + docs_dep
+all_dep = cli_dep + dev_dep + docs_dep
 
 # Load README
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -60,6 +61,7 @@ setuptools.setup(
         "art >= 5.8",
     ],
     extras_require={
+        "cli": cli_dep,
         "dev": dev_dep,
         "all": all_dep,
     },
@@ -67,4 +69,9 @@ setuptools.setup(
         "setuptools_git",
         "setuptools_scm",
     ],
+    entry_points={
+        "console_scripts": [
+            "pysagas = pysagas.bin.cli:cli",
+        ],
+    },
 )
