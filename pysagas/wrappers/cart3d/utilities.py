@@ -1,7 +1,7 @@
 import os
 import sys
-import shutil
 import pandas as pd
+from tqdm import tqdm
 from typing import Tuple, List
 from pysagas import Cell, Vector
 import xml.etree.ElementTree as ET
@@ -212,6 +212,7 @@ def process_components_file(
 
 def parse_tri_file(
     tri_filepath: str = "Components.i.tri",
+    verbosity: int = 1,
 ) -> List[Cell]:
     """Appends shape sensitivity data to .i.tri file.
 
@@ -220,6 +221,8 @@ def parse_tri_file(
     tri_filepath : str, optional
         The filepath to the intersected components file. The
         default is Components.i.tri.
+    verbosity : int, optional
+        The verbosity of the code. The defualt is 1.
 
     Returns
     ---------
@@ -246,9 +249,25 @@ def parse_tri_file(
     points_df = pd.DataFrame(points_data_list, columns=["x", "y", "z"]).dropna()
 
     cells = []
-    for cell_no, vertex_idxs in enumerate(cells_data_list):
+    if verbosity > 0:
+        print("Transcribing cells:")
+        pbar = tqdm(
+            total=len(cells_data_list),
+            position=0,
+            leave=True,
+            desc="  Cell transcription progress",
+        )
+    for vertex_idxs in cells_data_list:
         vertices = [Vector.from_coordinates(points_data_list[i]) for i in vertex_idxs]
         cell = Cell.from_points(vertices)
         cells.append(cell)
+
+        # Update progress bar
+        if verbosity > 0:
+            pbar.update(1)
+
+    if verbosity > 0:
+        pbar.close()
+        print("Done.")
 
     return cells
