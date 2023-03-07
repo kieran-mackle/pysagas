@@ -293,6 +293,7 @@ class ShapeOpt:
 
                     if warmstart:
                         # Prepare for warm-start
+                        # TODO - these aren't being written to log!
                         os.system(
                             f"{commands['cubes']} -remesh >> {self.c3d_logname} 2>&1"
                         )
@@ -919,16 +920,25 @@ class ShapeOpt:
     @staticmethod
     def _get_cart_commands(warm_sim_dir) -> Dict[str, str]:
         """Returns the commands used in Cart3D."""
+        # Check if warmstart simulation directory ran adaptations
+        if os.path.exists(os.path.join(warm_sim_dir, "aero.csh")):
+            prefix = "BEST/"
+            flowcart_outfile = "BEST/FLOW/cart3d.out"
+        else:
+            prefix = ""
+            # TODO - flowcart_outfile below not correct
+            flowcart_outfile = "BEST/FLOW/cart3d.out"
+
         # Fetch run commands
         commands = {
             "cubes": ShapeOpt._find_in_file(
-                os.path.join(warm_sim_dir, "BEST/Mesh.c3d.Info"), "====> cubes"
+                os.path.join(warm_sim_dir, f"{prefix}Mesh.c3d.Info"), "====> cubes"
             ).split("====> ")[-1],
             "mgPrep": ShapeOpt._find_in_file(
-                os.path.join(warm_sim_dir, "BEST/cart3d.out"), "mgPrep"
+                os.path.join(warm_sim_dir, f"{prefix}cart3d.out"), "mgPrep"
             ),
             "flowCart": ShapeOpt._find_in_file(
-                os.path.join(warm_sim_dir, "BEST/FLOW/cart3d.out"), "flowCart"
+                os.path.join(warm_sim_dir, flowcart_outfile), "flowCart"
             ),
         }
         return commands
