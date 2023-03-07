@@ -2,6 +2,7 @@ import os
 import time
 import glob
 import shutil
+import subprocess
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -293,18 +294,31 @@ class ShapeOpt:
 
                     if warmstart:
                         # Prepare for warm-start
-                        # TODO - these aren't being written to log!
-                        os.system(
-                            f"{commands['cubes']} -remesh >> {self.c3d_logname} 2>&1"
+                        f = open(self.c3d_logname, "w")
+                        subprocess.run(
+                            f"{commands['cubes']} -remesh",
+                            shell=True,
+                            stdout=f,
+                            stderr=subprocess.STDOUT,
                         )
-                        os.system(f"{commands['mgPrep']} >> {self.c3d_logname} 2>&1")
-
-                        os.system(
-                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file >> {self.c3d_logname} 2>&1"
+                        subprocess.run(
+                            f"{commands['mgPrep']}",
+                            shell=True,
+                            stdout=f,
+                            stderr=subprocess.STDOUT,
                         )
+                        subprocess.run(
+                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file",
+                            shell=True,
+                            stdout=f,
+                            stderr=subprocess.STDOUT,
+                        )
+                        f.close()
 
                     _start = time.time()
-                    os.system(f"{run_cmd} >> {self.c3d_logname} 2>&1")
+                    subprocess.run(
+                        run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
+                    )
                     while not os.path.exists(c3d_donefile):
                         # Wait...
                         time.sleep(5)
@@ -320,7 +334,9 @@ class ShapeOpt:
 
                             print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                             print("  Restarting Cart3D.")
-                            os.system(f"{run_cmd} >> {self.c3d_logname} 2>&1")
+                            subprocess.run(
+                                run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
+                            )
                             _restarts += 1
 
                     _end = time.time()
@@ -917,8 +933,7 @@ class ShapeOpt:
             os.path.join(new_sim_dir, self._c3d_checkpoint_rename),
         )
 
-    @staticmethod
-    def _get_cart_commands(warm_sim_dir) -> Dict[str, str]:
+    def _get_cart_commands(self, warm_sim_dir) -> Dict[str, str]:
         """Returns the commands used in Cart3D."""
         # Check if warmstart simulation directory ran adaptations
         if os.path.exists(os.path.join(warm_sim_dir, "aero.csh")):
@@ -926,8 +941,7 @@ class ShapeOpt:
             flowcart_outfile = "BEST/FLOW/cart3d.out"
         else:
             prefix = ""
-            # TODO - flowcart_outfile below not correct
-            flowcart_outfile = "BEST/FLOW/cart3d.out"
+            flowcart_outfile = self.c3d_logname
 
         # Fetch run commands
         commands = {
