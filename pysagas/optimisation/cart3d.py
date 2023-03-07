@@ -503,6 +503,7 @@ class ShapeOpt:
         x: List[float],
         param_names: List[str],
         warmstart: bool,
+        prep_warmstart: bool,
         gamma: float,
         max_adapt: int = None,
     ):
@@ -516,7 +517,7 @@ class ShapeOpt:
             Return the objective function and gradient.
         """
         # Prepare this iteration
-        iter_dir, x_older, jac_older = self._prepare(warmstart, param_names)
+        iter_dir, x_older, jac_older = self._prepare(prep_warmstart, param_names)
 
         # Run the sensitivity study
         self._run_sensitivity_study(iter_dir, param_names, x)
@@ -589,6 +590,7 @@ class ShapeOpt:
         obj_prev = 10 * tolerance
         bailout = False
         max_step = max_step if max_step is not None else 1e9
+        prep_warmstart = True
 
         while change > tolerance:
             if i + 1 > max_iterations:
@@ -611,6 +613,7 @@ class ShapeOpt:
                 x=x0,
                 param_names=param_names,
                 warmstart=warmstart,
+                prep_warmstart=prep_warmstart,
                 gamma=gamma,
                 max_adapt=max_adapt,
             )
@@ -622,6 +625,7 @@ class ShapeOpt:
                 break
 
             # Calculate step size
+            # TODO - use line search
             if x_older is not None:
                 _gamma = (
                     np.linalg.norm((x_old - x_older) * (jac - jac_older))
@@ -644,7 +648,7 @@ class ShapeOpt:
             # TODO - detect divergence?
 
             # Break out of warmstart routine
-            warmstart = False
+            prep_warmstart = False
 
             # Update iteration
             _end = time.time()
