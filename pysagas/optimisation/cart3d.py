@@ -294,36 +294,34 @@ class ShapeOpt:
 
                     if warmstart:
                         # Prepare for warm-start
-                        f = open(self.c3d_logname, "a")
-                        f.write(f"\nRunning cubes: {commands['cubes']}")
-                        subprocess.run(
-                            f"{commands['cubes']} -remesh",
-                            shell=True,
-                            stdout=f,
-                            stderr=subprocess.STDOUT,
-                        )
-                        f.write(f"\nRunning mgPrep: {commands['mgPrep']}")
-                        subprocess.run(
-                            f"{commands['mgPrep']}",
-                            shell=True,
-                            stdout=f,
-                            stderr=subprocess.STDOUT,
-                        )
-                        f.write(f"\nRunning mesh2mesh...")
-                        subprocess.run(
-                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file",
-                            shell=True,
-                            stdout=f,
-                            stderr=subprocess.STDOUT,
-                        )
-                        f.close()
+                        with open(self.c3d_logname, "a") as f:
+                            f.write(f"\nRunning cubes: {commands['cubes']}")
+                            subprocess.run(
+                                f"{commands['cubes']} -remesh",
+                                shell=True,
+                                stdout=f,
+                                stderr=subprocess.STDOUT,
+                            )
+                            f.write(f"\n{commands['mgPrep']}")
+                            subprocess.run(
+                                f"{commands['mgPrep']}",
+                                shell=True,
+                                stdout=f,
+                                stderr=subprocess.STDOUT,
+                            )
+                            f.write(f"\nRunning mesh2mesh...")
+                            subprocess.run(
+                                f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file",
+                                shell=True,
+                                stdout=f,
+                                stderr=subprocess.STDOUT,
+                            )
 
                     _start = time.time()
-                    f = open(self.c3d_logname, "a")
-                    subprocess.run(
-                        run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
-                    )
-                    f.close()
+                    with open(self.c3d_logname, "a") as f:
+                        subprocess.run(
+                            run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
+                        )
                     while not os.path.exists(c3d_donefile):
                         # Wait...
                         time.sleep(5)
@@ -976,6 +974,9 @@ class ShapeOpt:
                 if line.find(match) != -1:
                     # Matched line
                     return line
+
+        # If no match has been found by now, raise exception
+        raise IOError(f"Cannot find '{match}' in {filepath}.")
 
     @staticmethod
     def _get_last_iteration(working_dir: str) -> int:
