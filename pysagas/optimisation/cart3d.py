@@ -295,18 +295,21 @@ class ShapeOpt:
                     if warmstart:
                         # Prepare for warm-start
                         f = open(self.c3d_logname, "a")
+                        f.write(f"\nRunning cubes: {commands['cubes']}")
                         subprocess.run(
                             f"{commands['cubes']} -remesh",
                             shell=True,
                             stdout=f,
                             stderr=subprocess.STDOUT,
                         )
+                        f.write(f"\nRunning mgPrep: {commands['mgPrep']}")
                         subprocess.run(
                             f"{commands['mgPrep']}",
                             shell=True,
                             stdout=f,
                             stderr=subprocess.STDOUT,
                         )
+                        f.write(f"\nRunning mesh2mesh...")
                         subprocess.run(
                             f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file",
                             shell=True,
