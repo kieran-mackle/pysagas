@@ -294,7 +294,7 @@ class ShapeOpt:
 
                     if warmstart:
                         # Prepare for warm-start
-                        f = open(self.c3d_logname, "w")
+                        f = open(self.c3d_logname, "a")
                         subprocess.run(
                             f"{commands['cubes']} -remesh",
                             shell=True,
@@ -316,7 +316,7 @@ class ShapeOpt:
                         f.close()
 
                     _start = time.time()
-                    f = open(self.c3d_logname, "w")
+                    f = open(self.c3d_logname, "a")
                     subprocess.run(
                         run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
                     )
@@ -336,7 +336,7 @@ class ShapeOpt:
 
                             print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                             print("  Restarting Cart3D.")
-                            f = open(self.c3d_logname, "w")
+                            f = open(self.c3d_logname, "a")
                             subprocess.run(
                                 run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
                             )
