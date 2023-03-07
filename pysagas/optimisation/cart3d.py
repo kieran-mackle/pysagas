@@ -939,9 +939,11 @@ class ShapeOpt:
         if os.path.exists(os.path.join(warm_sim_dir, "aero.csh")):
             prefix = "BEST/"
             flowcart_outfile = "BEST/FLOW/cart3d.out"
+            mgprep_outfile = "BEST/cart3d.out"
         else:
             prefix = ""
             flowcart_outfile = self.c3d_logname
+            mgprep_outfile = self.c3d_logname
 
         # Fetch run commands
         commands = {
@@ -949,7 +951,7 @@ class ShapeOpt:
                 os.path.join(warm_sim_dir, f"{prefix}Mesh.c3d.Info"), "====> cubes"
             ).split("====> ")[-1],
             "mgPrep": ShapeOpt._find_in_file(
-                os.path.join(warm_sim_dir, f"{prefix}cart3d.out"), "mgPrep"
+                os.path.join(warm_sim_dir, mgprep_outfile), "mgPrep"
             ),
             "flowCart": ShapeOpt._find_in_file(
                 os.path.join(warm_sim_dir, flowcart_outfile), "flowCart"
