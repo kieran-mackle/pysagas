@@ -56,6 +56,7 @@ class ShapeOpt:
         self.f_sense_filename = "F_sensitivities.csv"
         self.jacobian_filename = "jacobian.csv"
         self.objective_filename = "objective.txt"
+        self._c3d_checkpoint_rename = "ref_checkpoint"
 
         self.generator = generator
 
@@ -271,9 +272,7 @@ class ShapeOpt:
                 if warmstart:
                     # Get checkpoint filename and Cart3D commands
                     warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
-                    checkpoint_filename, commands = self._get_cart_commands(
-                        warm_sim_dir
-                    )
+                    commands = self._get_cart_commands(warm_sim_dir)
 
                     # Define wait files and run command
                     c3d_donefile = os.path.join(sim_dir, "loadsCC.dat")
@@ -300,7 +299,7 @@ class ShapeOpt:
                         os.system(f"{commands['mgPrep']} >> {self.c3d_logname} 2>&1")
 
                         os.system(
-                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {checkpoint_filename} -q2 Restart.file >> {self.c3d_logname} 2>&1"
+                            f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file >> {self.c3d_logname} 2>&1"
                         )
 
                     _start = time.time()
@@ -874,17 +873,21 @@ class ShapeOpt:
         """Copies the files required to warm-start Cart3D."""
         warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
         new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
+
+        # Check if warmstart simulation directory ran adaptations
+        if os.path.exists(warm_sim_dir, "aero.csh"):
+            prefix = "BEST/"
+            check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
+        else:
+            prefix = ""
+            check_fp = glob.glob(os.path.join(warm_sim_dir, "check.*"))[0]
+
+        # Copy sim files
         warmstart_files = [
             "input.cntl",
             "input.c3d",
             "Config.xml",
         ]
-        softlinks = [
-            "BEST/Mesh.c3d.Info",
-            "BEST/Mesh.mg.c3d",
-        ]
-
-        # Copy sim files
         for file in warmstart_files:
             shutil.copyfile(
                 os.path.join(warm_sim_dir, file),
@@ -892,6 +895,10 @@ class ShapeOpt:
             )
 
         # Create soft links to Mesh files
+        softlinks = [
+            f"{prefix}Mesh.c3d.Info",
+            f"{prefix}Mesh.mg.c3d",
+        ]
         for file in softlinks:
             os.symlink(
                 os.path.join(warm_sim_dir, file),
@@ -904,20 +911,14 @@ class ShapeOpt:
             shutil.move(file, os.path.join(new_sim_dir, Path(file).name))
 
         # Also copy checkpoint file
-        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
-        checkpoint_filename = Path(check_fp).name
         shutil.copyfile(
             check_fp,
-            os.path.join(new_sim_dir, checkpoint_filename),
+            os.path.join(new_sim_dir, self._c3d_checkpoint_rename),
         )
 
     @staticmethod
-    def _get_cart_commands(warm_sim_dir) -> Tuple[str, Dict[str, str]]:
+    def _get_cart_commands(warm_sim_dir) -> Dict[str, str]:
         """Returns the commands used in Cart3D."""
-        # Get checkpoint file
-        check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
-        checkpoint_filename = Path(check_fp).name
-
         # Fetch run commands
         commands = {
             "cubes": ShapeOpt._find_in_file(
@@ -930,7 +931,7 @@ class ShapeOpt:
                 os.path.join(warm_sim_dir, "BEST/FLOW/cart3d.out"), "flowCart"
             ),
         }
-        return checkpoint_filename, commands
+        return commands
 
     @staticmethod
     def _find_in_file(filepath: str, match: str) -> str:
