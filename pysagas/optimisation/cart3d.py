@@ -60,7 +60,6 @@ class ShapeOpt:
         self.generator = generator
 
         self.c3d_logname = c3d_logname
-        self.minimum_volume = None
 
         # Save callback function
         # TODO - implement standard functions (eg. min drag, L/D, etc.)
@@ -340,19 +339,6 @@ class ShapeOpt:
                     print("Could not intersect components. Exiting.")
                     return False
 
-    def _calculate_penalty(self):
-        """Calculate the objective function penalty due to constraint
-        violation of input parameters.
-        """
-        # TODO - implement
-        # What dimensionality should this take? Ideally same as the parameter
-        # space. But what if the constraint is on a non-controlled variable
-        # (eg. volume)? Then the penalty should be applied to all parameters?
-        # But what if one parameter influences the volume more than the
-        # others...
-        penalty = 0
-        return penalty
-
     def _process_results(self, param_names: List[str], iter_dir: str):
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
@@ -547,15 +533,10 @@ class ShapeOpt:
             # Simulation completed successfully
             obj, jac, x = self._process_results(param_names, iter_dir)
 
-            # Calculate constraint penalty
-            # TODO - implement penalised constraints
-            penalty = self._calculate_penalty()
-
             # Create completion file
             pd.Series(
                 {
                     "objective": obj,
-                    "penalty": penalty,
                     "gamma": gamma,
                     **dict(zip(param_names, x)),
                 }
@@ -690,7 +671,6 @@ class ShapeOpt:
         parameters: Dict[str, float],
         obj_jac_cb: Callable,
         constraints=None,
-        minimum_volume: float = None,
         warmstart: bool = True,
         max_step: float = None,
         adapt_schedule: Optional[List[int]] = None,
@@ -707,9 +687,6 @@ class ShapeOpt:
         constraints : optional
             The constraints to be applied as penalties to the objective. Not
             implemented yet.
-        minimum_volume : float, optional
-            The minimum allowable volume of the geometry. This will be enforced
-            via a penalty function on the objective. The default is None.
         warmstart : bool, optional
             If you are resuming a previous run, set to True. This will accelerate
             convergence by improving the step size. The default is True.
@@ -731,9 +708,6 @@ class ShapeOpt:
         # Print banner
         banner()
         print("\033[4mCart3D Shape Optimisation\033[0m".center(50, " "))
-
-        # Save loadsCC key for objective function
-        self.minimum_volume = minimum_volume
 
         # Save objective jacobian callback function
         self._obj_jac_cb = obj_jac_cb
