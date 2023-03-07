@@ -316,9 +316,11 @@ class ShapeOpt:
                         f.close()
 
                     _start = time.time()
+                    f = open(self.c3d_logname, "w")
                     subprocess.run(
                         run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
                     )
+                    f.close()
                     while not os.path.exists(c3d_donefile):
                         # Wait...
                         time.sleep(5)
@@ -334,9 +336,11 @@ class ShapeOpt:
 
                             print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
                             print("  Restarting Cart3D.")
+                            f = open(self.c3d_logname, "w")
                             subprocess.run(
                                 run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
                             )
+                            f.close()
                             _restarts += 1
 
                     _end = time.time()
