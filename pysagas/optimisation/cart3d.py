@@ -875,7 +875,7 @@ class ShapeOpt:
         new_sim_dir = os.path.join(new_iter_dir, self.sim_dir_name)
 
         # Check if warmstart simulation directory ran adaptations
-        if os.path.exists(warm_sim_dir, "aero.csh"):
+        if os.path.exists(os.path.join(warm_sim_dir, "aero.csh")):
             prefix = "BEST/"
             check_fp = glob.glob(os.path.join(warm_sim_dir, "BEST/FLOW/check.*"))[0]
         else:
