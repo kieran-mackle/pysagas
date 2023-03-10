@@ -441,14 +441,21 @@ class ShapeOpt:
         jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
         if not os.path.exists(jacobian_filepath):
             # Load data
-            properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")[0]
-            scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
-            vm = pd.read_csv(
-                glob.glob(os.path.join(properties_dir, "*volmass.csv"))[0], index_col=0
-            )["0"]
-            vm_sens = pd.read_csv(
-                os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"), index_col=0
-            )[param_names]
+            properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")
+            if properties_dir:
+                scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
+                vm = pd.read_csv(
+                    glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+                    index_col=0,
+                )["0"]
+                vm_sens = pd.read_csv(
+                    os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
+                    index_col=0,
+                )[param_names]
+            else:
+                # No properties data found
+                vm = None
+                vm_sens = None
 
             # Call function
             obj, jac_df = self._obj_jac_cb(
