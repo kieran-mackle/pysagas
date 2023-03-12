@@ -360,7 +360,7 @@ class ShapeOpt:
                     print("Could not intersect components. Exiting.")
                     return False
 
-    def _process_results(self, param_names: List[str], iter_dir: str):
+    def _process_results(self, parameters: Dict[str, float], iter_dir: str):
         # Construct simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
         target_adapt = self._infer_adapt(sim_dir)
@@ -435,7 +435,7 @@ class ShapeOpt:
         x_df = pd.read_csv(
             os.path.join(iter_dir, self.parameters_filename), index_col=0
         )
-        x = x_df.loc[param_names]["0"].values
+        x = x_df.loc[parameters.keys()]["0"].values
 
         # Get objective function and Jacobian
         jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
@@ -451,7 +451,7 @@ class ShapeOpt:
                 vm_sens = pd.read_csv(
                     os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
                     index_col=0,
-                )[param_names]
+                )[parameters.keys()]
             else:
                 # No properties data found
                 vm = None
@@ -459,7 +459,7 @@ class ShapeOpt:
 
             # Call function
             obj, jac_df = self._obj_jac_cb(
-                param_names=param_names,
+                parameters=parameters,
                 coef_sens=coef_sens,
                 loads_dict=loads_dict,
                 volmass=vm,
@@ -481,7 +481,7 @@ class ShapeOpt:
             jac_df = pd.read_csv(jacobian_filepath, index_col=0)["0"]
 
         # Extract ordered jacobian values
-        jac = jac_df.loc[param_names].values
+        jac = jac_df.loc[parameters.keys()].values
 
         # TODO - also return step size?
 
@@ -560,14 +560,16 @@ class ShapeOpt:
 
         if success:
             # Simulation completed successfully
-            obj, jac, x = self._process_results(param_names, iter_dir)
+            # TODO - move parameters definition up
+            parameters = dict(zip(param_names, x))
+            obj, jac, x = self._process_results(parameters, iter_dir)
 
             # Create completion file
             pd.Series(
                 {
                     "objective": obj,
                     "gamma": gamma,
-                    **dict(zip(param_names, x)),
+                    **parameters,
                 }
             ).to_csv(os.path.join(iter_dir, self.completion_filename))
 
