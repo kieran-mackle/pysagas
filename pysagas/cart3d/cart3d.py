@@ -14,11 +14,12 @@ from hypervehicle.generator import Generator
 from typing import List, Dict, Optional, Optional, Callable, Tuple
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
+from pysagas.optimisation import ShapeOpt
 
 np.seterr(all="ignore")
 
 
-class ShapeOpt:
+class Cart3DShapeOpt(ShapeOpt):
     """A wrapper to perform shape optimisation with Cart3D."""
 
     C3D_errors = [
@@ -777,55 +778,6 @@ class ShapeOpt:
 
         _opt_end = time.time()
         print(f"\nTotal run time: {(_opt_end-_opt_start):.2f}")
-
-    def post_process(
-        self, plot_convergence: bool = True, theoretical_convergence: float = None
-    ) -> pd.DataFrame:
-        """Crawls through iteration directories to compile results."""
-        iteration_dirs = [
-            i
-            for i in os.listdir(self.working_dir)
-            if os.path.isdir(os.path.join(self.working_dir, i))
-        ]
-
-        results = []
-        for directory in iteration_dirs:
-            iteration = int(directory)
-
-            completion_file = os.path.join(
-                self.working_dir, directory, self.completion_filename
-            )
-            if os.path.exists(completion_file):
-                # This iteration completed, load the results
-                iter_result = pd.read_csv(completion_file)
-
-                # Add iteration number
-                iter_result.loc[len(iter_result)] = ["iteration", iteration]
-
-                # Append
-                results.append(iter_result.set_index("Unnamed: 0").to_dict()["0"])
-
-        df = pd.DataFrame(results).set_index("iteration").sort_index()
-
-        if plot_convergence:
-            plt.plot(df.index, df["objective"], label="PySAGAS ShapeOpt convergence")
-            plt.title("Convergence of Objective Function")
-            plt.xlabel("Iteration")
-            plt.ylabel("Objective Function")
-
-            if theoretical_convergence:
-                plt.axhline(
-                    theoretical_convergence,
-                    c="k",
-                    ls="--",
-                    label="Theoretical convergence",
-                )
-
-            plt.legend()
-            plt.grid()
-            plt.show()
-
-        return df
 
     def _infer_adapt(self, sim_dir) -> str:
         try:
