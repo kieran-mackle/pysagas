@@ -588,6 +588,7 @@ class ShapeOpt:
         max_step: float = None,
         adapt_schedule: List[int] = None,
         max_iterations: int = 10,
+        bounds: pd.DataFrame = None,
     ):
         """Performs a steepest descent search.
 
@@ -673,6 +674,12 @@ class ShapeOpt:
             # Update x0
             x0 = x_old - gamma * jac
 
+            # Apply hard constraints (hypercube projection)
+            if bounds is not None:
+                x0 = self.project_onto_hypercube(
+                    dict(zip(x0, param_names)), bounds["lower"], bounds["upper"]
+                )
+
             # Calculate change
             change = abs((obj - obj_prev) / obj_prev)
             # TODO - detect divergence?
@@ -709,6 +716,7 @@ class ShapeOpt:
         max_step: float = None,
         adapt_schedule: Optional[List[int]] = None,
         max_iterations: int = 10,
+        bounds: Optional[pd.DataFrame] = None,
     ):
         """Performs a steepest descent search.
 
@@ -736,6 +744,9 @@ class ShapeOpt:
             The default is None.
         max_iterations : int, optional
             The maximum number of iterations to perform. The default is 10.
+        bounds : pd.DataFrame, optional
+            A DataFrame with lower and upper bounds for the input parameters.
+            The default is None.
         """
         # TODO - allow automatic adpative adapt_schedule
 
@@ -755,6 +766,7 @@ class ShapeOpt:
                 max_step=max_step,
                 adapt_schedule=adapt_schedule,
                 max_iterations=max_iterations,
+                bounds=bounds,
             )
         except KeyboardInterrupt:
             # Change back to root dir and exit
@@ -1012,6 +1024,25 @@ class ShapeOpt:
             aoa
         )
         return Cl_sens, Cd_sens
+
+    @staticmethod
+    def project_onto_hypercube(parameters, lower_bounds, upper_bounds):
+        """
+        Projects the state onto a hypercube defined by upper and lower bounds.
+        """
+        feasible_params = {}
+        for parameter, x_b in parameters.items():
+            if parameter in lower_bounds:
+                if lower_bounds[parameter] is not None:
+                    x_b = max([x_b, lower_bounds[parameter]])
+
+            if parameter in upper_bounds:
+                if upper_bounds[parameter] is not None:
+                    x_b = min([x_b, upper_bounds[parameter]])
+
+            feasible_params[parameter] = x_b
+
+        return feasible_params
 
 
 class C3DPrep:
