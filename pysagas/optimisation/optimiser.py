@@ -31,13 +31,13 @@ class ShapeOpt:
             if np.linalg.norm(gradient) <= convergence_tolerance:
                 break
 
-    # @abstractmethod
-    # def objective_function(self, x):
-    #     """Evaluates the objective function to be minimised at x."""
+    @abstractmethod
+    def objective_function(self, x):
+        """Evaluates the objective function to be minimised at x."""
 
-    # @abstractmethod
-    # def jacobian(self, x):
-    #     """Evaluates the Jacobian at x."""
+    @abstractmethod
+    def jacobian(self, x):
+        """Evaluates the Jacobian at x."""
 
     def post_process(
         self, plot_convergence: bool = True, theoretical_convergence: float = None
