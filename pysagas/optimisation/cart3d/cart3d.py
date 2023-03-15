@@ -6,12 +6,12 @@ import subprocess
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from pysagas import banner
+from pyoptsparse import Optimizer
 from pysagas.optimisation import ShapeOpt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
+from typing import List, Dict, Optional, Optional
 from pysagas.optimisation.cart3d.utilities import C3DPrep
-from typing import List, Dict, Optional, Optional, Callable
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -37,6 +37,7 @@ class Cart3DShapeOpt(ShapeOpt):
         rho_inf: float,
         V_inf: float,
         A_ref: float,
+        optimiser: Optimizer,
         generator: Generator,
         sensitivity_filename: str = "all_components_sensitivity.csv",
         working_dir_name: str = "working_dir",
@@ -59,8 +60,6 @@ class Cart3DShapeOpt(ShapeOpt):
         self.objective_filename = "objective.txt"
         self._c3d_checkpoint_rename = "ref_checkpoint"
 
-        self.generator = generator
-
         self.c3d_logname = c3d_logname
 
         # Save callback function
@@ -81,53 +80,111 @@ class Cart3DShapeOpt(ShapeOpt):
         self._max_matching_tol = 0.1
         self._matching_target = 0.9
 
+        # Complete super initialisation
+        super().__init__(optimiser=optimiser, generator=generator)
+
     def evaluate_objective(self, x: dict) -> dict:
-        pass
+        """Evaluates the objective function at the parameter set `x`."""
+        # Generate vehicle and geometry sensitivities
+        ss = SensitivityStudy(vehicle_constructor=self.generator)
+        ss.dvdp(parameter_dict=x, perturbation=2, write_nominal_stl=True)
+        ss.to_csv()
+
+        # Run Cart3D simulation
+        # TODO - what will happen to iter dir?
+        self._run_simulation()
+
+        # Evaluate objective function
+        # TODO - callback?
 
     def evaluate_gradient(self, x: dict) -> dict:
-        pass
+        # TODO - Has this x been evaluated already?
 
-    def _run_sensitivity_study(
-        self, iter_dir: str, param_names: List[str], x: List[float]
-    ):
-        """Runs the geometric sensitivity study for the specified iteration
-        directory iter_dir. This method will produce the base geometry STL
-        files, and the sensitivity files.
-        """
-        # Change into iteration directory
-        os.chdir(iter_dir)
+        # Initialise filepaths
+        loads_filepath = "unknown"
+        components_filepath = os.path.join(
+            sim_dir, target_adapt, "FLOW/Components.i.plt"
+        )
+        f_sense_filename = os.path.join(iter_dir, self.f_sense_filename)
+        sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
 
-        # Check if sensitivity study has been run
-        sens_files = glob.glob(f"{iter_dir}{os.sep}*sensitivity*")
-        if len(sens_files) == 0:
-            print("Running sensitivity study.")
-
-            # Run the sensitivity study and generate the nominal geometry
-            parameters = dict(zip(param_names, x))
-
-            # Save these parameters for future reference
-            pd.Series(parameters).to_csv(
-                os.path.join(iter_dir, self.parameters_filename)
+        # Create PySAGAS wrapper and run
+        print("\nEvaluating sensitivities.")
+        try:
+            wrapper = Cart3DWrapper(
+                a_inf=self.a_inf,
+                rho_inf=self.rho_inf,
+                sensitivity_filepath=sensitivity_filepath,
+                components_filepath=components_filepath,
+                verbosity=0,
             )
 
-            # Run sensitivity study
-            ss = SensitivityStudy(vehicle_constructor=self.generator)
-            ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
-            ss.to_csv()
+        except ValueError:
+            # The sensitivity data does not match the point data, regenerate it
+            tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
+            sensitivity_files = glob.glob(os.path.join(iter_dir, "*sensitivity*"))
+            self._combine_sense_data(
+                tri_components_filepath,
+                sensitivity_files=sensitivity_files,
+                match_target=self._matching_target,
+                tol_0=self._matching_tolerance,
+                max_tol=self._max_matching_tol,
+                outdir=iter_dir,
+            )
 
+            # Re-instantiate the wrapper
+            wrapper = Cart3DWrapper(
+                a_inf=self.a_inf,
+                rho_inf=self.rho_inf,
+                sensitivity_filepath=sensitivity_filepath,
+                components_filepath=components_filepath,
+                verbosity=0,
+            )
+
+        F_sense, _ = wrapper.calculate()
+        print("  Done.")
+
+        # Non-dimensionalise
+        coef_sens = F_sense / (0.5 * self.rho_inf * self.A_ref * self.V_inf**2)
+
+        # Calculate Jacobian
+        properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")
+        if properties_dir:
+            scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
+            vm = pd.read_csv(
+                glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+                index_col=0,
+            )["0"]
+            vm_sens = pd.read_csv(
+                os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
+                index_col=0,
+            )[x.keys()]
         else:
-            print("Sensitivity study already run.")
+            # No properties data found
+            vm = None
+            vm_sens = None
+
+        # Read Cart3D loads file
+        loads_dict = self._read_c3d_loads(loads_filepath)
+
+        # Call function
+        jac_df = self._jac_cb(
+            parameters=x,
+            coef_sens=coef_sens,
+            loads_dict=loads_dict,
+            volmass=vm,
+            volmass_sens=vm_sens,
+        )
+
+        return jac_df
 
     def _run_simulation(
         self,
-        basefiles_dir: str,
         iter_dir: str,
         max_adapt: int = None,
-        warmstart: bool = False,
     ):
         """Prepare and run the CFD simulation with Cart3D. The simulation will be
-        run in the 'simulation' subdirectory of the iteration directory. If warmstart
-        is True, the previous iteration will be used to warm-start the solution.
+        run in the 'simulation' subdirectory of the iteration directory.
         """
         # Make simulation directory
         sim_dir = os.path.join(iter_dir, self.sim_dir_name)
@@ -142,14 +199,6 @@ class Cart3DShapeOpt(ShapeOpt):
             intersected = True
             print("Intersected components located.")
 
-        if warmstart:
-            # Create warm_iter_dir
-            warm_iter_dir = (
-                Path(iter_dir)
-                .parent.joinpath(f"{int(Path(iter_dir).name)-1:04d}")
-                .as_posix()
-            )
-
         # Attempt component intersection
         N = 3
         for attempt in range(N):
@@ -162,26 +211,22 @@ class Cart3DShapeOpt(ShapeOpt):
             if intersected:
                 # Prepare rest of simulation directory
                 if not os.path.exists(os.path.join(sim_dir, "input.cntl")):
-                    # Prepare remaining C3D files
-                    if warmstart:
-                        # Copy necessary files from warm-start directory
-                        self._copy_warmstart_files(warm_iter_dir, iter_dir)
+                    # Move files to simulation directory (including Components.i.tri)
+                    self._c3dprepper.run_autoinputs()
+                    os.system(
+                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                    )
 
-                    else:
-                        # Move files to simulation directory (including Components.i.tri)
-                        self._c3dprepper.run_autoinputs()
-                        os.system(
-                            f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
+                    # Copy sim files
+                    for filename in ["input.cntl", "aero.csh"]:
+                        shutil.copyfile(
+                            os.path.join(self.basefiles_dir, filename),
+                            os.path.join(sim_dir, filename),
                         )
 
-                        # Copy sim files
-                        os.system(
-                            f"cp {basefiles_dir}/input.cntl {basefiles_dir}/aero.csh {sim_dir} >> {self.c3d_logname} 2>&1"
-                        )
-
-                        # Modify iteration aero.csh using max_adapt
-                        if max_adapt:
-                            self._overwrite_adapt(sim_dir, max_adapt)
+                    # Modify iteration aero.csh using max_adapt
+                    if max_adapt:
+                        self._overwrite_adapt(sim_dir, max_adapt)
 
                 # Create all_components_sensitivity.csv
                 if not os.path.exists(self.sensitivity_filename):
@@ -193,27 +238,11 @@ class Cart3DShapeOpt(ShapeOpt):
                         max_tol=self._max_matching_tol,
                     )
 
-                # Override warmstart flag
-                if os.path.exists(os.path.join(sim_dir, "aero.csh")) and warmstart:
-                    # Warmstart set to True, but aero.csh file present
-                    warmstart = False
-
                 # Run Cart3D and await result
                 os.chdir(sim_dir)
-                if warmstart:
-                    # Get checkpoint filename and Cart3D commands
-                    warm_sim_dir = os.path.join(warm_iter_dir, self.sim_dir_name)
-                    commands = self._get_cart_commands(warm_sim_dir)
-
-                    # Define wait files and run command
-                    c3d_donefile = os.path.join(sim_dir, "loadsCC.dat")
-                    run_cmd = commands["flowCart"]
-
-                else:
-                    target_adapt = self._infer_adapt(sim_dir)
-                    c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
-                    run_cmd = "./aero.csh restart"
-
+                target_adapt = self._infer_adapt(sim_dir)
+                c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                run_cmd = "./aero.csh restart"
                 _restarts = 0
                 if not os.path.exists(c3d_donefile):
                     # Cart3D has not started / didn't finish
@@ -221,31 +250,6 @@ class Cart3DShapeOpt(ShapeOpt):
                         "\nStarting Cart3D, awaiting",
                         os.sep.join(c3d_donefile.split(os.sep)[-6:]),
                     )
-
-                    if warmstart:
-                        # Prepare for warm-start
-                        with open(self.c3d_logname, "a") as f:
-                            f.write(f"\nRunning cubes: {commands['cubes']}")
-                            subprocess.run(
-                                f"{commands['cubes']} -remesh",
-                                shell=True,
-                                stdout=f,
-                                stderr=subprocess.STDOUT,
-                            )
-                            f.write(f"\n{commands['mgPrep']}")
-                            subprocess.run(
-                                f"{commands['mgPrep']}",
-                                shell=True,
-                                stdout=f,
-                                stderr=subprocess.STDOUT,
-                            )
-                            f.write(f"\nRunning mesh2mesh...")
-                            subprocess.run(
-                                f"mesh2mesh -v -m1 refMesh.mg.c3d -m2 Mesh.mg.c3d -q1 {self._c3d_checkpoint_rename} -q2 Restart.file",
-                                shell=True,
-                                stdout=f,
-                                stderr=subprocess.STDOUT,
-                            )
 
                     _start = time.time()
                     with open(self.c3d_logname, "a") as f:
@@ -289,133 +293,6 @@ class Cart3DShapeOpt(ShapeOpt):
                 else:
                     print("Could not intersect components. Exiting.")
                     return False
-
-    def _process_results(self, parameters: Dict[str, float], iter_dir: str):
-        # Construct simulation directory
-        sim_dir = os.path.join(iter_dir, self.sim_dir_name)
-        target_adapt = self._infer_adapt(sim_dir)
-
-        # Extract drag coefficient of geometry
-        if target_adapt is not None:
-            # Adaptation simulation
-            loads_filepath = os.path.join(sim_dir, target_adapt, "FLOW", "loadsCC.dat")
-            components_filepath = os.path.join(
-                sim_dir, target_adapt, "FLOW/Components.i.plt"
-            )
-        else:
-            # Possibly warm-started simulation
-            loads_filepath = os.path.join(sim_dir, "loadsCC.dat")
-            components_filepath = os.path.join(sim_dir, "Components.i.plt")
-        loads_dict = self._read_c3d_loads(loads_filepath)
-
-        # Approximate flow sensitivities
-        f_sense_filename = os.path.join(iter_dir, self.f_sense_filename)
-        if not os.path.exists(f_sense_filename):
-            # Filepaths
-            sensitivity_filepath = os.path.join(iter_dir, self.sensitivity_filename)
-
-            # Create PySAGAS wrapper and run
-            print("\nEvaluating sensitivities.")
-            try:
-                wrapper = Cart3DWrapper(
-                    a_inf=self.a_inf,
-                    rho_inf=self.rho_inf,
-                    sensitivity_filepath=sensitivity_filepath,
-                    components_filepath=components_filepath,
-                    verbosity=0,
-                )
-
-            except ValueError:
-                # The sensitivity data does not match the point data, regenerate it
-                tri_components_filepath = os.path.join(sim_dir, "Components.i.tri")
-                sensitivity_files = glob.glob(os.path.join(iter_dir, "*sensitivity*"))
-                self._combine_sense_data(
-                    tri_components_filepath,
-                    sensitivity_files=sensitivity_files,
-                    match_target=self._matching_target,
-                    tol_0=self._matching_tolerance,
-                    max_tol=self._max_matching_tol,
-                    outdir=iter_dir,
-                )
-
-                # Re-instantiate the wrapper
-                wrapper = Cart3DWrapper(
-                    a_inf=self.a_inf,
-                    rho_inf=self.rho_inf,
-                    sensitivity_filepath=sensitivity_filepath,
-                    components_filepath=components_filepath,
-                    verbosity=0,
-                )
-
-            F_sense, _ = wrapper.calculate()
-            print("  Done.")
-
-            # Save F_sense
-            F_sense.to_csv(f_sense_filename)
-
-        else:
-            # Load F_sense
-            F_sense = pd.read_csv(f_sense_filename, index_col=0)
-            print("Force sensitivities loaded from file.")
-
-        # Non-dimensionalise
-        coef_sens = F_sense / (0.5 * self.rho_inf * self.A_ref * self.V_inf**2)
-
-        # Load parameter values
-        x_df = pd.read_csv(
-            os.path.join(iter_dir, self.parameters_filename), index_col=0
-        )
-        x = x_df.loc[parameters.keys()]["0"].values
-
-        # Get objective function and Jacobian
-        jacobian_filepath = os.path.join(iter_dir, self.jacobian_filename)
-        if not os.path.exists(jacobian_filepath):
-            # Load data
-            properties_dir = glob.glob(f"{iter_dir}{os.sep}*_properties")
-            if properties_dir:
-                scalar_sens_dir = os.path.join(iter_dir, "scalar_sensitivities")
-                vm = pd.read_csv(
-                    glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
-                    index_col=0,
-                )["0"]
-                vm_sens = pd.read_csv(
-                    os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
-                    index_col=0,
-                )[parameters.keys()]
-            else:
-                # No properties data found
-                vm = None
-                vm_sens = None
-
-            # Call function
-            obj, jac_df = self._obj_jac_cb(
-                parameters=parameters,
-                coef_sens=coef_sens,
-                loads_dict=loads_dict,
-                volmass=vm,
-                volmass_sens=vm_sens,
-            )
-
-            # TODO - dimensionality check?
-
-            # Save
-            with open(os.path.join(iter_dir, self.objective_filename), "w") as f:
-                f.write(f"objective: {obj}\n")
-            jac_df.to_csv(jacobian_filepath)
-
-        else:
-            # Load from file
-            with open(os.path.join(iter_dir, self.objective_filename), "r") as f:
-                lines = f.readlines()
-                obj = float(lines[0].strip().split(":")[-1])
-            jac_df = pd.read_csv(jacobian_filepath, index_col=0)["0"]
-
-        # Extract ordered jacobian values
-        jac = jac_df.loc[parameters.keys()].values
-
-        # TODO - also return step size?
-
-        return obj, jac, x
 
     def _read_c3d_loads(
         self,
@@ -528,6 +405,8 @@ class Cart3DShapeOpt(ShapeOpt):
         print("Component sensitivity data combined successfully.")
 
     def _c3d_running(self) -> bool:
+        """Watches the Cart3D log file to check for errors and return False
+        if Cart3D has stopped running."""
         with open(self.c3d_logname) as f:
             # Get last line in log file
             for line in f:
