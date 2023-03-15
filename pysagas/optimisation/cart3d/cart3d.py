@@ -53,6 +53,7 @@ class Cart3DShapeOpt(ShapeOpt):
         self.working_dir = os.path.join(home_dir, working_dir_name)
         self.sim_dir_name = sim_dir_name
         self.sensitivity_filename = sensitivity_filename
+
         self.completion_filename = "ITERATION_COMPLETE"
         self.parameters_filename = "parameters.csv"
         self.f_sense_filename = "F_sensitivities.csv"
@@ -81,23 +82,42 @@ class Cart3DShapeOpt(ShapeOpt):
         self._matching_target = 0.9
 
         # Complete super initialisation
-        super().__init__(optimiser=optimiser, generator=generator)
+        super().__init__(
+            optimiser=optimiser, generator=generator, working_dir=self.working_dir
+        )
 
     def evaluate_objective(self, x: dict) -> dict:
         """Evaluates the objective function at the parameter set `x`."""
+        # TODO - Clean workspace, but not always?
+        os.chdir(self.working_dir)
+
         # Generate vehicle and geometry sensitivities
+        parameters = self._unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=self.generator)
-        ss.dvdp(parameter_dict=x, perturbation=2, write_nominal_stl=True)
+        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
 
         # Run Cart3D simulation
         # TODO - what will happen to iter dir?
-        self._run_simulation()
+        sim_complete = self._run_simulation(self.working_dir)
+
+        if sim_complete:
+            # Read loads file
+            loads_dict = self._read_c3d_loads(
+                os.path.join(
+                    self.working_dir, self.sim_dir_name, "BEST/FLOW/loadsCC.dat"
+                )
+            )
 
         # Evaluate objective function
         # TODO - callback?
+        funcs = {"objective": loads_dict["C_D-entire"]}
+        # TODO - constraints?
+        failed = not sim_complete
 
-    def evaluate_gradient(self, x: dict) -> dict:
+        return funcs, failed
+
+    def evaluate_gradient(self, x: dict, objective: dict) -> dict:
         # TODO - Has this x been evaluated already?
 
         # Initialise filepaths
@@ -181,7 +201,7 @@ class Cart3DShapeOpt(ShapeOpt):
     def _run_simulation(
         self,
         iter_dir: str,
-        max_adapt: int = None,
+        no_attempts: int = 3,
     ):
         """Prepare and run the CFD simulation with Cart3D. The simulation will be
         run in the 'simulation' subdirectory of the iteration directory.
@@ -200,8 +220,7 @@ class Cart3DShapeOpt(ShapeOpt):
             print("Intersected components located.")
 
         # Attempt component intersection
-        N = 3
-        for attempt in range(N):
+        for attempt in range(no_attempts):
             # Run intersect
             if run_intersect:
                 self._c3dprepper._log(f"SHAPEOPT INTERSECT ATTEMPT {attempt+1}")
@@ -217,18 +236,20 @@ class Cart3DShapeOpt(ShapeOpt):
                         f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_logname} 2>&1"
                     )
 
-                    # Copy sim files
+                    # Copy sim files and permissions
                     for filename in ["input.cntl", "aero.csh"]:
                         shutil.copyfile(
                             os.path.join(self.basefiles_dir, filename),
                             os.path.join(sim_dir, filename),
                         )
-
-                    # Modify iteration aero.csh using max_adapt
-                    if max_adapt:
-                        self._overwrite_adapt(sim_dir, max_adapt)
+                        shutil.copymode(
+                            os.path.join(self.basefiles_dir, filename),
+                            os.path.join(sim_dir, filename),
+                        )
 
                 # Create all_components_sensitivity.csv
+                # TODO - this logic might have to change, will this file always
+                # be for the right x?
                 if not os.path.exists(self.sensitivity_filename):
                     self._combine_sense_data(
                         components_filepath,
@@ -288,7 +309,7 @@ class Cart3DShapeOpt(ShapeOpt):
                 return True
 
             else:
-                if attempt < N - 1:
+                if attempt < no_attempts - 1:
                     print("Could not intersect components. Trying again.")
                 else:
                     print("Could not intersect components. Exiting.")
@@ -332,36 +353,6 @@ class Cart3DShapeOpt(ShapeOpt):
                         load_dict["{0}-{1}".format(coeff, tag)] = number
 
         return load_dict
-
-    def _infer_adapt(self, sim_dir) -> str:
-        try:
-            with open(f"{sim_dir}/aero.csh", "r") as f:
-                lines = f.readlines()
-
-                for line in lines:
-                    if line.find("set n_adapt_cycles") != -1:
-                        return f"adapt{int(line.split('=')[-1]):02d}"
-        except FileNotFoundError:
-            return None
-
-    def _overwrite_adapt(self, sim_dir: str, max_adapt: int) -> str:
-        """Overwrites the adapt cycle in the iteration directory."""
-        original = os.path.join(sim_dir, "aero.csh")
-        new = os.path.join(sim_dir, "temp_aero.csh")
-        with open(new, "w+") as new_file:
-            with open(original, "r") as original_file:
-                for line in original_file:
-                    if line.startswith("set n_adapt_cycles"):
-                        # This is the line setting the adapt number
-                        line = f"{line.split('=')[0]}= {max_adapt}"
-
-                    # Write line to new file
-                    new_file.write(line)
-
-        # Replace original aero.csh file with updated file
-        shutil.copymode(original, new)
-        os.remove(original)
-        os.rename(new, original)
 
     @staticmethod
     def _combine_sense_data(
@@ -419,3 +410,11 @@ class Cart3DShapeOpt(ShapeOpt):
 
         # No errors
         return True, None
+
+    def _infer_adapt(self, sim_dir) -> str:
+        with open(f"{sim_dir}/aero.csh", "r") as f:
+            lines = f.readlines()
+
+            for line in lines:
+                if line.find("set n_adapt_cycles") != -1:
+                    return f"adapt{int(line.split('=')[-1]):02d}"
