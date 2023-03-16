@@ -88,7 +88,6 @@ class Cart3DShapeOpt(ShapeOpt):
         _matching_target = 0.9
 
         # Construct optimisation problem
-        # TODO - the methods passed below must be functions, not (self) methods
         self.opt_problem = Optimization(
             name="Cart3D-PySAGAS Shape Optimisation",
             objFun=evaluate_objective,
@@ -105,34 +104,35 @@ class Cart3DShapeOpt(ShapeOpt):
 
 def evaluate_objective(x: dict) -> dict:
     """Evaluates the objective function at the parameter set `x`."""
+    print("Evaluating objective at", x)
+
     # Move into working directory
     os.chdir(working_dir)
 
     # Load existing parameters to compare
-    load_sim = compare_parameters(x)
+    already_started = _compare_parameters(x)
 
-    # TODO - dump the params now
-    # if bool above says new iteration, clean working directory here,
-    # not in run simulation function.
+    if not already_started:
+        # These parameters haven't run yet, clean the working directory
+        _clean_dir(working_dir)
+
+    # Dump design parameters to file
+    with open("parameters.pkl", "wb") as f:
+        pickle.dump(x, f)
 
     # Generate vehicle and geometry sensitivities
-    if len(glob.glob("*sensitivity*")) == 0 or not load_sim:
+    if len(glob.glob("*sensitivity*")) == 0 or not already_started:
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
-        ss = SensitivityStudy(vehicle_constructor=generator)
+        print("  generating geometries")
+        ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
 
     # Run Cart3D simulation
-    sim_success, loads_dict, _ = _run_simulation(load_sim)
+    sim_success, loads_dict, _ = _run_simulation()
 
     if sim_success:
-        # Dump design parameters to file
-        # TODO - This should be done earlier, or else it will for the iteration
-        # to be restarted from scratch!
-        with open("parameters.pkl", "wb") as f:
-            pickle.dump(x, f)
-
         # Evaluate objective function
         funcs = obj_cb(loads_dict)
         failed = False
@@ -141,18 +141,28 @@ def evaluate_objective(x: dict) -> dict:
         funcs = {}
         failed = True
 
-    return funcs, True
+    return funcs, failed
 
 
 def evaluate_gradient(x: dict, objective: dict) -> dict:
+    print("Evaluating gradient at", x)
+
     # Move into working directory
     os.chdir(working_dir)
 
     # Load existing parameters to compare
-    load_sim = compare_parameters(x)
+    already_started = _compare_parameters(x)
+
+    if not already_started:
+        # These parameters haven't run yet, clean the working directory
+        _clean_dir(working_dir)
+
+    # Dump design parameters to file
+    with open("parameters.pkl", "wb") as f:
+        pickle.dump(x, f)
 
     # Generate vehicle and geometry sensitivities
-    if len(glob.glob("*sensitivity*")) == 0 or not load_sim:
+    if len(glob.glob("*sensitivity*")) == 0 or not already_started:
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator)
@@ -160,7 +170,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         ss.to_csv()
 
     # Run Cart3D simulation
-    _, loads_dict, components_plt_filepath = _run_simulation(load_sim)
+    _, loads_dict, components_plt_filepath = _run_simulation()
 
     # Initialise filepaths
     components_filepath = components_plt_filepath
@@ -168,6 +178,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     # Create PySAGAS wrapper and run
     try:
+        print("  creating c3d wrapper")
         wrapper = Cart3DWrapper(
             a_inf=_a_inf,
             rho_inf=_rho_inf,
@@ -178,7 +189,10 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     except ValueError:
         # The sensitivity data does not match the point data, regenerate it
-        tri_components_filepath = os.path.join(working_dir, "Components.i.tri")
+        print("  sens data does not match, retrying")
+        tri_components_filepath = os.path.join(
+            working_dir, sim_dir_name, "Components.i.tri"
+        )
         sensitivity_files = glob.glob(os.path.join("*sensitivity*"))
         _combine_sense_data(
             tri_components_filepath,
@@ -233,26 +247,10 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     return jac
 
 
-def _run_simulation(load_results: bool, no_attempts: int = 3):
+def _run_simulation(no_attempts: int = 3):
     """Prepare and run the CFD simulation with Cart3D. The simulation will be
     run in the 'simulation' subdirectory of the iteration directory.
     """
-    if not load_results:
-        # Clear working directory to start fresh
-        # TODO - instead of deleting all, some things could be moved into
-        # an archive directory. For example, Components.i.tri files, to
-        # view evolution.
-        # TODO - think about when this cleaning happens... feels like it
-        # should be earlier, or sens study should be passed cleaning flag.
-        all_files = os.listdir()
-        keep_files = glob.glob("*sensitivity*.csv") + glob.glob("*.stl")
-        rm_files = set(all_files) - set(keep_files)
-        for f in rm_files:
-            if os.path.isdir(f):
-                os.rmdir(f)
-            else:
-                os.remove(f)
-
     # Make simulation directory
     sim_dir = os.path.join(working_dir, sim_dir_name)
     run_intersect = False
@@ -295,6 +293,7 @@ def _run_simulation(load_results: bool, no_attempts: int = 3):
                     )
 
             # Create all_components_sensitivity.csv
+            print("    combining sensitivity data")
             if not os.path.exists(sens_filename):
                 _combine_sense_data(
                     components_filepath,
@@ -305,6 +304,7 @@ def _run_simulation(load_results: bool, no_attempts: int = 3):
                 )
 
             # Run Cart3D and await result
+            print("    running Cart3D")
             os.chdir(sim_dir)
             target_adapt = _infer_adapt(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
@@ -345,9 +345,11 @@ def _run_simulation(load_results: bool, no_attempts: int = 3):
         components_plt_filepath = os.path.join(
             working_dir, sim_dir_name, "BEST/FLOW/Components.i.plt"
         )
+        print("    sim completed successfully.")
     else:
         loads_dict = None
         components_plt_filepath = None
+        print("    sim failed.")
 
     # Change back to working directory
     os.chdir(working_dir)
@@ -461,7 +463,7 @@ def _infer_adapt(sim_dir) -> str:
                 return f"adapt{int(line.split('=')[-1]):02d}"
 
 
-def compare_parameters(x):
+def _compare_parameters(x):
     """Compares the current parameters x to the last run simulation
     parameters."""
     try:
@@ -476,3 +478,18 @@ def compare_parameters(x):
         already_run = False
 
     return already_run
+
+
+def _clean_dir(directory: str, keep: list = None):
+    """Deletes everything in a directory except for what is specified
+    in keep."""
+    all_files = os.listdir(directory)
+    if keep is None:
+        # Convert to empty list
+        keep = []
+    rm_files = set(all_files) - set(keep)
+    for f in rm_files:
+        if os.path.isdir(f):
+            shutil.rmtree(f)
+        else:
+            os.remove(f)

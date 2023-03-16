@@ -22,8 +22,7 @@ class ShapeOpt(ABC):
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
         """
-        # TODO - allow optimiser options
-        self.optimiser = optimiser()
+        self.optimiser = optimiser(optimiser_options)
 
         # Prepare working directory
         if not os.path.exists(working_dir):
