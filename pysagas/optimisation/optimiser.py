@@ -10,7 +10,10 @@ class ShapeOpt(ABC):
     """PySAGAS Shape Optimisation via a gradient descent algorithm."""
 
     def __init__(
-        self, optimiser: Optimizer, generator: Generator, working_dir: str
+        self,
+        optimiser: Optimizer,
+        generator: Generator,
+        working_dir: str,
     ) -> None:
         """Initialise PySAGAS Shape Optimiser.
 
@@ -22,13 +25,6 @@ class ShapeOpt(ABC):
         # TODO - allow optimiser options
         self.optimiser = optimiser()
         self.generator = generator
-
-        # Construct optimisation problem
-        self.opt_problem = Optimization(
-            name="PySAGAS Shape Optimisation",
-            objFun=self.evaluate_objective,
-            sens=self.evaluate_gradient,
-        )
 
         # Prepare working directory
         if not os.path.exists(working_dir):
@@ -87,28 +83,26 @@ class ShapeOpt(ABC):
         # Run optimiser
         self.sol = self.optimiser(
             self.opt_problem,
-            sens=self.evaluate_gradient,
-            # storeHistory="history.hst",
+            storeHistory="history.hst",
         )
 
-    @abstractmethod
-    def evaluate_objective(self, x: dict) -> dict:
-        """Evaluates the objective function to be minimised at x."""
-        pass
+    # @abstractmethod
+    # def evaluate_objective(self, x: dict) -> dict:
+    #     """Evaluates the objective function to be minimised at x."""
+    #     pass
 
-    @abstractmethod
-    def evaluate_gradient(self, x: dict) -> dict:
-        """Evaluates the Jacobian (objective gradient) at x."""
-        pass
+    # @abstractmethod
+    # def evaluate_gradient(self, x: dict, objective: dict) -> dict:
+    #     """Evaluates the Jacobian (objective gradient) at x."""
+    #     pass
 
-    @staticmethod
-    def _unwrap_x(x: dict) -> dict:
-        """Unwraps an ordered dictionary."""
-        unwrapped = {}
-        for key, val in x.items():
-            if len(val) == 1:
-                unwrapped[key] = val[0]
-            else:
-                unwrapped[key] = val
 
-        return unwrapped
+def _unwrap_x(x: dict) -> dict:
+    """Unwraps an ordered dictionary."""
+    unwrapped = {}
+    for key, val in x.items():
+        if len(val) == 1:
+            unwrapped[key] = val[0]
+        else:
+            unwrapped[key] = val
+    return unwrapped
