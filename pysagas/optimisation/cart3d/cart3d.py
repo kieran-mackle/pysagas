@@ -49,6 +49,7 @@ class Cart3DShapeOpt(ShapeOpt):
         c3d_log_name: str = "C3D_log",
         c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
+        optimiser_options: dict = None,
     ) -> None:
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
@@ -95,7 +96,11 @@ class Cart3DShapeOpt(ShapeOpt):
         )
 
         # Complete super initialisation
-        super().__init__(optimiser=optimiser, working_dir=working_dir)
+        super().__init__(
+            optimiser=optimiser,
+            working_dir=working_dir,
+            optimiser_options=optimiser_options,
+        )
 
 
 def evaluate_objective(x: dict) -> dict:
@@ -105,6 +110,10 @@ def evaluate_objective(x: dict) -> dict:
 
     # Load existing parameters to compare
     load_sim = compare_parameters(x)
+
+    # TODO - dump the params now
+    # if bool above says new iteration, clean working directory here,
+    # not in run simulation function.
 
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not load_sim:
@@ -119,6 +128,8 @@ def evaluate_objective(x: dict) -> dict:
 
     if sim_success:
         # Dump design parameters to file
+        # TODO - This should be done earlier, or else it will for the iteration
+        # to be restarted from scratch!
         with open("parameters.pkl", "wb") as f:
             pickle.dump(x, f)
 
@@ -130,7 +141,7 @@ def evaluate_objective(x: dict) -> dict:
         funcs = {}
         failed = True
 
-    return funcs, failed
+    return funcs, True
 
 
 def evaluate_gradient(x: dict, objective: dict) -> dict:
@@ -228,9 +239,19 @@ def _run_simulation(load_results: bool, no_attempts: int = 3):
     """
     if not load_results:
         # Clear working directory to start fresh
-        files = os.listdir()
-        for f in files:
-            os.remove(f)
+        # TODO - instead of deleting all, some things could be moved into
+        # an archive directory. For example, Components.i.tri files, to
+        # view evolution.
+        # TODO - think about when this cleaning happens... feels like it
+        # should be earlier, or sens study should be passed cleaning flag.
+        all_files = os.listdir()
+        keep_files = glob.glob("*sensitivity*.csv") + glob.glob("*.stl")
+        rm_files = set(all_files) - set(keep_files)
+        for f in rm_files:
+            if os.path.isdir(f):
+                os.rmdir(f)
+            else:
+                os.remove(f)
 
     # Make simulation directory
     sim_dir = os.path.join(working_dir, sim_dir_name)

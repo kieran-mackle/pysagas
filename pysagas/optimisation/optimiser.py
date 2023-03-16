@@ -13,6 +13,7 @@ class ShapeOpt(ABC):
         self,
         optimiser: Optimizer,
         working_dir: str,
+        optimiser_options: dict = None,
     ) -> None:
         """Initialise PySAGAS Shape Optimiser.
 
