@@ -1,12 +1,11 @@
 import os
 from pysagas import banner
+from pyoptsparse import Optimizer
 from numpy.typing import ArrayLike
-from abc import abstractmethod, ABC
-from hypervehicle.generator import Generator
-from pyoptsparse import Optimizer, Optimization
+from typing import Union, Optional, Dict
 
 
-class ShapeOpt(ABC):
+class ShapeOpt:
     """PySAGAS Shape Optimisation via a gradient descent algorithm."""
 
     def __init__(
@@ -30,27 +29,32 @@ class ShapeOpt(ABC):
 
     def add_variables(
         self,
-        parameters_dict: dict = None,
-        name: str = None,
-        n: int = None,
-        vartype: str = "c",
-        initial: ArrayLike = None,
-        lower_bounds: ArrayLike = None,
-        upper_bounds: ArrayLike = None,
+        parameters_dict: Optional[dict] = None,
+        name: Optional[str] = None,
+        n: Optional[int] = None,
+        vartype: Optional[str] = "c",
+        initial: Optional[ArrayLike] = None,
+        lower_bounds: Optional[Union[ArrayLike, Dict]] = None,
+        upper_bounds: Optional[Union[ArrayLike, Dict]] = None,
         **kwargs,
     ):
         """Adds variables to the optimisation problem."""
         if parameters_dict:
+            # Check bounds
+            if lower_bounds is None:
+                lower_bounds = {}
+            if upper_bounds is None:
+                upper_bounds = {}
+
             # Unpack parameters dict
             for param, value in parameters_dict.items():
-                # TODO - handle bounds
                 self.opt_problem.addVarGroup(
                     name=param,
                     nVars=1,
                     varType=vartype,
                     value=value,
-                    lower=lower_bounds,
-                    upper=upper_bounds,
+                    lower=lower_bounds.get(param),
+                    upper=upper_bounds.get(param),
                     **kwargs,
                 )
 
