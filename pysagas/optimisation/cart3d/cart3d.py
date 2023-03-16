@@ -1,6 +1,7 @@
 import os
 import time
 import glob
+import pickle
 import shutil
 import subprocess
 import numpy as np
@@ -38,7 +39,7 @@ class Cart3DShapeOpt(ShapeOpt):
         V_inf: float,
         A_ref: float,
         optimiser: Optimizer,
-        generator: Generator,
+        vehicle_generator: Generator,
         objective_callback: callable,
         jacobian_callback: callable,
         sensitivity_filename: str = "all_components_sensitivity.csv",
@@ -55,6 +56,9 @@ class Cart3DShapeOpt(ShapeOpt):
         global _rho_inf, _V_inf, _a_inf, _A_ref
         global working_dir, f_sense_filename
         global obj_cb, jac_cb
+        global generator
+
+        generator = vehicle_generator
 
         # Construct paths
         basefiles_dir = os.path.join(home_dir, basefiles_dir_name)
@@ -91,32 +95,35 @@ class Cart3DShapeOpt(ShapeOpt):
         )
 
         # Complete super initialisation
-        super().__init__(
-            optimiser=optimiser, generator=generator, working_dir=working_dir
-        )
+        super().__init__(optimiser=optimiser, working_dir=working_dir)
 
 
 def evaluate_objective(x: dict) -> dict:
     """Evaluates the objective function at the parameter set `x`."""
-    print("\nEvaluating objective at x=", x)
-    # print(hash(frozenset(_unwrap_x(x).items())))
-
-    # TODO - Clean workspace, but not always?
+    # Move into working directory
     os.chdir(working_dir)
 
+    # Load existing parameters to compare
+    load_sim = compare_parameters(x)
+
     # Generate vehicle and geometry sensitivities
-    # parameters = self._unwrap_x(x)
-    # ss = SensitivityStudy(vehicle_constructor=self.generator)
-    # ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
-    # ss.to_csv()
+    if len(glob.glob("*sensitivity*")) == 0 or not load_sim:
+        # No sensitivity files generated yet, or this is new geometry
+        parameters = _unwrap_x(x)
+        ss = SensitivityStudy(vehicle_constructor=generator)
+        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
+        ss.to_csv()
 
     # Run Cart3D simulation
-    sim_success, loads_dict, _ = _run_simulation()
+    sim_success, loads_dict, _ = _run_simulation(load_sim)
 
     if sim_success:
+        # Dump design parameters to file
+        with open("parameters.pkl", "wb") as f:
+            pickle.dump(x, f)
+
         # Evaluate objective function
-        funcs = {"objective": obj_cb(loads_dict)}
-        # TODO - constraints?
+        funcs = obj_cb(loads_dict)
         failed = False
     else:
         # Simulation failed
@@ -127,23 +134,28 @@ def evaluate_objective(x: dict) -> dict:
 
 
 def evaluate_gradient(x: dict, objective: dict) -> dict:
-    # print(hash(frozenset(_unwrap_x(x).items())))
-    print("Evaluating gradient at x=", x)
-
+    # Move into working directory
     os.chdir(working_dir)
 
-    # TODO - might not always have to run the sims over again, figure a
-    # way out, probably good path management, where _run_simualtion will
-    # detect the sim and just load it. Currently it will just return
-    # the results from the last sim...
-    sim_success, loads_dict, components_plt_filepath = _run_simulation()
+    # Load existing parameters to compare
+    load_sim = compare_parameters(x)
+
+    # Generate vehicle and geometry sensitivities
+    if len(glob.glob("*sensitivity*")) == 0 or not load_sim:
+        # No sensitivity files generated yet, or this is new geometry
+        parameters = _unwrap_x(x)
+        ss = SensitivityStudy(vehicle_constructor=generator)
+        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
+        ss.to_csv()
+
+    # Run Cart3D simulation
+    _, loads_dict, components_plt_filepath = _run_simulation(load_sim)
 
     # Initialise filepaths
     components_filepath = components_plt_filepath
     sensitivity_filepath = os.path.join(working_dir, sens_filename)
 
     # Create PySAGAS wrapper and run
-    # print("\nEvaluating sensitivities.")
     try:
         wrapper = Cart3DWrapper(
             a_inf=_a_inf,
@@ -176,7 +188,6 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         )
 
     F_sense, _ = wrapper.calculate()
-    # print("  Done.")
 
     # Non-dimensionalise
     coef_sens = F_sense / (0.5 * _rho_inf * _A_ref * _V_inf**2)
@@ -211,12 +222,16 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     return jac
 
 
-def _run_simulation(
-    no_attempts: int = 3,
-):
+def _run_simulation(load_results: bool, no_attempts: int = 3):
     """Prepare and run the CFD simulation with Cart3D. The simulation will be
     run in the 'simulation' subdirectory of the iteration directory.
     """
+    if not load_results:
+        # Clear working directory to start fresh
+        files = os.listdir()
+        for f in files:
+            os.remove(f)
+
     # Make simulation directory
     sim_dir = os.path.join(working_dir, sim_dir_name)
     run_intersect = False
@@ -228,7 +243,6 @@ def _run_simulation(
         # Check for intersected file
         run_intersect = not os.path.exists(components_filepath)
         intersected = True
-        # print("Intersected components located.")
 
     # Attempt component intersection
     sim_success = False
@@ -260,8 +274,6 @@ def _run_simulation(
                     )
 
             # Create all_components_sensitivity.csv
-            # TODO - this logic might have to change, will this file always
-            # be for the right x?
             if not os.path.exists(sens_filename):
                 _combine_sense_data(
                     components_filepath,
@@ -278,13 +290,6 @@ def _run_simulation(
             run_cmd = "./aero.csh restart"
             _restarts = 0
             if not os.path.exists(c3d_donefile):
-                # Cart3D has not started / didn't finish
-                # print(
-                #     "\nStarting Cart3D, awaiting",
-                #     os.sep.join(c3d_donefile.split(os.sep)[-6:]),
-                # )
-
-                _start = time.time()
                 with open(c3d_logname, "a") as f:
                     subprocess.run(
                         run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
@@ -299,11 +304,8 @@ def _run_simulation(
                     if not running:
                         # C3D failed, try restart it
                         if _restarts > 3:
-                            # print("Too many Cart3D failures... Something is wrong.")
                             return False
 
-                        # print(f"\033[1mERROR\033[0m: Cart3D failed with error {e}")
-                        # print("  Restarting Cart3D.")
                         f = open(c3d_logname, "a")
                         subprocess.run(
                             run_cmd, shell=True, stdout=f, stderr=subprocess.STDOUT
@@ -311,21 +313,8 @@ def _run_simulation(
                         f.close()
                         _restarts += 1
 
-                _end = time.time()
-                # print(f"Cart3D simulations complete in {(_end-_start):.2f} s.")
-
-            # else:
-            #     # Cart3D already finished for this iteration
-            #     #print("Cart3D DONE file located.")
-
             sim_success = True
             break
-
-        # else:
-        #     if attempt < no_attempts - 1:
-        #         #print("Could not intersect components. Trying again.")
-        #     else:
-        #         #print("Could not intersect components. Exiting.")
 
     if sim_success:
         # Sim finished successfully, read loads file
@@ -341,9 +330,6 @@ def _run_simulation(
 
     # Change back to working directory
     os.chdir(working_dir)
-
-    # TODO - define global var of last x simulated, then can check
-    # each time if it has already been run
 
     return sim_success, loads_dict, components_plt_filepath
 
@@ -452,3 +438,20 @@ def _infer_adapt(sim_dir) -> str:
         for line in lines:
             if line.find("set n_adapt_cycles") != -1:
                 return f"adapt{int(line.split('=')[-1]):02d}"
+
+
+def compare_parameters(x):
+    """Compares the current parameters x to the last run simulation
+    parameters."""
+    try:
+        with open("parameters.pkl", "rb") as f:
+            xp = pickle.load(f)
+
+        # Compare to current parameters
+        already_run = x == xp
+
+    except FileNotFoundError:
+        # Simulation not run yet
+        already_run = False
+
+    return already_run

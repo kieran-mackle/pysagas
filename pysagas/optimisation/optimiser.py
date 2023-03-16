@@ -12,7 +12,6 @@ class ShapeOpt(ABC):
     def __init__(
         self,
         optimiser: Optimizer,
-        generator: Generator,
         working_dir: str,
     ) -> None:
         """Initialise PySAGAS Shape Optimiser.
@@ -24,7 +23,6 @@ class ShapeOpt(ABC):
         """
         # TODO - allow optimiser options
         self.optimiser = optimiser()
-        self.generator = generator
 
         # Prepare working directory
         if not os.path.exists(working_dir):
@@ -85,16 +83,6 @@ class ShapeOpt(ABC):
             self.opt_problem,
             storeHistory="history.hst",
         )
-
-    # @abstractmethod
-    # def evaluate_objective(self, x: dict) -> dict:
-    #     """Evaluates the objective function to be minimised at x."""
-    #     pass
-
-    # @abstractmethod
-    # def evaluate_gradient(self, x: dict, objective: dict) -> dict:
-    #     """Evaluates the Jacobian (objective gradient) at x."""
-    #     pass
 
 
 def _unwrap_x(x: dict) -> dict:
