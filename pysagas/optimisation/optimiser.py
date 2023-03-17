@@ -1,8 +1,8 @@
 import os
 from pysagas import banner
-from pyoptsparse import Optimizer
 from numpy.typing import ArrayLike
 from typing import Union, Optional, Dict
+from pyoptsparse import Optimizer, Optimization
 
 
 class ShapeOpt:
@@ -21,6 +21,7 @@ class ShapeOpt:
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
         """
+        self.opt_problem: Optimization
         self.optimiser = optimiser(optimiser_options)
 
         # Prepare working directory
@@ -69,9 +70,25 @@ class ShapeOpt:
                 **kwargs,
             )
 
-    def add_constriants(self):
+    def add_constriants(
+        self,
+        name: str,
+        n: Optional[int] = 1,
+        lower: Optional[Union[ArrayLike, Dict]] = None,
+        upper: Optional[Union[ArrayLike, Dict]] = None,
+        scale: Optional[float] = 1,
+    ):
         """Adds constraints to the optimisation problem."""
-        pass
+        self.opt_problem.addConGroup(
+            name=name,
+            nCon=n,
+            lower=lower,
+            upper=upper,
+            scale=scale,
+            linear=None,
+            wrt=None,
+            jac=None,
+        )
 
     def add_objective(self):
         """Adds an objective to the optimisation problem."""
@@ -87,14 +104,3 @@ class ShapeOpt:
             self.opt_problem,
             storeHistory="history.hst",
         )
-
-
-def _unwrap_x(x: dict) -> dict:
-    """Unwraps an ordered dictionary."""
-    unwrapped = {}
-    for key, val in x.items():
-        if len(val) == 1:
-            unwrapped[key] = val[0]
-        else:
-            unwrapped[key] = val
-    return unwrapped

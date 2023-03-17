@@ -11,7 +11,6 @@ from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
 from typing import List, Dict, Optional, Optional
-from pysagas.optimisation.optimiser import _unwrap_x
 from pysagas.optimisation.cart3d.utilities import C3DPrep
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
@@ -133,9 +132,21 @@ def evaluate_objective(x: dict) -> dict:
     sim_success, loads_dict, _ = _run_simulation()
 
     if sim_success:
+        # Load properties
+        properties_dir = glob.glob("*_properties")
+        if properties_dir:
+            volmass = pd.read_csv(
+                glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+                index_col=0,
+            )["0"]
+        else:
+            # No properties data found
+            volmass = None
+
         # Evaluate objective function
-        funcs = obj_cb(loads_dict)
+        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass)
         failed = False
+
     else:
         # Simulation failed
         funcs = {}
@@ -493,3 +504,14 @@ def _clean_dir(directory: str, keep: list = None):
             shutil.rmtree(f)
         else:
             os.remove(f)
+
+
+def _unwrap_x(x: dict) -> dict:
+    """Unwraps an ordered dictionary."""
+    unwrapped = {}
+    for key, val in x.items():
+        if len(val) == 1:
+            unwrapped[key] = val[0]
+        else:
+            unwrapped[key] = val
+    return unwrapped
