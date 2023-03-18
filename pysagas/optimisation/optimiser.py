@@ -1,4 +1,5 @@
 import os
+import numpy as np
 from pysagas import banner
 from numpy.typing import ArrayLike
 from typing import Union, Optional, Dict
@@ -40,12 +41,32 @@ class ShapeOpt:
         **kwargs,
     ):
         """Adds variables to the optimisation problem."""
+
+        def check_bounds(
+            parameters: Dict[str, float], bounds: Dict[str, float], sign: int
+        ):
+            for p, v in parameters.items():
+                # Get bound for this parameter
+                b = bounds.get(p)
+                if np.sign(v - b) != np.sign(sign):
+                    raise Exception(
+                        f"Invalid bounds on {p}: nominal value "
+                        + f"{v:.5f} out of bounds {b:.5f}."
+                    )
+
         if parameters_dict:
             # Check bounds
             if lower_bounds is None:
                 lower_bounds = {}
+            else:
+                # Make sure bounds are valid
+                check_bounds(parameters_dict, lower_bounds, -1)
+
             if upper_bounds is None:
                 upper_bounds = {}
+            else:
+                # Make sure bounds are valid
+                check_bounds(parameters_dict, upper_bounds, 1)
 
             # Unpack parameters dict
             for param, value in parameters_dict.items():
