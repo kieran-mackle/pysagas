@@ -32,7 +32,6 @@ class Cart3DShapeOpt(ShapeOpt):
 
     def __init__(
         self,
-        home_dir: str,
         a_inf: float,
         rho_inf: float,
         V_inf: float,
@@ -58,19 +57,26 @@ class Cart3DShapeOpt(ShapeOpt):
         global working_dir, f_sense_filename
         global obj_cb, jac_cb
         global generator
-        global save_comptri
+        global save_comptri, evo_dir
 
         save_comptri = save_evolution
 
         generator = vehicle_generator
 
         # Construct paths
+        home_dir = os.getcwd()
         basefiles_dir = os.path.join(home_dir, basefiles_dir_name)
         working_dir = os.path.join(home_dir, working_dir_name)
         sim_dir_name = sim_directory_name
         sens_filename = sensitivity_filename
         f_sense_filename = "F_sensitivities.csv"
         c3d_logname = c3d_log_name
+
+        if save_comptri:
+            # Create evolution history directory
+            evo_dir = os.path.join(home_dir, "evolution")
+            if not os.path.exists(evo_dir):
+                os.mkdir(evo_dir)
 
         # Save callback functions
         obj_cb = objective_callback
@@ -226,7 +232,23 @@ def _process_parameters(x):
     already_started = _compare_parameters(x)
 
     if not already_started:
-        # These parameters haven't run yet, clean the working directory
+        # These parameters haven't run yet, prepare the working directory
+        if save_comptri:
+            # Move components file into evolution directory
+            comp_filepath = os.path.join(working_dir, sim_dir_name, "Components.i.tri")
+
+            # Check if file exists
+            if os.path.exists(comp_filepath):
+                # Determine new name
+                new_filename = f"{len(os.listdir(evo_dir)):04d}.tri"
+
+                # Copy file over
+                shutil.copyfile(
+                    comp_filepath,
+                    os.path.join(evo_dir, new_filename),
+                )
+
+        # Delete any files from previous run
         _clean_dir(working_dir)
 
     # Dump design parameters to file

@@ -118,7 +118,7 @@ class ShapeOpt:
         """Adds an objective to the optimisation problem."""
         self.opt_problem.addObj("objective")
 
-    def run(self):
+    def run(self, hotstart_file: str = None):
         # Print banner
         banner()
         print("\033[4mPySAGAS Shape Optimisation\033[0m".center(50, " "))
@@ -127,4 +127,5 @@ class ShapeOpt:
         self.sol = self.optimiser(
             self.opt_problem,
             storeHistory="history.hst",
+            hotStart=hotstart_file,
         )
