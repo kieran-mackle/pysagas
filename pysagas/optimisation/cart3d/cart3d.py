@@ -49,6 +49,7 @@ class Cart3DShapeOpt(ShapeOpt):
         c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
         optimiser_options: dict = None,
+        save_evolution: bool = True,
     ) -> None:
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
@@ -57,6 +58,9 @@ class Cart3DShapeOpt(ShapeOpt):
         global working_dir, f_sense_filename
         global obj_cb, jac_cb
         global generator
+        global save_comptri
+
+        save_comptri = save_evolution
 
         generator = vehicle_generator
 
@@ -103,30 +107,8 @@ class Cart3DShapeOpt(ShapeOpt):
 
 def evaluate_objective(x: dict) -> dict:
     """Evaluates the objective function at the parameter set `x`."""
-    print("Evaluating objective at", x)
-
-    # Move into working directory
-    os.chdir(working_dir)
-
-    # Load existing parameters to compare
-    already_started = _compare_parameters(x)
-
-    if not already_started:
-        # These parameters haven't run yet, clean the working directory
-        _clean_dir(working_dir)
-
-    # Dump design parameters to file
-    with open("parameters.pkl", "wb") as f:
-        pickle.dump(x, f)
-
-    # Generate vehicle and geometry sensitivities
-    if len(glob.glob("*sensitivity*")) == 0 or not already_started:
-        # No sensitivity files generated yet, or this is new geometry
-        parameters = _unwrap_x(x)
-        print("  generating geometries")
-        ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
-        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
-        ss.to_csv()
+    # Pre-process parameters
+    _process_parameters(x)
 
     # Run Cart3D simulation
     sim_success, loads_dict, _ = _run_simulation()
@@ -156,29 +138,9 @@ def evaluate_objective(x: dict) -> dict:
 
 
 def evaluate_gradient(x: dict, objective: dict) -> dict:
-    print("Evaluating gradient at", x)
-
-    # Move into working directory
-    os.chdir(working_dir)
-
-    # Load existing parameters to compare
-    already_started = _compare_parameters(x)
-
-    if not already_started:
-        # These parameters haven't run yet, clean the working directory
-        _clean_dir(working_dir)
-
-    # Dump design parameters to file
-    with open("parameters.pkl", "wb") as f:
-        pickle.dump(x, f)
-
-    # Generate vehicle and geometry sensitivities
-    if len(glob.glob("*sensitivity*")) == 0 or not already_started:
-        # No sensitivity files generated yet, or this is new geometry
-        parameters = _unwrap_x(x)
-        ss = SensitivityStudy(vehicle_constructor=generator)
-        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
-        ss.to_csv()
+    """Evaluates the gradient function at the parameter set `x`."""
+    # Pre-process parameters
+    _process_parameters(x)
 
     # Run Cart3D simulation
     _, loads_dict, components_plt_filepath = _run_simulation()
@@ -189,7 +151,6 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     # Create PySAGAS wrapper and run
     try:
-        print("  creating c3d wrapper")
         wrapper = Cart3DWrapper(
             a_inf=_a_inf,
             rho_inf=_rho_inf,
@@ -200,7 +161,6 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     except ValueError:
         # The sensitivity data does not match the point data, regenerate it
-        print("  sens data does not match, retrying")
         tri_components_filepath = os.path.join(
             working_dir, sim_dir_name, "Components.i.tri"
         )
@@ -258,6 +218,30 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     return jac
 
 
+def _process_parameters(x):
+    # Move into working directory
+    os.chdir(working_dir)
+
+    # Load existing parameters to compare
+    already_started = _compare_parameters(x)
+
+    if not already_started:
+        # These parameters haven't run yet, clean the working directory
+        _clean_dir(working_dir)
+
+    # Dump design parameters to file
+    with open("parameters.pkl", "wb") as f:
+        pickle.dump(x, f)
+
+    # Generate vehicle and geometry sensitivities
+    if len(glob.glob("*sensitivity*")) == 0 or not already_started:
+        # No sensitivity files generated yet, or this is new geometry
+        parameters = _unwrap_x(x)
+        ss = SensitivityStudy(vehicle_constructor=generator)
+        ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
+        ss.to_csv()
+
+
 def _run_simulation(no_attempts: int = 3):
     """Prepare and run the CFD simulation with Cart3D. The simulation will be
     run in the 'simulation' subdirectory of the iteration directory.
@@ -304,7 +288,6 @@ def _run_simulation(no_attempts: int = 3):
                     )
 
             # Create all_components_sensitivity.csv
-            print("    combining sensitivity data")
             if not os.path.exists(sens_filename):
                 _combine_sense_data(
                     components_filepath,
@@ -315,7 +298,6 @@ def _run_simulation(no_attempts: int = 3):
                 )
 
             # Run Cart3D and await result
-            print("    running Cart3D")
             os.chdir(sim_dir)
             target_adapt = _infer_adapt(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
@@ -356,11 +338,10 @@ def _run_simulation(no_attempts: int = 3):
         components_plt_filepath = os.path.join(
             working_dir, sim_dir_name, "BEST/FLOW/Components.i.plt"
         )
-        print("    sim completed successfully.")
+
     else:
         loads_dict = None
         components_plt_filepath = None
-        print("    sim failed.")
 
     # Change back to working directory
     os.chdir(working_dir)
@@ -444,8 +425,6 @@ def _combine_sense_data(
 
         # Increase matching tolerance
         tol *= 10
-
-    # print("Component sensitivity data combined successfully.")
 
 
 def _c3d_running() -> bool:
