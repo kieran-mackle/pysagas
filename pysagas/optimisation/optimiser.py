@@ -49,9 +49,12 @@ class ShapeOpt:
                 # Get bound for this parameter
                 b = bounds.get(p)
                 if np.sign(v - b) != np.sign(sign):
+                    if np.sign(sign) < 0:
+                        bound = ">"
+                    else:
+                        bound = "<"
                     raise Exception(
-                        f"Invalid bounds on {p}: nominal value "
-                        + f"{v:.5f} out of bounds {b:.5f}."
+                        f"Invalid bounds on {p}: " + f"{v:.5f} {bound} {b:.5f}."
                     )
 
         if parameters_dict:
@@ -60,13 +63,13 @@ class ShapeOpt:
                 lower_bounds = {}
             else:
                 # Make sure bounds are valid
-                check_bounds(parameters_dict, lower_bounds, -1)
+                check_bounds(parameters_dict, lower_bounds, 1)
 
             if upper_bounds is None:
                 upper_bounds = {}
             else:
                 # Make sure bounds are valid
-                check_bounds(parameters_dict, upper_bounds, 1)
+                check_bounds(parameters_dict, upper_bounds, -1)
 
             # Unpack parameters dict
             for param, value in parameters_dict.items():
