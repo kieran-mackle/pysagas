@@ -239,18 +239,12 @@ def _process_parameters(x):
 
             # Check if file exists
             if os.path.exists(comp_filepath):
-                # Convert to dat file
-                new_filename_prefix = f"{len(os.listdir(evo_dir)):04d}"
-                os.system(f"trix -T {comp_filepath} -o {new_filename_prefix}")
+                # Determine new name
+                new_filename = f"{len(os.listdir(evo_dir)):04d}.tri"
 
-                # Wait for file
-                new_filename = f"{new_filename_prefix}_000_tec.dat"
-                while not os.path.exists(new_filename):
-                    time.sleep(0.5)
-
-                # Move file over
-                shutil.move(
-                    new_filename,
+                # Copy file over
+                shutil.copyfile(
+                    comp_filepath,
                     os.path.join(evo_dir, new_filename),
                 )
 
