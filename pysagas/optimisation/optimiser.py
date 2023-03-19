@@ -2,7 +2,7 @@ import os
 import numpy as np
 from pysagas import banner
 from numpy.typing import ArrayLike
-from typing import Union, Optional, Dict
+from typing import Union, Optional, Dict, Any
 from pyoptsparse import Optimizer, Optimization
 
 
@@ -13,7 +13,7 @@ class ShapeOpt:
         self,
         optimiser: Optimizer,
         working_dir: str,
-        optimiser_options: dict = None,
+        optimiser_options: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initialise PySAGAS Shape Optimiser.
 
@@ -21,9 +21,13 @@ class ShapeOpt:
         ----------
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
+        working_dir : str
+            The name of the working directory.
+        optimiser_options : dict, optional
+            The options to pass to the optimiser.
         """
         self.opt_problem: Optimization
-        self.optimiser = optimiser(optimiser_options)
+        self.optimiser = optimiser(options=optimiser_options)
 
         # Prepare working directory
         if not os.path.exists(working_dir):
@@ -102,7 +106,15 @@ class ShapeOpt:
         upper: Optional[Union[ArrayLike, Dict]] = None,
         scale: Optional[float] = 1,
     ):
-        """Adds constraints to the optimisation problem."""
+        """Adds constraints to the optimisation problem.
+
+        Parameters
+        -----------
+        name : str
+            The name key of the constraint being added. This must appear
+            in the dictionary returned by the objective and Jacobian callback
+            returns.
+        """
         self.opt_problem.addConGroup(
             name=name,
             nCon=n,
@@ -114,9 +126,17 @@ class ShapeOpt:
             jac=None,
         )
 
-    def add_objective(self):
-        """Adds an objective to the optimisation problem."""
-        self.opt_problem.addObj("objective")
+    def add_objective(self, name: str):
+        """Adds an objective to the optimisation problem.
+
+        Parameters
+        -----------
+        name : str
+            The name key of the objective being added. This must appear
+            in the dictionary returned by the objective and Jacobian callback
+            returns.
+        """
+        self.opt_problem.addObj(name)
 
     def run(self, hotstart_file: str = None):
         # Print banner
