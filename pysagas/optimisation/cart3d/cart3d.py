@@ -146,12 +146,25 @@ def evaluate_objective(x: dict) -> dict:
                 glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
                 index_col=0,
             )["0"]
+
+            # Fetch user-defined properties
+            properties_file = glob.glob(
+                os.path.join(properties_dir[0], "*properties.csv")
+            )
+            if len(properties_file) > 0:
+                # File exists, load it
+                properties = pd.read_csv(
+                    properties_file[0],
+                    index_col=0,
+                )["0"]
+
         else:
             # No properties data found
             volmass = None
+            properties = None
 
         # Evaluate objective function
-        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass)
+        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
         failed = False
 
     else:
@@ -226,10 +239,27 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             index_col=0,
         )[x.keys()]
 
+        # Fetch user-defined properties and sensitivities
+        properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
+        if len(properties_file) > 0:
+            # File exists, load it
+            properties = pd.read_csv(
+                properties_file[0],
+                index_col=0,
+            )["0"]
+
+            # Also load sensitivity file
+            property_sens = pd.read_csv(
+                os.path.join(scalar_sens_dir, "property_sensitivity.csv"),
+                index_col=0,
+            )[x.keys()]
+
     else:
         # No properties data found
         vm = None
         vm_sens = None
+        properties = None
+        property_sens = None
 
     # Call function
     jac = jac_cb(
@@ -238,6 +268,8 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         loads_dict=loads_dict,
         volmass=vm,
         volmass_sens=vm_sens,
+        properties=properties,
+        property_sens=property_sens,
     )
 
     return jac
