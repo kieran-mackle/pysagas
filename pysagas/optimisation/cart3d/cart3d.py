@@ -56,16 +56,21 @@ class Cart3DShapeOpt(ShapeOpt):
         ----------
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
+
         vehicle_generator : Generator
             The vehicle generator object.
+
         objective_callback : callable
             The callback function to compute and return the objective function
             value and constraint violation values.
+
         jacobian_callback : callable
             The callback function to compute and return the Jacobian of the
             objective function value and constraint violation values.
+
         working_dir_name : str
             The name of the working directory.
+
         optimiser_options : dict, optional
             The options to pass to the optimiser.
         """

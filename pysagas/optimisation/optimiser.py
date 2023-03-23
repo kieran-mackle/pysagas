@@ -7,7 +7,7 @@ from pyoptsparse import Optimizer, Optimization
 
 
 class ShapeOpt:
-    """PySAGAS Shape Optimisation via a gradient descent algorithm."""
+    """PySAGAS Shape Optimisation wrapper for pyOptSparse."""
 
     def __init__(
         self,
@@ -21,8 +21,10 @@ class ShapeOpt:
         ----------
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
+
         working_dir : str
             The name of the working directory.
+
         optimiser_options : dict, optional
             The options to pass to the optimiser.
         """
@@ -44,7 +46,39 @@ class ShapeOpt:
         upper_bounds: Optional[Union[ArrayLike, Dict]] = None,
         **kwargs,
     ):
-        """Adds variables to the optimisation problem."""
+        """Adds variables to the optimisation problem.
+
+        Parameters
+        ----------
+        parameters_dict : dict, optional
+            The dictionary of nominal parameter values. This can be provided
+            instead of adding each parameter individually with the 'name'
+            argument.
+
+        name : str
+            Name of variable group. This name should be unique across all the design variable groups
+
+        n : int, optional
+            Number of design variables in this variable group.
+
+        varType : str.
+            String representing the type of variable. Suitable values for type
+            are: 'c' for continuous variables, 'i' for integer values and
+            'd' for discrete selection.
+
+        value : scalar or array.
+            Starting value for design variables. If it is a a scalar, the same
+            value is applied to all 'nVars' variables. Otherwise, it must be
+            iterable object with length equal to 'nVars'.
+
+        lower : scalar or array.
+            Lower bound of variables. Scalar/array usage is the same as value
+            keyword
+
+        upper : scalar or array.
+            Upper bound of variables. Scalar/array usage is the same as value
+            keyword
+        """
 
         def check_bounds(
             parameters: Dict[str, float], bounds: Dict[str, float], sign: int
@@ -114,6 +148,24 @@ class ShapeOpt:
             The name key of the constraint being added. This must appear
             in the dictionary returned by the objective and Jacobian callback
             returns.
+
+        nCon : int
+            The number of constraints in this group
+
+        lower : scalar or array
+            The lower bound(s) for the constraint. If it is a scalar,
+            it is applied to all nCon constraints. If it is an array,
+            the array must be the same length as nCon.
+
+        upper : scalar or array
+            The upper bound(s) for the constraint. If it is a scalar,
+            it is applied to all nCon constraints. If it is an array,
+            the array must be the same length as nCon.
+
+        scale : scalar or array
+            A scaling factor for the constraint. It is generally
+            advisable to have most optimization constraint around the
+            same order of magnitude.
         """
         self.opt_problem.addConGroup(
             name=name,
@@ -139,6 +191,14 @@ class ShapeOpt:
         self.opt_problem.addObj(name)
 
     def run(self, hotstart_file: str = None):
+        """Run ShapeOpt.
+
+        Parameters
+        -----------
+        hotstart_file : str, optional
+            The filepath to the history file, used to hot start the
+            optimiser.
+        """
         # Print banner
         banner()
         print("\033[4mPySAGAS Shape Optimisation\033[0m".center(50, " "))
