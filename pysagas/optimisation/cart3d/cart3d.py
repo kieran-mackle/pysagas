@@ -40,6 +40,7 @@ class Cart3DShapeOpt(ShapeOpt):
         vehicle_generator: Generator,
         objective_callback: callable,
         jacobian_callback: callable,
+        optimiser_options: dict = None,
         sensitivity_filename: str = "all_components_sensitivity.csv",
         working_dir_name: str = "working_dir",
         sim_directory_name: str = "simulation",
@@ -47,15 +48,30 @@ class Cart3DShapeOpt(ShapeOpt):
         c3d_log_name: str = "C3D_log",
         c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
-        optimiser_options: dict = None,
         save_evolution: bool = True,
     ) -> None:
         """Initialise Cart3D Shape Optimiser.
 
         Parameters
         ----------
+        a_inf : float
+            The freestream speed of sound (m/s).
+
+        rho_inf : float
+            The freestream density (kg/m^3).
+
+        V_inf : float
+            The freestream velocity (m/s).
+
+        A_ref : float
+            The aerodynamic reference area (m^2).
+
         optimiser : Optimizer
             The pyoptsparse Optimizer object of choice.
+
+        optimiser_options : dict, optional
+            The options to pass to the optimiser. See the PyOptSparse
+            documentation for solver-specific options. The default is None.
 
         vehicle_generator : Generator
             The vehicle generator object.
@@ -68,11 +84,26 @@ class Cart3DShapeOpt(ShapeOpt):
             The callback function to compute and return the Jacobian of the
             objective function value and constraint violation values.
 
-        working_dir_name : str
-            The name of the working directory.
+        sensitivity_filename : str, optional
+            The filename of the combined components sensitivities. The default
+            is 'all_components_sensitivity.csv'.
 
-        optimiser_options : dict, optional
-            The options to pass to the optimiser.
+        working_dir_name : str, optional
+            The name of the working directory. The default is 'working_dir'.
+
+        sim_dir_name : str, optional
+            The name of the simulation directory. The default is 'simulation'.
+
+        basefiles_dir_name : str, optional
+            The name of the base files directory. The default is 'basefiles'.
+
+        c3d_log_name : str, optional
+            The name to use for the Cart3D logfile. The default is C3D_log.
+
+        save_evolution : bool, optional
+            A boolean flag to save geometry files of the evolving geometry.
+            If True, the files will be saved to the evolution directory. The
+            default is True.
         """
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
