@@ -92,6 +92,12 @@ For more information on ParaView's Python packages, see the
 [pyOptSparse](https://mdolab-pyoptsparse.readthedocs-hosted.com/en/latest/index.html) to converge on optimal geometries. Follow the
 [installation instructions](https://mdolab-pyoptsparse.readthedocs-hosted.com/en/latest/install.html), noting that special optimisers require custom builds.
 
+If using an Anaconda environment, you can also install PyOptSparse from Conda forge:
+
+```
+conda install -c conda-forge pyoptsparse
+```
+
 
 ### Installation
 After installing the dependencies above, clone this repo to your 
