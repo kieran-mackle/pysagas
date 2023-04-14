@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import pandas as pd
 from tqdm import tqdm
 from typing import Tuple, List
@@ -64,8 +65,10 @@ def process_components_file(
             + "installed, please append the bin/ directory to the Python path. "
             + "If it is not installed, please do so. If you are using "
             + "an Anaconda environment, you can install using "
-            + "'conda install -c conda-forge paraview'."
+            + "'conda install -c conda-forge paraview'.\n\n"
         )
+        tb = traceback.format_exc()
+        print(tb)
         sys.exit()
 
     # disable automatic camera reset on 'Show'
