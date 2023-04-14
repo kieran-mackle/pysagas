@@ -181,7 +181,7 @@ def evaluate_objective(x: dict) -> dict:
             volmass = pd.read_csv(
                 glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
                 index_col=0,
-            )["0"]
+            )
 
             # Fetch user-defined properties
             properties_file = glob.glob(
@@ -193,6 +193,8 @@ def evaluate_objective(x: dict) -> dict:
                     properties_file[0],
                     index_col=0,
                 )["0"]
+            else:
+                properties = None
 
         else:
             # No properties data found
@@ -269,7 +271,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         vm = pd.read_csv(
             glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
             index_col=0,
-        )["0"]
+        )
         vm_sens = pd.read_csv(
             os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
             index_col=0,
@@ -289,6 +291,9 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
                 os.path.join(scalar_sens_dir, "property_sensitivity.csv"),
                 index_col=0,
             )[x.keys()]
+        else:
+            properties = None
+            property_sens = None
 
     else:
         # No properties data found
@@ -530,7 +535,7 @@ def _combine_sense_data(
                 "Failed to combine sensitivity data "
                 f"({100*match_frac:.02f}% match rate)."
             )
-            print("  Increasing matching tolerance and trying again.")
+            print(f"  Increasing matching tolerance to {tol*10} and trying again.")
 
         # Increase matching tolerance
         tol *= 10

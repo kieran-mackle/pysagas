@@ -46,6 +46,7 @@ def process_components_file(
 
     try:
         # import the simple module from the paraview
+        import vtk
         from paraview.simple import (
             VisItTecplotBinaryReader,
             _DisableFirstRenderCameraReset,

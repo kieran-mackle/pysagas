@@ -86,7 +86,7 @@ class ShapeOpt:
             for p, v in parameters.items():
                 # Get bound for this parameter
                 b = bounds.get(p)
-                if np.sign(v - b) != np.sign(sign):
+                if np.sign(v - b) != np.sign(sign) and np.sign(v - b) != 0:
                     if np.sign(sign) < 0:
                         bound = ">"
                     else:
