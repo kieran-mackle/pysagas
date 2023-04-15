@@ -1,8 +1,11 @@
 import os
 import sys
-import shutil
+import traceback
 import pandas as pd
-from typing import Tuple
+from tqdm import tqdm
+from typing import Tuple, List
+from pysagas import Cell, Vector
+import xml.etree.ElementTree as ET
 
 
 def process_components_file(
@@ -44,6 +47,7 @@ def process_components_file(
 
     try:
         # import the simple module from the paraview
+        import vtk
         from paraview.simple import (
             VisItTecplotBinaryReader,
             _DisableFirstRenderCameraReset,
@@ -61,8 +65,10 @@ def process_components_file(
             + "installed, please append the bin/ directory to the Python path. "
             + "If it is not installed, please do so. If you are using "
             + "an Anaconda environment, you can install using "
-            + "'conda install -c conda-forge paraview'."
+            + "'conda install -c conda-forge paraview'.\n\n"
         )
+        tb = traceback.format_exc()
+        print(tb)
         sys.exit()
 
     # disable automatic camera reset on 'Show'
@@ -206,3 +212,66 @@ def process_components_file(
         os.remove(cells_filename)
 
     return points, cells
+
+
+def parse_tri_file(
+    tri_filepath: str = "Components.i.tri",
+    verbosity: int = 1,
+) -> List[Cell]:
+    """Appends shape sensitivity data to .i.tri file.
+
+    Parameters
+    ----------
+    tri_filepath : str, optional
+        The filepath to the intersected components file. The
+        default is Components.i.tri.
+    verbosity : int, optional
+        The verbosity of the code. The defualt is 1.
+
+    Returns
+    ---------
+    cells : List[Cell]
+        A list of all transcribed cells.
+    """
+    # Parse .tri file
+    tree = ET.parse(tri_filepath)
+    root = tree.getroot()
+    grid = root[0]
+    piece = grid[0]
+    points = piece[0]
+    cells = piece[1]
+
+    points_data = points[0].text
+    cells_data = cells[0].text
+
+    points_data_list = [el.split() for el in points_data.splitlines()[1:]]
+    points_data_list = [[float(j) for j in i] for i in points_data_list]
+
+    cells_data_list = [el.split() for el in cells_data.splitlines()[1:]]
+    cells_data_list = [[int(j) for j in i] for i in cells_data_list]
+
+    points_df = pd.DataFrame(points_data_list, columns=["x", "y", "z"]).dropna()
+
+    cells = []
+    if verbosity > 0:
+        print("Transcribing cells:")
+        pbar = tqdm(
+            total=len(cells_data_list),
+            position=0,
+            leave=True,
+            desc="  Cell transcription progress",
+        )
+    for vertex_idxs in cells_data_list:
+        vertices = [Vector.from_coordinates(points_data_list[i]) for i in vertex_idxs]
+        cell = Cell.from_points(vertices)
+        cells.append(cell)
+
+        # Update progress bar
+        if verbosity > 0:
+            pbar.update(1)
+
+    if verbosity > 0:
+        pbar.close()
+        print("Done.")
+
+    return cells

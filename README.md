@@ -13,6 +13,10 @@ to use in aerodynamic shape optimisation studies.
 <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
 
 
+Top view of waverider evolution      |  Back view of waverider evolution
+:-------------------------:|:-------------------------:
+![](https://user-images.githubusercontent.com/60687606/232183951-d9f50f81-7803-47f3-ae2e-6fe69ff05daa.gif)  |  ![](https://user-images.githubusercontent.com/60687606/232183946-51ba86b3-d55d-4e38-b038-5f36c8f32627.gif)
+
 
 <!-- TABLE OF CONTENTS -->
 <details>
@@ -84,6 +88,19 @@ import paraview
 
 For more information on ParaView's Python packages, see the 
 [ParaView Wiki](https://www.paraview.org/Wiki/PvPython_and_PvBatch).
+
+
+#### pyOptSparse
+
+*PySAGAS* shape optimisation wraps around 
+[pyOptSparse](https://mdolab-pyoptsparse.readthedocs-hosted.com/en/latest/index.html) to converge on optimal geometries. Follow the
+[installation instructions](https://mdolab-pyoptsparse.readthedocs-hosted.com/en/latest/install.html), noting that special optimisers require custom builds.
+
+If using an Anaconda environment, you can also install PyOptSparse from Conda forge:
+
+```
+conda install -c conda-forge pyoptsparse
+```
 
 
 ### Installation
@@ -162,8 +179,10 @@ PySAGAS is being developed along the following roadmap.
 * [x] Moment sensitivities
 * [x] Control over surface tags / faces being analysed
 * [x] Visualisation of sensitivities on mesh (cell-wise)
+* [ ] Visualisation of pressures from Newton impact solver
+* [ ] Implement line search for optimal step sizing (with Cart3D warm-starts)
+* [ ] CLI, to access `ShapeOpt` and `NewtonImpact` flow solver
 * [ ] Implementation of higher-fidelity correction models
-* [ ] CLI
 * [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
 
 

@@ -58,6 +58,7 @@ setuptools.setup(
         "pandas >= 1.5.2",
         "tqdm >= 4.64.1",
         "art >= 5.8",
+        "matplotlib",
     ],
     extras_require={
         "dev": dev_dep,
