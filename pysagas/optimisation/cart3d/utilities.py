@@ -118,37 +118,43 @@ class C3DPrep:
             f"comp2tri -makeGMPtags {tri_files_str} {conf_str} >> {self._logfile} 2>&1"
         )
 
-        # Await Config.xml
-        while not os.path.exists("Config.xml"):
-            time.sleep(0.2)
+        if self._write_config:
+            # Await Config.xml
+            while not os.path.exists("Config.xml"):
+                time.sleep(0.2)
 
-        # Overwrite Config.xml Component names using tri files
-        original = os.path.join("Config.xml")
-        new = os.path.join("temp_config.xml")
-        with open(new, "w+") as new_file:
-            with open(original, "r") as original_file:
-                for line in original_file:
-                    if "Component Name" in line:
-                        # Get component number
-                        name_prefix = "Component_"
-                        name_start = line.index(name_prefix)
-                        comp_no = line.split('"')[1].split("_")[-1]
-                        tri_prefix = tri_files[int(comp_no) - 1].split(".")[0]
+            # Overwrite Config.xml Component names using tri files
+            original = os.path.join("Config.xml")
+            new = os.path.join("temp_config.xml")
+            with open(new, "w+") as new_file:
+                with open(original, "r") as original_file:
+                    for line in original_file:
+                        if "Component Name" in line:
+                            # Get component number
+                            name_prefix = "Component_"
+                            name_start = line.index(name_prefix)
+                            comp_no = line.split('"')[1].split("_")[-1]
+                            tri_prefix = tri_files[int(comp_no) - 1].split(".")[0]
 
-                        # Update line
-                        line = (
-                            line[:name_start]
-                            + tri_prefix
-                            + line[name_start + len(name_prefix) + 1 :]
-                        )
+                            # Update line
+                            line = (
+                                line[:name_start]
+                                + tri_prefix
+                                + line[name_start + len(name_prefix) + 1 :]
+                            )
 
-                    # Write line to new file
-                    new_file.write(line)
+                        # Write line to new file
+                        new_file.write(line)
 
-        # # Replace original aero.csh file with updated file
-        shutil.copymode(original, new)
-        os.remove(original)
-        os.rename(new, original)
+            # # Replace original aero.csh file with updated file
+            shutil.copymode(original, new)
+            os.remove(original)
+            os.rename(new, original)
+
+        else:
+            # Await Components.tri
+            while not os.path.exists("Components.tri"):
+                time.sleep(0.2)
 
     def _run_intersect(self):
         os.system(f"intersect >> {self._logfile} 2>&1")
