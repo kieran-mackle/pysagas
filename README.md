@@ -13,6 +13,10 @@ to use in aerodynamic shape optimisation studies.
 <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
 
 
+Top view of waverider evolution      |  Back view of waverider evolution
+:-------------------------:|:-------------------------:
+![](https://user-images.githubusercontent.com/60687606/232183951-d9f50f81-7803-47f3-ae2e-6fe69ff05daa.gif)  |  ![](https://user-images.githubusercontent.com/60687606/232183946-51ba86b3-d55d-4e38-b038-5f36c8f32627.gif)
+
 
 <!-- TABLE OF CONTENTS -->
 <details>
