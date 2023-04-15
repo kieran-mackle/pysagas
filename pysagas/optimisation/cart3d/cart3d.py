@@ -49,6 +49,7 @@ class Cart3DShapeOpt(ShapeOpt):
         c3d_info_file: str = None,
         matching_tolerance: float = 1e-5,
         save_evolution: bool = True,
+        write_config_xml: bool = True,
     ) -> None:
         """Initialise Cart3D Shape Optimiser.
 
@@ -104,6 +105,13 @@ class Cart3DShapeOpt(ShapeOpt):
             A boolean flag to save geometry files of the evolving geometry.
             If True, the files will be saved to the evolution directory. The
             default is True.
+
+        write_config_xml : bool, optional
+            A boolean flag to write the Cart3D Config.xml file when running
+            comp2tri. If the geometry may be perturbed to a state where one
+            component is no longer part of the wetted surface, writing the
+            comp2tri file can cause set-up issues, and so it can be beneficial
+            to turn it off. The default is True.
         """
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
@@ -144,7 +152,9 @@ class Cart3DShapeOpt(ShapeOpt):
         _A_ref = A_ref
 
         # Create instance of Cart3D prepper
-        _c3dprepper = C3DPrep(logfile=c3d_logname, info_file=c3d_info_file)
+        _c3dprepper = C3DPrep(
+            logfile=c3d_logname, info_file=c3d_info_file, write_config=write_config_xml
+        )
 
         # Other settings
         _matching_tolerance = matching_tolerance

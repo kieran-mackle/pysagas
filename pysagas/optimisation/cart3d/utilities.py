@@ -11,11 +11,13 @@ class C3DPrep:
         jitter_denom: float = 1000,
         rotation_attempts: int = 6,
         info_file: str = None,
+        write_config: bool = True,
     ) -> None:
         self._logfile = logfile
         self._info = info_file if info_file is not None else self._logfile
         self._jitter_denom = jitter_denom  # for 1000; Max of 0.0001, min of 0
         self._rotation_attempts = rotation_attempts
+        self._write_config = write_config
 
     def _run_stl2tri(self, stl_files: list):
         tri_files = []
@@ -111,8 +113,9 @@ class C3DPrep:
             os.remove("Config.xml")
 
         # Run command
+        conf_str = "-config" if self._write_config else ""
         os.system(
-            f"comp2tri -makeGMPtags {tri_files_str} -config >> {self._logfile} 2>&1"
+            f"comp2tri -makeGMPtags {tri_files_str} {conf_str} >> {self._logfile} 2>&1"
         )
 
         # Await Config.xml
