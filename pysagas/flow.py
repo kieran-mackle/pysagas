@@ -6,7 +6,9 @@ class GasState:
     gamma = 1.4
     R = 287  # J/kg·K.3
 
-    def __init__(self, mach: float, pressure: float, temperature: float) -> None:
+    def __init__(
+        self, mach: float, pressure: float, temperature: float, gamma: float = 1.4
+    ) -> None:
         """Define a new gas state.
 
         Parameters
@@ -17,11 +19,14 @@ class GasState:
             The flow pressure (Pa).
         temperature : float
             The flow temperature (K).
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
         """
         # Assign properties
         self._T = temperature
         self._P = pressure
         self._M = mach
+        self._gamma = gamma
 
         # Calculate dependents
         self._rho = self.P / (self.R * self.T)
@@ -58,6 +63,10 @@ class GasState:
     def v(self):
         return self._v
 
+    @property
+    def gamma(self):
+        return self._gamma
+
 
 class FlowState(GasState):
     """An ideal gas state defined by Mach number, pressure and
@@ -70,6 +79,7 @@ class FlowState(GasState):
         pressure: float,
         temperature: float,
         direction: "Vector",
+        gamma: float = 1.4,
     ) -> None:
         """Define a new flow state.
 
@@ -83,8 +93,10 @@ class FlowState(GasState):
             The flow temperature (K).
         direction : Vector
             The direction vector of the flow.
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
         """
-        super().__init__(mach, pressure, temperature)
+        super().__init__(mach, pressure, temperature, gamma)
         self.direction = direction.unit
 
         # Velocity vector
