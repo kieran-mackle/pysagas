@@ -57,8 +57,11 @@ class STL(Parser):
 
         for vector_triple in mesh_obj.vectors:
             vertices = [Vector.from_coordinates(v) for v in vector_triple]
-            cell = Cell.from_points(vertices)
-            cells.append(cell)
+            try:
+                cell = Cell.from_points(vertices)
+                cells.append(cell)
+            except:
+                pass
 
             # Update progress bar
             if self.verbosity > 0:
@@ -117,8 +120,3 @@ class TRI(Parser):
             print("Done.")
 
         return cells
-
-
-if __name__ == "__main__":
-    stl_parser = STL("nose.stl")
-    cells = stl_parser.load()

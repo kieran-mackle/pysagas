@@ -4,6 +4,8 @@ from pysagas.flow import FlowState
 from typing import List, Tuple, Optional
 from pysagas.geometry import Vector, Cell
 from pysagas.cfd.solver import FlowSolver
+from gdtk.numeric.zero_solvers import secant
+from scipy.optimize import root_scalar
 
 
 class OPM(FlowSolver):
@@ -21,15 +23,20 @@ class OPM(FlowSolver):
         # Get flow
         flow = self._last_solve_freestream
 
+        # Iterate over all cells
+        net_force = Vector(0, 0, 0)
         for cell in self.cells:
             # Calculate orientation of cell to flow
-            theta = np.arccos(
-                np.dot(cell.n.vec, flow.direction.vec)
-                / np.cross(cell.n.vec, flow.direction.vec)
+            theta = np.pi / 2 - np.arccos(
+                np.dot(flow.direction.vec, cell.n.vec)
+                / (cell.n.norm * flow.direction.norm)
             )
 
             # Solve flow for this cell
-            if theta < 0:
+            # TODO - how to handle 90 degrees?
+            if theta == np.deg2rad(90):
+                print("Skipping 90 degrees theta")
+            elif theta < 0:
                 # Rearward facing cell, use Prandtl-Meyer expansion theory
                 M2, p2, T2 = self.solve_pm(theta, flow.M, flow.P, flow.T, flow.gamma)
             elif theta > 0:
@@ -42,18 +49,22 @@ class OPM(FlowSolver):
                 M2, p2, T2 = (flow.M, flow.P, flow.T)
 
             # Save results for this cell
+
+            # Calculate force vector
+            net_force += cell.n * p2 * cell.A
+
             # not sure what this should look like yet
 
-        raise NotImplementedError("Coming soon!")
+        return net_force
 
     @staticmethod
     def pm(M: float, gamma: float = 1.4):
         """Solves the Prandtl-Meyer function and returns the Prandtl-Meyer angle
-        in degrees."""
+        in radians."""
         v = ((gamma + 1) / (gamma - 1)) ** 0.5 * np.arctan(
             ((M**2 - 1) * (gamma - 1) / (gamma + 1)) ** 0.5
         ) - np.arctan((M**2 - 1) ** 0.5)
-        return np.rad2deg(v)
+        return v
 
     @staticmethod
     def inv_pm(angle: float, gamma: float = 1.4):
@@ -71,7 +82,7 @@ class OPM(FlowSolver):
         Parameters
         ----------
         theta : float
-            The deflection angle, specified in degrees.
+            The deflection angle, specified in radians.
 
         M1 : float
             The pre-expansion Mach number.
@@ -204,10 +215,7 @@ class OPM(FlowSolver):
         ----------
         Peter Jacobs
         """
-
-        def func(beta):
-            """Recursive function to solve."""
-            return OPM.oblique_beta(M1, beta, gamma) - theta
+        func = lambda beta: OPM.theta_from_beta(M1, beta, gamma) - theta
 
         # Initialise
         sign_beta = np.sign(theta)
@@ -225,9 +233,45 @@ class OPM(FlowSolver):
         if abs(f2) < tolerance:
             return sign_beta * b2
 
-        # Finally, use bisection
-        beta = sign_beta * bisect(func, b1, b2)
+        # Finally, solve with secant method
+        # beta = sign_beta * secant(func, b1, b2, tol=tolerance)
+        root_result = root_scalar(f=func, x0=b1, x1=b2, xtol=tolerance, method="secant")
+        if root_result.converged:
+            beta = sign_beta * root_result.root
+        else:
+            print("didnt converge ...")
+
         return beta
+
+    @staticmethod
+    def theta_from_beta(M1: float, beta: float, gamma: float = 1.4):
+        """Calculates the flow deflection angle from the oblique shock angle.
+
+        Parameters
+        ----------
+        M1 : float
+            The pre-expansion Mach number.
+
+        beta : float
+            The shock angle specified in radians.
+
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
+
+        Returns
+        --------
+        theta : float
+            The deflection angle, specified in radians.
+
+        References
+        ----------
+        Peter Jacobs
+        """
+        M1n = M1 * abs(np.sin(beta))
+        t1 = 2.0 / np.tan(beta) * (M1n**2 - 1)
+        t2 = M1**2 * (gamma + np.cos(2 * beta)) + 2
+        theta = np.arctan(t1 / t2)
+        return theta
 
     @staticmethod
     def oblique_M2(M1: float, beta: float, theta: float, gamma: float = 1.4):
@@ -242,7 +286,7 @@ class OPM(FlowSolver):
             The shock angle specified in radians.
 
         theta : float
-            The deflection angle, specified in degrees.
+            The deflection angle, specified in radians.
 
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
@@ -321,13 +365,26 @@ class OPM(FlowSolver):
 
 if __name__ == "__main__":
     # Example 9.9, page 654
-    theta = 1
-    M1 = 1.5
-    p1 = 1
-    T1 = 288
+    # theta = np.deg2rad(15)
+    # M1 = 1.5
+    # p1 = 1
+    # T1 = 288
 
-    M2, p2, T2 = OPM.solve_pm(theta, M1, p1, T1)
+    # M2, p2, T2 = OPM.solve_pm(theta, M1, p1, T1)
 
-    print(f"M2 = {M2}")
-    print(f"p2 = {p2}")
-    print(f"T2 = {T2}")
+    # print(f"M2 = {M2}")
+    # print(f"p2 = {p2}")
+    # print(f"T2 = {T2}")
+
+    import gdtk.ideal_gas_flow as igf
+    import time
+
+    M1, theta, gamma = (5, 0.37943526710092357, 1.4)
+    t1 = time.time()
+    print(OPM.oblique_beta(M1, theta, gamma))
+    t2 = time.time()
+    print(igf.beta_obl(M1, theta, gamma))
+    t3 = time.time()
+
+    print(t2 - t1)
+    print(t3 - t2)

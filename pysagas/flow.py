@@ -1,3 +1,6 @@
+from .geometry.vector import Vector
+
+
 class GasState:
     """An ideal gas state defined by Mach number, pressure and
     temperature.
@@ -78,7 +81,7 @@ class FlowState(GasState):
         mach: float,
         pressure: float,
         temperature: float,
-        direction: "Vector",
+        direction: Vector,
         gamma: float = 1.4,
     ) -> None:
         """Define a new flow state.
