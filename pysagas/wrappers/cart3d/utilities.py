@@ -15,19 +15,24 @@ def process_components_file(
     write_data: bool = True,
     verbosity: int = 1,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """A ParaView script to process Components.i.plt.
+    """A ParaView script to process Components.i.plt to extract
+    points and cells with data attached.
 
     Parameters
     ----------
     a_inf : float
         The freestream speed of sound (m/s).
+
     rho_inf : float
         The freestream density (kg/m^3).
+
     filepath : str, optional
         The filepath to the Components.i.plt file to be processed.
         The default is Components.i.plt.
+
     write_data : bool, optional
         Write the flow data to CSV files. The default is True.
+
     verbosity : int, optional
         The verbosity of the code. The defualt is 1.
 
@@ -218,13 +223,14 @@ def parse_tri_file(
     tri_filepath: str = "Components.i.tri",
     verbosity: int = 1,
 ) -> List[Cell]:
-    """Appends shape sensitivity data to .i.tri file.
+    """Transcribes a Cart3D .tri file into a list of PySAGAS Cell objects.
 
     Parameters
     ----------
     tri_filepath : str, optional
         The filepath to the intersected components file. The
         default is Components.i.tri.
+
     verbosity : int, optional
         The verbosity of the code. The defualt is 1.
 
