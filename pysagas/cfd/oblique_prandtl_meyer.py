@@ -18,6 +18,32 @@ class OPM(FlowSolver):
     def solve(self, freestream: Optional[FlowState] = None):
         super().solve(freestream)
 
+        # Get flow
+        flow = self._last_solve_freestream
+
+        for cell in self.cells:
+            # Calculate orientation of cell to flow
+            theta = np.arccos(
+                np.dot(cell.n.vec, flow.direction.vec)
+                / np.cross(cell.n.vec, flow.direction.vec)
+            )
+
+            # Solve flow for this cell
+            if theta < 0:
+                # Rearward facing cell, use Prandtl-Meyer expansion theory
+                M2, p2, T2 = self.solve_pm(theta, flow.M, flow.P, flow.T, flow.gamma)
+            elif theta > 0:
+                # Use oblique shock theory
+                M2, p2, T2 = self.solve_oblique(
+                    theta, flow.M, flow.P, flow.T, flow.gamma
+                )
+            else:
+                # Cell is parallel to flow, assume no change
+                M2, p2, T2 = (flow.M, flow.P, flow.T)
+
+            # Save results for this cell
+            # not sure what this should look like yet
+
         raise NotImplementedError("Coming soon!")
 
     @staticmethod
