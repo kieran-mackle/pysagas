@@ -62,10 +62,9 @@ class Cell:
         self.c = self.calc_centroid(p0, p1, p2)
 
         # Calculate geometric sensitivities
-        # TODO - allow postponing calculation of these when not needed
-        self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
-        self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
-        self.dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
+        self._dndv: ArrayLike = None
+        self._dAdv: ArrayLike = None
+        self._dcdv: ArrayLike = None
 
         # Parameter sensitivities
         self.dvdp: ArrayLike = None  # vertex-parameter sensitivities
@@ -79,6 +78,36 @@ class Cell:
         # Sensitivities
         self.sensitivities = None
         self.moment_sensitivities = None
+
+    @property
+    def dndv(self):
+        if self._dndv:
+            # Already exists, return it
+            return self._dndv
+        else:
+            # Calculate and return it
+            self._dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
+            return self._dndv
+
+    @property
+    def dAdv(self):
+        if self._dAdv:
+            # Already exists, return it
+            return self._dAdv
+        else:
+            # Calculate and return it
+            self._dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
+            return self._dAdv
+
+    @property
+    def dcdv(self):
+        if self._dcdv:
+            # Already exists, return it
+            return self._dcdv
+        else:
+            # Calculate and return it
+            self._dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
+            return self._dcdv
 
     def to_dict(self):
         """Returns the Cell as a dictionary."""
