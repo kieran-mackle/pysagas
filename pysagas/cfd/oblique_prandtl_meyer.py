@@ -23,6 +23,7 @@ class OPM(FlowSolver):
         flow = self._last_solve_freestream
 
         # Iterate over all cells
+        # TODO - add progress bar
         net_force = Vector(0, 0, 0)
         for cell in self.cells:
             # Calculate orientation of cell to flow
@@ -33,20 +34,28 @@ class OPM(FlowSolver):
             # print(np.rad2deg(theta))
 
             # Solve flow for this cell
-            # TODO - how to handle 90 degrees?
             # TODO - how to handle high angles for each oblique and PM?
             if theta == np.deg2rad(90):
-                print("Skipping 90 degrees theta")
+                # TODO: what do do here?
+                # print("Skipping 90 degrees theta")
+                pass
 
             elif theta < 0:
                 # Rearward facing cell, use Prandtl-Meyer expansion theory
                 M2, p2, T2 = self.solve_pm(theta, flow.M, flow.P, flow.T, flow.gamma)
 
             elif theta > 0:
-                # Use oblique shock theory
-                M2, p2, T2 = self.solve_oblique(
-                    theta, flow.M, flow.P, flow.T, flow.gamma
-                )
+                # Use shock theory
+                if theta > np.deg2rad(30):
+                    # TODO: Use strong shock theory
+                    # print("Skipping strong shock")
+                    pass
+
+                else:
+                    # Use oblique shock theory
+                    M2, p2, T2 = self.solve_oblique(
+                        theta, flow.M, flow.P, flow.T, flow.gamma
+                    )
 
             else:
                 # Cell is parallel to flow, assume no change
@@ -244,7 +253,9 @@ class OPM(FlowSolver):
         if root_result.converged:
             beta = sign_beta * root_result.root
         else:
-            raise Exception("Cannot converge beta.")
+            raise Exception(
+                f"Cannot converge beta (theta={np.rad2deg(theta):.2f} degrees)."
+            )
 
         return beta
 
@@ -377,30 +388,3 @@ class OPM(FlowSolver):
 
         # Call super method
         super().save(name, attributes)
-
-
-if __name__ == "__main__":
-    # Example 9.9, page 654
-    # theta = np.deg2rad(15)
-    # M1 = 1.5
-    # p1 = 1
-    # T1 = 288
-
-    # M2, p2, T2 = OPM.solve_pm(theta, M1, p1, T1)
-
-    # print(f"M2 = {M2}")
-    # print(f"p2 = {p2}")
-    # print(f"T2 = {T2}")
-
-    import gdtk.ideal_gas_flow as igf
-    import time
-
-    M1, theta, gamma = (5, 0.37943526710092357, 1.4)
-    t1 = time.time()
-    print(OPM.oblique_beta(M1, theta, gamma))
-    t2 = time.time()
-    print(igf.beta_obl(M1, theta, gamma))
-    t3 = time.time()
-
-    print(t2 - t1)
-    print(t3 - t2)

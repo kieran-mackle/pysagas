@@ -27,9 +27,10 @@ class AbstractParser(ABC):
         # This is a placeholder for a class variable defining the parser file type
         pass
 
+    @classmethod
     @abstractmethod
-    def load(self) -> List[Cell]:
-        """Parses the file."""
+    def load_from_file(self) -> List[Cell]:
+        """Convenience method for loading cells from file."""
 
 
 class Parser(AbstractParser):
@@ -71,6 +72,17 @@ class STL(Parser):
         if self.verbosity > 0:
             pbar.close()
             print("Done.")
+
+        return cells
+
+    @classmethod
+    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
+        """Convenience method for loading cells from file."""
+        # Create parser instance
+        parser = cls(filepath, verbosity)
+
+        # Load file
+        cells = parser.load()
 
         return cells
 
@@ -123,6 +135,17 @@ class PyMesh(Parser):
 
         return cells
 
+    @classmethod
+    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
+        """Convenience method for loading cells from file."""
+        # Create parser instance
+        parser = cls(filepath, verbosity)
+
+        # Load file
+        cells = parser.load()
+
+        return cells
+
 
 class TRI(Parser):
     filetype = ".tri"
@@ -158,7 +181,7 @@ class TRI(Parser):
             vertices = [
                 Vector.from_coordinates(points_data_list[i]) for i in vertex_idxs
             ]
-            cell = Cell.from_points(vertices)
+            cell = Cell.from_points(vertices, face_ids=vertex_idxs)
             cells.append(cell)
 
             # Update progress bar
@@ -168,5 +191,16 @@ class TRI(Parser):
         if self.verbosity > 0:
             pbar.close()
             print("Done.")
+
+        return cells
+
+    @classmethod
+    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
+        """Convenience method for loading cells from file."""
+        # Create parser instance
+        parser = cls(filepath, verbosity)
+
+        # Load file
+        cells = parser.load()
 
         return cells

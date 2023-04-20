@@ -66,8 +66,7 @@ class FlowSolver(AbstractFlowSolver):
     def save(self, name: str, attributes: Dict[str, list]):
         """Save the solution to VTK file format. Note that the
         geometry mesh must have been loaded from a parser which
-        includes connectivity information. Currently, this is only
-        the PyMesh parser.
+        includes connectivity information (eg. PyMesh or TRI).
 
         Parameters
         ----------
