@@ -46,6 +46,7 @@ class STL(Parser):
         mesh_obj = mesh.Mesh.from_file(self.filepath)
 
         cells = []
+        # TODO - can face ids be inferred?
         if self.verbosity > 0:
             print("Transcribing cells:")
             pbar = tqdm(
@@ -59,6 +60,55 @@ class STL(Parser):
             vertices = [Vector.from_coordinates(v) for v in vector_triple]
             try:
                 cell = Cell.from_points(vertices)
+                cells.append(cell)
+            except:
+                pass
+
+            # Update progress bar
+            if self.verbosity > 0:
+                pbar.update(1)
+
+        if self.verbosity > 0:
+            pbar.close()
+            print("Done.")
+
+        return cells
+
+
+class PyMesh(Parser):
+    filetype = "PyMesh STL"
+
+    def __init__(self, filepath: str, verbosity: int = 1) -> None:
+        # Import PyMesh
+        try:
+            import pymesh
+        except ModuleNotFoundError:
+            raise Exception(
+                "Could not find pymesh. Please follow the "
+                + "installation instructions at "
+                + "https://pymesh.readthedocs.io/en/latest/installation.html"
+            )
+        self._pymesh = pymesh
+        super().__init__(filepath, verbosity)
+
+    def load(self) -> List[Cell]:
+        # Load the STL
+        mesh_obj = self._pymesh.load_mesh(self.filepath)
+
+        cells = []
+        if self.verbosity > 0:
+            print("Transcribing cells:")
+            pbar = tqdm(
+                total=len(mesh_obj.vertices),
+                position=0,
+                leave=True,
+                desc="  Cell transcription progress",
+            )
+
+        for face in mesh_obj.faces:
+            vertices = [Vector.from_coordinates(mesh_obj.vertices[i]) for i in face]
+            try:
+                cell = Cell.from_points(vertices, face_ids=face)
                 cells.append(cell)
             except:
                 pass

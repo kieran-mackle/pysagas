@@ -2,8 +2,8 @@ from __future__ import annotations
 import numpy as np
 import pysagas.flow
 from .vector import Vector
-from typing import Union, List
 from numpy.typing import ArrayLike
+from typing import Union, List, Optional
 
 
 class Cell:
@@ -39,7 +39,9 @@ class Cell:
         An array containing the [x,y,z] force sensitivities of the cell.
     """
 
-    def __init__(self, p0: Vector, p1: Vector, p2: Vector):
+    def __init__(
+        self, p0: Vector, p1: Vector, p2: Vector, face_ids: Optional[int] = None
+    ):
         """Constructs a cell, defined by three points.
 
         Parameters
@@ -55,6 +57,9 @@ class Cell:
         self.p0 = p0
         self.p1 = p1
         self.p2 = p2
+
+        # Save connectivity information (PyMesh)
+        self._face_ids = face_ids
 
         # Calculate cell properites
         self.n = -self.calc_normal(p0, p1, p2)
@@ -78,6 +83,9 @@ class Cell:
         # Sensitivities
         self.sensitivities = None
         self.moment_sensitivities = None
+
+        # Cell attributes
+        self.attributes = {}
 
     @property
     def dndv(self):
@@ -109,6 +117,11 @@ class Cell:
             self._dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
             return self._dcdv
 
+    @property
+    def vertices(self):
+        """The cell vertices."""
+        return np.array([getattr(self, p).vec for p in ["p0", "p1", "p2"]])
+
     def to_dict(self):
         """Returns the Cell as a dictionary."""
         # TODO - need to think about representing the cells
@@ -118,7 +131,9 @@ class Cell:
         pass
 
     @classmethod
-    def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
+    def from_points(
+        cls, points: Union[List[Vector], np.array[Vector]], **kwargs
+    ) -> Cell:
         """Constructs a Vector object from an array of coordinates.
 
         Parameters
@@ -130,7 +145,7 @@ class Cell:
         -------
         Cell
         """
-        return cls(*points)
+        return cls(*points, **kwargs)
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"

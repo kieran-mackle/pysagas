@@ -1,11 +1,10 @@
 import numpy as np
+from typing import Optional
 from scipy.optimize import bisect
 from pysagas.flow import FlowState
-from typing import List, Tuple, Optional
-from pysagas.geometry import Vector, Cell
-from pysagas.cfd.solver import FlowSolver
-from gdtk.numeric.zero_solvers import secant
+from pysagas.geometry import Vector
 from scipy.optimize import root_scalar
+from pysagas.cfd.solver import FlowSolver
 
 
 class OPM(FlowSolver):
@@ -31,29 +30,35 @@ class OPM(FlowSolver):
                 np.dot(flow.direction.vec, cell.n.vec)
                 / (cell.n.norm * flow.direction.norm)
             )
+            # print(np.rad2deg(theta))
 
             # Solve flow for this cell
             # TODO - how to handle 90 degrees?
+            # TODO - how to handle high angles for each oblique and PM?
             if theta == np.deg2rad(90):
                 print("Skipping 90 degrees theta")
+
             elif theta < 0:
                 # Rearward facing cell, use Prandtl-Meyer expansion theory
                 M2, p2, T2 = self.solve_pm(theta, flow.M, flow.P, flow.T, flow.gamma)
+
             elif theta > 0:
                 # Use oblique shock theory
                 M2, p2, T2 = self.solve_oblique(
                     theta, flow.M, flow.P, flow.T, flow.gamma
                 )
+
             else:
                 # Cell is parallel to flow, assume no change
                 M2, p2, T2 = (flow.M, flow.P, flow.T)
 
             # Save results for this cell
+            cell.attributes["pressure"] = p2
+            cell.attributes["Mach"] = M2
+            cell.attributes["temperature"] = T2
 
             # Calculate force vector
             net_force += cell.n * p2 * cell.A
-
-            # not sure what this should look like yet
 
         return net_force
 
@@ -239,7 +244,7 @@ class OPM(FlowSolver):
         if root_result.converged:
             beta = sign_beta * root_result.root
         else:
-            print("didnt converge ...")
+            raise Exception("Cannot converge beta.")
 
         return beta
 
@@ -361,6 +366,17 @@ class OPM(FlowSolver):
         M1n = M1 * abs(np.sin(beta))
         rho2_rho1 = (gamma + 1) * M1n**2 / 2 + (gamma - 1) * M1n**2
         return rho2_rho1
+
+    def save(self, name: str):
+        # Initialise attributes dictionary
+        attributes = {
+            "pressure": [],
+            "Mach": [],
+            "temperature": [],
+        }
+
+        # Call super method
+        super().save(name, attributes)
 
 
 if __name__ == "__main__":

@@ -4,9 +4,8 @@ import pandas as pd
 from tqdm import tqdm
 from typing import Union, List
 from pysagas.flow import FlowState
-from pysagas.geometry import Vector, Cell
-from pysagas.geometry import DegenerateCell
 from pysagas.wrappers.wrapper import Wrapper
+from pysagas.geometry import Vector, Cell, DegenerateCell
 from pysagas.wrappers.cart3d.utilities import process_components_file
 
 

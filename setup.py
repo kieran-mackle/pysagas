@@ -58,6 +58,7 @@ setuptools.setup(
         "pandas >= 1.5.2",
         "tqdm >= 4.64.1",
         "art >= 5.8",
+        "meshio >= 5.3.4",
         "matplotlib",
     ],
     extras_require={
