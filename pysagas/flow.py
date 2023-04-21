@@ -35,6 +35,7 @@ class GasState:
         self._rho = self.P / (self.R * self.T)
         self._a = (self.gamma * self.R * self.T) ** 0.5
         self._v = self.M * self.a
+        self._q = 0.5 * self._rho * self._v**2
 
     def __str__(self) -> str:
         return f"Mach {self.M} flow condition with P = {self.P}, T = {self.T}."
@@ -67,6 +68,10 @@ class GasState:
         return self._v
 
     @property
+    def q(self):
+        return self._q
+
+    @property
     def gamma(self):
         return self._gamma
 
@@ -81,7 +86,7 @@ class FlowState(GasState):
         mach: float,
         pressure: float,
         temperature: float,
-        direction: Vector,
+        direction: Vector = None,
         gamma: float = 1.4,
     ) -> None:
         """Define a new flow state.
@@ -94,13 +99,16 @@ class FlowState(GasState):
             The flow pressure (Pa).
         temperature : float
             The flow temperature (K).
-        direction : Vector
-            The direction vector of the flow.
+        direction : Vector, optional
+            The direction vector of the flow. The default is Vector(1,0,0).
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
         """
         super().__init__(mach, pressure, temperature, gamma)
-        self.direction = direction.unit
+        if direction:
+            self.direction = direction.unit
+        else:
+            self.direction = Vector(1, 0, 0)
 
         # Velocity vector
         self._Vector = self.direction * self.v
