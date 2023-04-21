@@ -439,6 +439,109 @@ class OPM(FlowSolver):
         )
         return beta_max
 
+    @staticmethod
+    def dp_dtheta_obl(
+        theta: float, M1: float, p1: float = 1.0, T1: float = 1.0, gamma: float = 1.4
+    ):
+        """Solves for the sensitivities at the given point using oblique shock
+        theory.
+
+        Parameters
+        ----------
+        theta : float
+            The deflection angle, specified in radians.
+
+        M1 : float
+            The pre-expansion Mach number.
+
+        p1 : float, optional
+            The pre-expansion pressure (Pa). The default is 1.0.
+
+        T1 : float, optional
+            The pre-expansion temperature (K). The default is 1.0.
+
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
+
+        Returns
+        --------
+        dM2 : float
+            The sensitivity of the post-expansion Mach number.
+
+        dp2 : float
+            The sensitivity of the post-expansion pressure (Pa).
+
+        dT2 : float
+            The sensitivity of the post-expansion temperature (K).
+        """
+        # Create function handle
+        func = lambda theta: OPM.solve_oblique(theta, M1, p1, T1, gamma)
+
+        # Calculate derivitive by finite differencing
+        g = OPM._findiff(func, theta)
+
+        return g
+
+    @staticmethod
+    def dp_dtheta_pm(
+        theta: float, M1: float, p1: float = 1.0, T1: float = 1.0, gamma: float = 1.4
+    ):
+        """Solves for the sensitivities at the given point using Prandtl-Meyer
+        theory.
+
+        Parameters
+        ----------
+        theta : float
+            The deflection angle, specified in radians.
+
+        M1 : float
+            The pre-expansion Mach number.
+
+        p1 : float, optional
+            The pre-expansion pressure (Pa). The default is 1.0.
+
+        T1 : float, optional
+            The pre-expansion temperature (K). The default is 1.0.
+
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
+
+        Returns
+        --------
+        dM2 : float
+            The sensitivity of the post-expansion Mach number.
+
+        dp2 : float
+            The sensitivity of the post-expansion pressure (Pa).
+
+        dT2 : float
+            The sensitivity of the post-expansion temperature (K).
+        """
+        # Create function handle
+        func = lambda theta: OPM.solve_pm(theta, M1, p1, T1, gamma)
+
+        # Calculate derivitive by finite differencing
+        g = OPM._findiff(func, theta)
+
+        return g
+
+    @staticmethod
+    def _findiff(func: callable, point: any, perturbation: float = 1e-3):
+        # vals = [func(p)[1] for p in [point*(1-perturbation), point, point*(1+perturbation)]]
+        vals = [
+            func(p)
+            for p in [point * (1 - perturbation), point, point * (1 + perturbation)]
+        ]
+        Mvals = [v[0] for v in vals]
+        pvals = [v[1] for v in vals]
+        Tvals = [v[2] for v in vals]
+
+        dM = np.gradient(Mvals)
+        dp = np.gradient(pvals)
+        dT = np.gradient(Tvals)
+
+        return dM[1], dp[1], dT[1]
+
     def save(self, name: str):
         # Initialise attributes dictionary
         attributes = {
