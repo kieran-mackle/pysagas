@@ -10,9 +10,14 @@ class NewtonianImpact(FlowSolver):
 
     method = "Newtonian Impact"
 
-    def solve(self, freestream: Optional[FlowState] = None):
+    def solve(
+        self,
+        freestream: Optional[FlowState] = None,
+        Mach: Optional[float] = None,
+        aoa: Optional[float] = None,
+    ):
         # Initial checks
-        super().solve(freestream)
+        super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
 
         raise NotImplementedError("Coming soon!")
 

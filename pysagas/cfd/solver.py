@@ -1,9 +1,9 @@
 import os
 import meshio
 import numpy as np
-from pysagas import Cell, FlowState
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
+from pysagas import Cell, FlowState, Vector
 
 
 class AbstractFlowSolver(ABC):
@@ -38,30 +38,79 @@ class FlowSolver(AbstractFlowSolver):
     def __init__(
         self, cells: List[Cell], freestream: Optional[FlowState] = None
     ) -> None:
-        """Instantiates the flow solver."""
+        """Instantiates the flow solver.
+
+        Parameters
+        ----------
+        cells : list[Cell]
+            A list of the cells describing the geometry.
+
+        freestream : Flowstate, optional
+            The free-stream flow state. The default is the freestream provided
+            upon instantiation of the solver.
+        """
 
         # TODO - allow providing a geometry parser, eg. tri file parser for Cart3D,
         # or a (yet to be implemented) STL parser.
+        # TODO - add verbosity
 
         self.cells = cells
         self.freestream = freestream
         self._last_solve_freestream: FlowState = None
 
-    def solve(self, freestream: Optional[FlowState] = None):
-        """Run the flow solver."""
-        # TODO - what is the return of this method?
+    def solve(
+        self,
+        freestream: Optional[FlowState] = None,
+        Mach: Optional[float] = None,
+        aoa: Optional[float] = None,
+    ):
+        """Run the flow solver.
 
+        Parameters
+        ----------
+        freestream : Flowstate, optional
+            The free-stream flow state. The default is the freestream provided
+            upon instantiation of the solver.
+
+        Mach : float, optional
+            The free-stream Mach number. The default is that specified in
+            the freestream flow state.
+
+        aoa : float, optional
+            The free-stream angle of attack. The default is that specified in
+            the freestream flow state.
+
+        Raises
+        ------
+        Exception : when no freestream can be found.
+        """
+        # TODO - what is the return of this method? Coefficients?
+        # TODO - add nice printout
         if not freestream:
             # No freestream conditions specified
             if not self.freestream:
                 # No conditions provided on instantiation either
                 raise Exception("Please specify freestream conditions.")
             else:
-                # Assign last solve freestream for solver to use
-                self._last_solve_freestream = self.freestream
+                # Use nominal freestream as base
+                fs = self.freestream
+                if Mach:
+                    # Update mach number
+                    fs.M = Mach
+
+                if aoa:
+                    # Update flow direction
+                    flow_direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
+                    fs.direction = flow_direction
+
+                # Update last solve freestream
+                self._last_solve_freestream = fs
+
         else:
             # Solve-specific freestream conditions provided
             self._last_solve_freestream = freestream
+            if Mach or aoa:
+                print("Using freestream provided; ignoring Mach/aoa provided.")
 
     def save(self, name: str, attributes: Dict[str, list]):
         """Save the solution to VTK file format. Note that the

@@ -12,12 +12,27 @@ class OPM(FlowSolver):
 
     This implementation uses oblique shock theory for flow-facing cell
     elements, and Prandtl-Meyer expansion theory for rearward-facing elements.
+
+    Extended Summary
+    ----------------
+    Data attribute 'method' refers to which method was used for a particular
+    cell, according to:
+        -1 : invalid / skipped (eg. 90 degree face)
+        0 : parallel face, do nothing
+        1 : Prandlt-Meyer
+        2 : normal shock
+        3 : oblique shock
     """
 
     method = "Oblique/Prandtl-Meyer combination"
 
-    def solve(self, freestream: Optional[FlowState] = None):
-        super().solve(freestream)
+    def solve(
+        self,
+        freestream: Optional[FlowState] = None,
+        Mach: Optional[float] = None,
+        aoa: Optional[float] = None,
+    ):
+        super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
 
         # Get flow
         flow = self._last_solve_freestream
@@ -31,18 +46,21 @@ class OPM(FlowSolver):
                 np.dot(flow.direction.vec, cell.n.vec)
                 / (cell.n.norm * flow.direction.norm)
             )
-            # print(np.rad2deg(theta))
 
             # Solve flow for this cell
-            # TODO - how to handle high angles for each oblique and PM?
-            if theta == np.deg2rad(90):
-                # TODO: what do do here?
-                # print("Skipping 90 degrees theta")
-                pass
+            if theta < 0:
+                # Rearward facing cell
+                if theta == np.deg2rad(-90):
+                    # TODO: what do do here?
+                    M2, p2, T2 = (flow.M, 0.0, flow.T)
+                    method = -1
 
-            elif theta < 0:
-                # Rearward facing cell, use Prandtl-Meyer expansion theory
-                M2, p2, T2 = self.solve_pm(theta, flow.M, flow.P, flow.T, flow.gamma)
+                else:
+                    # Use Prandtl-Meyer expansion theory
+                    M2, p2, T2 = self.solve_pm(
+                        abs(theta), flow.M, flow.P, flow.T, flow.gamma
+                    )
+                    method = 1
 
             elif theta > 0:
                 # Use shock theory
@@ -52,22 +70,26 @@ class OPM(FlowSolver):
                 )
                 if theta > theta_max:
                     # Detached shock
+                    method = 2
                     M2, p2, T2 = self.solve_normal(flow.M, flow.P, flow.T, flow.gamma)
 
                 else:
                     # Use oblique shock theory
+                    method = 3
                     M2, p2, T2 = self.solve_oblique(
                         theta, flow.M, flow.P, flow.T, flow.gamma
                     )
 
             else:
                 # Cell is parallel to flow, assume no change
+                method = 0
                 M2, p2, T2 = (flow.M, flow.P, flow.T)
 
             # Save results for this cell
             cell.attributes["pressure"] = p2
             cell.attributes["Mach"] = M2
             cell.attributes["temperature"] = T2
+            cell.attributes["method"] = method
 
             # Calculate force vector
             net_force += cell.n * p2 * cell.A
@@ -548,6 +570,7 @@ class OPM(FlowSolver):
             "pressure": [],
             "Mach": [],
             "temperature": [],
+            "method": [],
         }
 
         # Call super method
