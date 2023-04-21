@@ -46,10 +46,13 @@ class OPM(FlowSolver):
 
             elif theta > 0:
                 # Use shock theory
-                if theta > np.deg2rad(30):
-                    # TODO: Use strong shock theory
-                    # print("Skipping strong shock")
-                    pass
+                beta_max = OPM.beta_max(M=flow.M, gamma=flow.gamma)
+                theta_max = OPM.theta_from_beta(
+                    M1=flow.M, beta=beta_max, gamma=flow.gamma
+                )
+                if theta > theta_max:
+                    # Detached shock
+                    M2, p2, T2 = self.solve_normal(flow.M, flow.P, flow.T, flow.gamma)
 
                 else:
                     # Use oblique shock theory
@@ -180,6 +183,44 @@ class OPM(FlowSolver):
         M2 = OPM.oblique_M2(M1, beta, theta, gamma)
         p2 = p2_p1 * p1
         T2 = T1 * T2_T1
+
+        return M2, p2, T2
+
+    @staticmethod
+    def solve_normal(M1: float, p1: float = 1.0, T1: float = 1.0, gamma: float = 1.4):
+        """Solves the flow using normal shock theory.
+
+        Parameters
+        ----------
+        M1 : float
+            The pre-shock Mach number.
+
+        p1 : float, optional
+            The pre-shock pressure (Pa). The default is 1.0.
+
+        T1 : float, optional
+            The pre-expansion temperature (K). The default is 1.0.
+
+        gamma : float, optional
+            The ratio of specific heats. The default is 1.4.
+
+        Returns
+        --------
+        M2 : float
+            The post-shock Mach number.
+
+        p2 : float
+            The post-shock pressure (Pa).
+
+        T2 : float
+            The post-shock temperature (K).
+        """
+        rho2_rho1 = (gamma + 1) * M1**2 / (2 + (gamma - 1) * M1**2)
+        p2_p1 = 1 + 2 * gamma * (M1**2 - 1) / (gamma + 1)
+
+        M2 = ((1 + M1 * (gamma - 1) / 2) / (gamma * M1**2 - (gamma - 1) / 2)) ** 0.5
+        p2 = p1 * p2_p1
+        T2 = T1 * p2_p1 / rho2_rho1
 
         return M2, p2, T2
 
@@ -377,6 +418,26 @@ class OPM(FlowSolver):
         M1n = M1 * abs(np.sin(beta))
         rho2_rho1 = (gamma + 1) * M1n**2 / 2 + (gamma - 1) * M1n**2
         return rho2_rho1
+
+    @staticmethod
+    def beta_max(M: float, gamma: float = 1.4):
+        """Returns the maximum shock angle for a given
+        Mach number.
+        """
+        beta_max = np.arcsin(
+            np.sqrt(
+                (1 / (gamma * M**2))
+                * (
+                    (gamma + 1) * M**2 / 4
+                    - 1
+                    + np.sqrt(
+                        (gamma + 1)
+                        * ((gamma + 1) * M**4 / 16 + (gamma - 1) * M**2 / 2 + 1)
+                    )
+                )
+            )
+        )
+        return beta_max
 
     def save(self, name: str):
         # Initialise attributes dictionary
