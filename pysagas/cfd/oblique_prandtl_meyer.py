@@ -94,6 +94,9 @@ class OPM(FlowSolver):
             # Calculate force vector
             net_force += cell.n * p2 * cell.A
 
+        # Construct results
+        # TODO - improve return results, perhaps create FlowResults class
+
         return net_force
 
     @staticmethod

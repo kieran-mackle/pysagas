@@ -1,4 +1,5 @@
 import os
+import copy
 import meshio
 import numpy as np
 from abc import ABC, abstractmethod
@@ -80,12 +81,15 @@ class FlowSolver(AbstractFlowSolver):
             The free-stream angle of attack. The default is that specified in
             the freestream flow state.
 
+        Returns
+        -------
+        net_force : Vector
+            The net force vector.
+
         Raises
         ------
         Exception : when no freestream can be found.
         """
-        # TODO - what is the return of this method? Coefficients?
-        # TODO - add nice printout
         if not freestream:
             # No freestream conditions specified
             if not self.freestream:
@@ -93,10 +97,10 @@ class FlowSolver(AbstractFlowSolver):
                 raise Exception("Please specify freestream conditions.")
             else:
                 # Use nominal freestream as base
-                fs = self.freestream
+                fs = copy.copy(self.freestream)
                 if Mach:
                     # Update mach number
-                    fs.M = Mach
+                    fs._M = Mach
 
                 if aoa:
                     # Update flow direction
@@ -181,3 +185,37 @@ class FlowSolver(AbstractFlowSolver):
 
         # Remove .ply file
         os.remove(f"{name}.ply")
+
+    @staticmethod
+    def body_to_wind(v: Vector, aoa: float):
+        """Converts a vector from body axes to wind axes.
+
+        Parameters
+        ----------
+        v : Vector
+            The result to transform.
+
+        aoa : float
+            The angle of attack, specified in degrees.
+
+        Returns
+        --------
+        r : Vector
+            The transformed result.
+        """
+        # TODO - use euler matrices
+        A = v.x  # axial
+        N = v.y  # normal
+
+        L = N * np.cos(np.deg2rad(aoa)) - A * np.sin(np.deg2rad(aoa))
+        D = N * np.sin(np.deg2rad(aoa)) + A * np.cos(np.deg2rad(aoa))
+
+        # Construct new result
+        r = Vector(x=D, y=L, z=0.0)
+
+        return r
+
+    def print_results(self):
+        """Print the results of the last solve."""
+        # TODO - add nice printout method
+        raise NotImplementedError("Coming soon!")
