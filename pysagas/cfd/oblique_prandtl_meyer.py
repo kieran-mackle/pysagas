@@ -68,17 +68,16 @@ class OPM(FlowSolver):
                 # Solve flow for this cell
                 if theta < 0:
                     # Rearward facing cell
-                    if theta == np.deg2rad(-90):
-                        # TODO: what do do here?
+                    if theta < np.deg2rad(-60):
                         M2, p2, T2 = (flow.M, 0.0, flow.T)
                         method = -1
 
                     else:
                         # Use Prandtl-Meyer expansion theory
+                        method = 1
                         M2, p2, T2 = self._solve_pm(
                             abs(theta), flow.M, flow.P, flow.T, flow.gamma
                         )
-                        method = 1
 
                 elif theta > 0:
                     # Use shock theory
