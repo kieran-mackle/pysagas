@@ -89,7 +89,7 @@ class Cell:
 
     @property
     def dndv(self):
-        if self._dndv:
+        if self._dndv is not None:
             # Already exists, return it
             return self._dndv
         else:
@@ -99,7 +99,7 @@ class Cell:
 
     @property
     def dAdv(self):
-        if self._dAdv:
+        if self._dAdv is not None:
             # Already exists, return it
             return self._dAdv
         else:
@@ -109,7 +109,7 @@ class Cell:
 
     @property
     def dcdv(self):
-        if self._dcdv:
+        if self._dcdv is not None:
             # Already exists, return it
             return self._dcdv
         else:
@@ -154,7 +154,16 @@ class Cell:
         return "A Cell"
 
     def _add_sensitivities(self, dvdp: np.array) -> None:
-        """Adds the cell sensitivities to the cell."""
+        """Adds the cell sensitivities to the cell.
+
+        Parameters
+        -----------
+        dvdp : array
+            The sensitivity of each vertex x, y and z, with respect to each
+            parameter. The dimensions of dvdp are (9, p), for p parameters.
+            Each 3 rows corresponds to the x, y and z sensitivities for each
+            vertex of the cell. Each column is for the relevant parameter.
+        """
         self.dvdp = dvdp
         self.dndp = np.dot(self.dndv, self.dvdp)
         self.dAdp = np.dot(self.dAdv, self.dvdp)
