@@ -290,7 +290,7 @@ class FlowResults:
         self.net_force = net_force
 
     def __str__(self) -> str:
-        print(f"Net force = {self.net_force} N")
+        return f"Net force = {self.net_force} N"
 
 
 class SensitivityResults:
@@ -299,5 +299,7 @@ class SensitivityResults:
         self.m_sens = m_sens
 
     def __str__(self) -> str:
-        print(f"Force sensitivties:\n{self.f_sens}")
-        print(f"Moment sensitivties:\n{self.m_sens}")
+        s1 = f"Force sensitivties:\n{self.f_sens}"
+        s2 = f"Moment sensitivties:\n{self.m_sens}"
+
+        return f"{s1}\n\n{s2}"
