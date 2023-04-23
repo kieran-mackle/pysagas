@@ -28,6 +28,7 @@ class OPM(FlowSolver):
     """
 
     method = "Oblique/Prandtl-Meyer combination"
+    PM_ANGLE_THRESHOLD = -40  # degrees
 
     def solve(
         self,
@@ -57,7 +58,7 @@ class OPM(FlowSolver):
 
             # Iterate over all cells
             net_force = Vector(0, 0, 0)
-            # TODO - net moment
+            # TODO - calculate net moment also
             for cell in self.cells:
                 # Calculate orientation of cell to flow
                 theta = np.pi / 2 - np.arccos(
@@ -68,7 +69,7 @@ class OPM(FlowSolver):
                 # Solve flow for this cell
                 if theta < 0:
                     # Rearward facing cell
-                    if theta < np.deg2rad(-60):
+                    if theta < np.deg2rad(self.PM_ANGLE_THRESHOLD):
                         M2, p2, T2 = (flow.M, 0.0, flow.T)
                         method = -1
 
@@ -131,7 +132,7 @@ class OPM(FlowSolver):
                 print("Done.")
 
             # Construct results
-            result = FlowResults(net_force=net_force)
+            result = FlowResults(freestream=flow, net_force=net_force)
 
             # Save
             self.flow_result = result
@@ -155,7 +156,8 @@ class OPM(FlowSolver):
     def inv_pm(angle: float, gamma: float = 1.4):
         """Solves the inverse Prandtl-Meyer function using a bisection algorithm."""
         func = lambda M: OPM.pm(M, gamma) - angle
-        return bisect(func, 1.0, 42.0)
+        pm = bisect(func, 1.0, 42.0)
+        return pm
 
     @staticmethod
     def _solve_pm(
@@ -582,7 +584,7 @@ class OPM(FlowSolver):
                 # Solve flow for this cell
                 if theta < 0:
                     # Rearward facing cell
-                    if theta == np.deg2rad(-90):
+                    if theta < np.deg2rad(self.PM_ANGLE_THRESHOLD):
                         dM2, dp2, dT2 = (0.0, 0.0, 0.0)
 
                     else:

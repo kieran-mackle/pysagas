@@ -294,18 +294,23 @@ class FlowSolver(AbstractFlowSolver):
 
 
 class FlowResults:
-    def __init__(self, net_force: Vector) -> None:
+    def __init__(self, freestream: FlowState, net_force: Vector) -> None:
+        self.freestream = freestream
         self.net_force = net_force
-        # TODO - calculate coefficients?
-        # w = OPM.body_to_wind(v=net_force, aoa=aoa)
-        # C_L = w.y / (freestream.q * A_ref)
-        # C_D = w.x / (freestream.q * A_ref)
+
+        # TODO - Calculate angle of attack
 
     def __str__(self) -> str:
         return f"Net force = {self.net_force} N"
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def coefficients(self, aoa: float, A_ref: float):
+        w = FlowSolver.body_to_wind(v=self.net_force, aoa=aoa)
+        C_L = w.y / (self.freestream.q * A_ref)
+        C_D = w.x / (self.freestream.q * A_ref)
+        return C_L, C_D
 
 
 class SensitivityResults:
