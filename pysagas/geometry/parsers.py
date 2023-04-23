@@ -1,6 +1,7 @@
 from stl import mesh
 from tqdm import tqdm
 from typing import List
+import multiprocess as mp
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
 from pysagas.geometry import Cell, Vector
@@ -104,33 +105,29 @@ class PyMesh(Parser):
         super().__init__(filepath, verbosity)
 
     def load(self) -> List[Cell]:
+        def mp_wrapper(face):
+            vertices = [Vector.from_coordinates(mesh_vertices[i]) for i in face]
+            try:
+                cell = Cell.from_points(vertices, face_ids=face)
+            except:
+                cell = None
+            return cell
+
         # Load the STL
         mesh_obj = self._pymesh.load_mesh(self.filepath)
 
+        if self.verbosity > 0:
+            print("Transcribing cells.")
+
+        # Create multiprocessing pool to construct cells
         cells = []
-        if self.verbosity > 0:
-            print("Transcribing cells:")
-            pbar = tqdm(
-                total=len(mesh_obj.vertices),
-                position=0,
-                leave=True,
-                desc="  Cell transcription progress",
-            )
-
-        for face in mesh_obj.faces:
-            vertices = [Vector.from_coordinates(mesh_obj.vertices[i]) for i in face]
-            try:
-                cell = Cell.from_points(vertices, face_ids=face)
-                cells.append(cell)
-            except:
-                pass
-
-            # Update progress bar
-            if self.verbosity > 0:
-                pbar.update(1)
+        pool = mp.Pool()
+        mesh_vertices = mesh_obj.vertices
+        for result in pool.map(mp_wrapper, mesh_obj.faces):
+            if result is not None:
+                cells.append(result)
 
         if self.verbosity > 0:
-            pbar.close()
             print("Done.")
 
         return cells
