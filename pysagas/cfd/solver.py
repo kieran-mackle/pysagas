@@ -298,7 +298,10 @@ class FlowResults:
         self.freestream = freestream
         self.net_force = net_force
 
-        # TODO - Calculate angle of attack
+        # Calculate angle of attack
+        self.aoa = np.rad2deg(
+            np.arctan(freestream.direction.y / freestream.direction.x)
+        )
 
     def __str__(self) -> str:
         return f"Net force = {self.net_force} N"
@@ -306,8 +309,8 @@ class FlowResults:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def coefficients(self, aoa: float, A_ref: float):
-        w = FlowSolver.body_to_wind(v=self.net_force, aoa=aoa)
+    def coefficients(self, A_ref: Optional[float] = 1.0):
+        w = FlowSolver.body_to_wind(v=self.net_force, aoa=self.aoa)
         C_L = w.y / (self.freestream.q * A_ref)
         C_D = w.x / (self.freestream.q * A_ref)
         return C_L, C_D
