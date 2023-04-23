@@ -296,6 +296,10 @@ class FlowSolver(AbstractFlowSolver):
 class FlowResults:
     def __init__(self, net_force: Vector) -> None:
         self.net_force = net_force
+        # TODO - calculate coefficients?
+        # w = OPM.body_to_wind(v=net_force, aoa=aoa)
+        # C_L = w.y / (freestream.q * A_ref)
+        # C_D = w.x / (freestream.q * A_ref)
 
     def __str__(self) -> str:
         return f"Net force = {self.net_force} N"
