@@ -1,4 +1,7 @@
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
+from typing import Optional
 import gdtk.ideal_gas_flow as igf
 from pysagas.flow import FlowState
 from typing import List, Callable, Tuple
@@ -141,7 +144,7 @@ def all_dfdp(
     cells: List[Cell],
     dPdp_method: Callable = panel_dPdp,
     cog: Vector = Vector(0, 0, 0),
-    **kwargs
+    **kwargs,
 ) -> Tuple[np.array, np.array]:
     """Calcualtes the force sensitivities for a list of Cells.
 
@@ -181,3 +184,89 @@ def all_dfdp(
         dMdp += dMdp_c
 
     return dFdp, dMdp
+
+
+def add_sens_data(
+    cells: List[Cell],
+    data: pd.DataFrame,
+    verbosity: Optional[int] = 1,
+    match_tolerance: Optional[float] = 1e-5,
+    rounding_tolerance: Optional[float] = 1e-8,
+    force: Optional[bool] = False,
+) -> float:
+    """Appends shape sensitivity data to a list of Cell objects.
+
+    Parameters
+    ----------
+    cells : List[Cell]
+        A list of cell objects.
+
+    data : pd.DataFrame
+        The sensitivity data to be transcribed onto the cells.
+
+    verbosity : int, optional
+        The verbosity. The default is 1.
+
+    match_tolerance : float, optional
+        The precision tolerance for matching point coordinates. The
+        default is 1e-5.
+
+    rounding_tolerance : float, optional
+        The tolerance to round data off to. The default is 1e-8.
+
+    force : bool, optional
+        Force the sensitivity data to be added, even if a cell
+        already has sensitivity data. This can be used if new
+        data is being used. The default is False.
+    """
+    # Extract parameters
+    parameters = []
+    param_cols = data.columns[3:]
+    for i in range(int(len(param_cols) / 3)):
+        parameters.append(param_cols[int(i * 3)].split("dxd")[-1])
+
+    # Construct progress bar
+    if verbosity > 0:
+        print("\nAdding sensitivity data to cells.")
+        pbar = tqdm(
+            total=len(cells),
+            position=0,
+            leave=True,
+        )
+
+    for cell in cells:
+        # Check if cell already has sensitivity data
+        if cell.dvdp is None or force:
+            # Initialise sensitivity
+            dvdp = np.zeros((9, len(parameters)))
+            for i, point in enumerate([cell.p0, cell.p1, cell.p2]):
+                match_x = (point.x - data["x"]).abs() < match_tolerance
+                match_y = (point.y - data["y"]).abs() < match_tolerance
+                match_z = (point.z - data["z"]).abs() < match_tolerance
+
+                match = match_x & match_y & match_z
+                try:
+                    # Get match
+                    matched_data = data[match].iloc[0][param_cols]
+
+                    # Round off infinitesimally small values
+                    matched_data[abs(matched_data) < rounding_tolerance] = 0
+
+                    for j, p in enumerate(parameters):
+                        # For each parameter (column)
+                        for k, c in enumerate(["x", "y", "z"]):
+                            dvdp[3 * i + k, j] = matched_data[f"d{c}d{p}"]
+
+                except IndexError:
+                    # No match found, leave as zero sensitivity
+                    pass
+
+            cell._add_sensitivities(np.array(dvdp))
+
+        # Update progress bar
+        if verbosity > 0:
+            pbar.update(1)
+
+    if verbosity > 0:
+        pbar.close()
+        print("Done.")
