@@ -1,7 +1,9 @@
+from __future__ import annotations
 import os
 import copy
 import meshio
 import numpy as np
+import pandas as pd
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
 from pysagas import Cell, FlowState, Vector
@@ -37,7 +39,10 @@ class FlowSolver(AbstractFlowSolver):
     """Base class for CFD flow solver."""
 
     def __init__(
-        self, cells: List[Cell], freestream: Optional[FlowState] = None
+        self,
+        cells: List[Cell],
+        freestream: Optional[FlowState] = None,
+        verbosity: Optional[int] = 1,
     ) -> None:
         """Instantiates the flow solver.
 
@@ -49,22 +54,30 @@ class FlowSolver(AbstractFlowSolver):
         freestream : Flowstate, optional
             The free-stream flow state. The default is the freestream provided
             upon instantiation of the solver.
+
+        verbosity : int, optional
+            The verbosity of the solver. The default is 1.
         """
 
         # TODO - allow providing a geometry parser, eg. tri file parser for Cart3D,
         # or a (yet to be implemented) STL parser.
-        # TODO - add verbosity
 
         self.cells = cells
         self.freestream = freestream
+        self.verbosity = verbosity
         self._last_solve_freestream: FlowState = None
+        self._last_sens_freestream: FlowState = None
+
+        # Results
+        self.result: FlowResults = None
+        self.sensitivity: SensitivityResults = None
 
     def solve(
         self,
         freestream: Optional[FlowState] = None,
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
-    ):
+    ) -> FlowResults:
         """Run the flow solver.
 
         Parameters
@@ -113,6 +126,62 @@ class FlowSolver(AbstractFlowSolver):
         else:
             # Solve-specific freestream conditions provided
             self._last_solve_freestream = freestream
+            if Mach or aoa:
+                print("Using freestream provided; ignoring Mach/aoa provided.")
+
+    def solve_sens(
+        self,
+        freestream: Optional[FlowState] = None,
+        Mach: Optional[float] = None,
+        aoa: Optional[float] = None,
+    ) -> SensitivityResults:
+        """Run the flow solver to obtain sensitivity information.
+
+        Parameters
+        ----------
+        freestream : Flowstate, optional
+            The free-stream flow state. The default is the freestream provided
+            upon instantiation of the solver.
+
+        Mach : float, optional
+            The free-stream Mach number. The default is that specified in
+            the freestream flow state.
+
+        aoa : float, optional
+            The free-stream angle of attack. The default is that specified in
+            the freestream flow state.
+
+        Returns
+        -------
+
+
+        Raises
+        ------
+        Exception : when no freestream can be found.
+        """
+        if not freestream:
+            # No freestream conditions specified
+            if not self.freestream:
+                # No conditions provided on instantiation either
+                raise Exception("Please specify freestream conditions.")
+            else:
+                # Use nominal freestream as base
+                fs = copy.copy(self.freestream)
+                if Mach:
+                    # Update mach number
+                    fs._M = Mach
+
+                if aoa:
+                    # Update flow direction
+                    flow_direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
+                    fs.direction = flow_direction
+
+                # Update last solve freestream
+                self._last_sens_freestream = fs
+
+        else:
+            # Solve-specific freestream conditions provided
+            self._last_sens_freestream = freestream
             if Mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
 
@@ -215,7 +284,20 @@ class FlowSolver(AbstractFlowSolver):
 
         return r
 
-    def print_results(self):
-        """Print the results of the last solve."""
-        # TODO - add nice printout method
-        raise NotImplementedError("Coming soon!")
+
+class FlowResults:
+    def __init__(self, net_force: Vector) -> None:
+        self.net_force = net_force
+
+    def __str__(self) -> str:
+        print(f"Net force = {self.net_force} N")
+
+
+class SensitivityResults:
+    def __init__(self, f_sens: pd.DataFrame, m_sens: pd.DataFrame) -> None:
+        self.f_sens = f_sens
+        self.m_sens = m_sens
+
+    def __str__(self) -> str:
+        print(f"Force sensitivties:\n{self.f_sens}")
+        print(f"Moment sensitivties:\n{self.m_sens}")
