@@ -89,6 +89,11 @@ class Vector:
         """
         return Vector(x=self.x * multiple, y=self.y * multiple, z=self.z * multiple)
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, Vector):
+            raise Exception(f"Cannot compare a {type(other)} to a vector.")
+        return (self.x == other.x) & (self.y == other.y) & (self.z == other.z)
+
     @property
     def x(self) -> float:
         return self._x

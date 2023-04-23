@@ -43,6 +43,16 @@ class GasState:
     def __repr__(self) -> str:
         return f"Flow(M={self.M}, P={self.P}, T={self.T})"
 
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, GasState):
+            raise Exception(f"Cannot compare {type(other)} to GasState.")
+        return (
+            (self._T == other._T)
+            & (self._P == other._P)
+            & (self._M == other._M)
+            & (self._gamma == other._gamma)
+        )
+
     @property
     def T(self):
         return self._T
@@ -112,6 +122,12 @@ class FlowState(GasState):
 
         # Velocity vector
         self._Vector = self.direction * self.v
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, FlowState):
+            raise Exception(f"Cannot compare {type(other)} to FlowState.")
+        same_gs = super().__eq__(other)
+        return same_gs & (self.direction == other.direction)
 
     @property
     def vx(self):

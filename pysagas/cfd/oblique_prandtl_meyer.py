@@ -35,96 +35,109 @@ class OPM(FlowSolver):
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
     ) -> FlowResults:
-        super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
+        already_run = super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
+        if already_run:
+            # Already have a result
+            if self.verbosity > 1:
+                print("Attention: this flowstate has already been solved.")
+            result = self.flow_result
 
-        # Get flow
-        flow = self._last_solve_freestream
+        else:
+            # Get flow
+            flow = self._last_solve_freestream
 
-        # Construct progress bar
-        if self.verbosity > 0:
-            print("\nSolving cell properties.")
-            pbar = tqdm(
-                total=len(self.cells),
-                position=0,
-                leave=True,
-            )
-
-        # Iterate over all cells
-        net_force = Vector(0, 0, 0)
-        for cell in self.cells:
-            # Calculate orientation of cell to flow
-            theta = np.pi / 2 - np.arccos(
-                np.dot(flow.direction.vec, cell.n.vec)
-                / (cell.n.norm * flow.direction.norm)
-            )
-
-            # Solve flow for this cell
-            if theta < 0:
-                # Rearward facing cell
-                if theta == np.deg2rad(-90):
-                    # TODO: what do do here?
-                    M2, p2, T2 = (flow.M, 0.0, flow.T)
-                    method = -1
-
-                else:
-                    # Use Prandtl-Meyer expansion theory
-                    M2, p2, T2 = self._solve_pm(
-                        abs(theta), flow.M, flow.P, flow.T, flow.gamma
-                    )
-                    method = 1
-
-            elif theta > 0:
-                # Use shock theory
-                beta_max = OPM.beta_max(M=flow.M, gamma=flow.gamma)
-                theta_max = OPM.theta_from_beta(
-                    M1=flow.M, beta=beta_max, gamma=flow.gamma
-                )
-                if theta > theta_max:
-                    # Detached shock
-                    method = 2
-                    M2, p2, T2 = self._solve_normal(flow.M, flow.P, flow.T, flow.gamma)
-
-                else:
-                    # Use oblique shock theory
-                    method = 3
-                    M2, p2, T2 = self._solve_oblique(
-                        theta, flow.M, flow.P, flow.T, flow.gamma
-                    )
-
-            else:
-                # Cell is parallel to flow, assume no change
-                method = 0
-                M2, p2, T2 = (flow.M, flow.P, flow.T)
-
-            # Save results for this cell
-            cell.attributes["pressure"] = p2
-            cell.attributes["Mach"] = M2
-            cell.attributes["temperature"] = T2
-            cell.attributes["method"] = method
-
-            # Add flowstate info to Cell
-            # TODO - calculate flowstate direction
-            cell.flowstate = FlowState(
-                mach=M2,
-                pressure=p2,
-                temperature=T2,
-                direction=None,
-            )
-
-            # Calculate force vector
-            net_force += cell.n * p2 * cell.A
-
-            # Update progress bar
+            # Construct progress bar
             if self.verbosity > 0:
-                pbar.update(1)
+                print("\nSolving cell properties.")
+                pbar = tqdm(
+                    total=len(self.cells),
+                    position=0,
+                    leave=True,
+                )
 
-        if self.verbosity > 0:
-            pbar.close()
-            print("Done.")
+            # Iterate over all cells
+            net_force = Vector(0, 0, 0)
+            # TODO - net moment
+            for cell in self.cells:
+                # Calculate orientation of cell to flow
+                theta = np.pi / 2 - np.arccos(
+                    np.dot(flow.direction.vec, cell.n.vec)
+                    / (cell.n.norm * flow.direction.norm)
+                )
 
-        # Construct results
-        result = FlowResults(net_force=net_force)
+                # Solve flow for this cell
+                if theta < 0:
+                    # Rearward facing cell
+                    if theta == np.deg2rad(-90):
+                        # TODO: what do do here?
+                        M2, p2, T2 = (flow.M, 0.0, flow.T)
+                        method = -1
 
+                    else:
+                        # Use Prandtl-Meyer expansion theory
+                        M2, p2, T2 = self._solve_pm(
+                            abs(theta), flow.M, flow.P, flow.T, flow.gamma
+                        )
+                        method = 1
+
+                elif theta > 0:
+                    # Use shock theory
+                    beta_max = OPM.beta_max(M=flow.M, gamma=flow.gamma)
+                    theta_max = OPM.theta_from_beta(
+                        M1=flow.M, beta=beta_max, gamma=flow.gamma
+                    )
+                    if theta > theta_max:
+                        # Detached shock
+                        method = 2
+                        M2, p2, T2 = self._solve_normal(
+                            flow.M, flow.P, flow.T, flow.gamma
+                        )
+
+                    else:
+                        # Use oblique shock theory
+                        method = 3
+                        M2, p2, T2 = self._solve_oblique(
+                            theta, flow.M, flow.P, flow.T, flow.gamma
+                        )
+
+                else:
+                    # Cell is parallel to flow, assume no change
+                    method = 0
+                    M2, p2, T2 = (flow.M, flow.P, flow.T)
+
+                # Save results for this cell
+                cell.attributes["pressure"] = p2
+                cell.attributes["Mach"] = M2
+                cell.attributes["temperature"] = T2
+                cell.attributes["method"] = method
+
+                # Add flowstate info to Cell
+                # TODO - calculate flowstate direction
+                cell.flowstate = FlowState(
+                    mach=M2,
+                    pressure=p2,
+                    temperature=T2,
+                    direction=None,
+                )
+
+                # Calculate force vector
+                net_force += cell.n * p2 * cell.A
+
+                # Update progress bar
+                if self.verbosity > 0:
+                    pbar.update(1)
+
+            if self.verbosity > 0:
+                pbar.close()
+                print("Done.")
+
+            # Construct results
+            result = FlowResults(net_force=net_force)
+
+            # Save
+            self.flow_result = result
+
+        # Print result
         if self.verbosity > 0:
             print(result)
 
@@ -503,134 +516,159 @@ class OPM(FlowSolver):
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
     ) -> SensitivityResults:
-        super().solve_sens(freestream=freestream, Mach=Mach, aoa=aoa)
-
-        # TODO - need to check for nominal flow solution (cell.flowstate)!
-
         # TODO - add to cell attributes for visualisation
+        # TODO - return Mach and Temp sensitivities
 
-        # Get flow
-        flow = self._last_sens_freestream
+        already_run = super().solve_sens(freestream=freestream, Mach=Mach, aoa=aoa)
+        if already_run:
+            # Already have a result
+            if self.verbosity > 1:
+                print("Attention: this flowstate sensitivity has already been solved.")
+            result = self.flow_sensitivity
 
-        # Load sensitivity data and parameters
-        sensdata, parameters = self._load_sens_data(sensitivity_filepath)
-        params_sens_cols = []
-        for p in parameters:
-            for d in ["x", "y", "z"]:
-                params_sens_cols.append(f"d{d}d_{p}")
+        else:
+            # Get flow
+            flow = self._last_sens_freestream
 
-        # Add sensitivity data to cells
-        add_sens_data(cells=self.cells, data=sensdata, verbosity=self.verbosity)
-
-        # Construct progress bar
-        if self.verbosity > 0:
-            print("\nSolving cell flow sensitivities.")
-            pbar = tqdm(
-                total=len(self.cells),
-                position=0,
-                leave=True,
-            )
-
-        # Iterate over cells
-        dFdp = 0
-        dMdp = 0
-        for cell in self.cells:
-            # Initialisation
-            all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-            sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
-            moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
-
-            # Calculate moment dependencies
-            r = cell.c - cog
-            F = cell.flowstate.P * cell.A * cell.n.vec
-
-            # Calculate orientation of cell to flow
-            theta = np.pi / 2 - np.arccos(
-                np.dot(flow.direction.vec, cell.n.vec)
-                / (cell.n.norm * flow.direction.norm)
-            )
-
-            # Solve flow for this cell
-            if theta < 0:
-                # Rearward facing cell
-                if theta == np.deg2rad(-90):
-                    dM2, dp2, dT2 = (0.0, 0.0, 0.0)
-
-                else:
-                    # Use Prandtl-Meyer expansion theory
-                    dM2, dp2, dT2 = self.dp_dtheta_pm(
-                        abs(theta), flow.M, flow.P, flow.T, flow.gamma
-                    )
-
-            elif theta > 0:
-                # Use shock theory
-                beta_max = OPM.beta_max(M=flow.M, gamma=flow.gamma)
-                theta_max = OPM.theta_from_beta(
-                    M1=flow.M, beta=beta_max, gamma=flow.gamma
-                )
-                if theta > theta_max:
-                    # Detached shock
-                    dM2, dp2, dT2 = (0.0, 0.0, 0.0)
-
-                else:
-                    # Use oblique shock theory
-                    dM2, dp2, dT2 = self.dp_dtheta_obl(
-                        theta, flow.M, flow.P, flow.T, flow.gamma
-                    )
-
+            # Check that nominal flow condition has been solved already
+            if self._last_solve_freestream:
+                # Solver has run before
+                if self._last_solve_freestream != flow:
+                    # Run flow solver first at the nominal flow conditions
+                    if self.verbosity > 0:
+                        print("Running flow solver to prepare sensitivities.")
+                    self.solve(flow)
             else:
-                # Cell is parallel to flow, assume no change
-                dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+                # Solver has not run yet at all, run it now
+                self.solve(flow)
 
-            # For each parameter
-            for p_i in range(cell.dndp.shape[1]):
-                # Calculate pressure sensitivity for each direction
-                for i, direction in enumerate(all_directions):
-                    dF = (
-                        dp2 * cell.A * np.dot(cell.n.vec, direction.vec)
-                        + cell.flowstate.P
-                        * cell.dAdp[p_i]
-                        * np.dot(cell.n.vec, direction.vec)
-                        + cell.flowstate.P
-                        * cell.A
-                        * np.dot(-cell.dndp[:, p_i], direction.vec)
-                    )
-                    sensitivities[p_i, i] = dF
+            # Load sensitivity data and parameters
+            sensdata, parameters = self._load_sens_data(sensitivity_filepath)
+            params_sens_cols = []
+            for p in parameters:
+                for d in ["x", "y", "z"]:
+                    params_sens_cols.append(f"d{d}d_{p}")
 
-                # Now evaluate moment sensitivities
-                moment_sensitivities[p_i, :] = np.cross(
-                    r.vec, sensitivities[p_i, :]
-                ) + np.cross(cell.dcdp[:, p_i], F)
+            # Add sensitivity data to cells
+            add_sens_data(cells=self.cells, data=sensdata, verbosity=self.verbosity)
 
-            # Append to cell
-            cell.sensitivities = sensitivities
-            cell.moment_sensitivities = moment_sensitivities
-
-            # Update
-            dFdp += sensitivities
-            dMdp += moment_sensitivities
-
-            # Update progress bar
+            # Construct progress bar
             if self.verbosity > 0:
-                pbar.update(1)
+                print("\nSolving cell flow sensitivities.")
+                pbar = tqdm(
+                    total=len(self.cells),
+                    position=0,
+                    leave=True,
+                )
 
-        if self.verbosity > 0:
-            pbar.close()
-            print("Done.")
+            # Iterate over cells
+            dFdp = 0
+            dMdp = 0
+            for cell in self.cells:
+                # Initialisation
+                all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
+                sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+                moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
 
-        # Construct dataframes to return
-        df_f = pd.DataFrame(
-            dFdp, columns=["dFx/dp", "dFy/dp", "dFz/dp"], index=parameters
-        )
-        df_m = pd.DataFrame(
-            dMdp, columns=["dMx/dp", "dMy/dp", "dMz/dp"], index=parameters
-        )
+                # Calculate moment dependencies
+                r = cell.c - cog
+                F = cell.flowstate.P * cell.A * cell.n.vec
 
-        # Construct results
-        result = SensitivityResults(
-            f_sens=df_f,
-            m_sens=df_m,
-        )
+                # Calculate orientation of cell to flow
+                theta = np.pi / 2 - np.arccos(
+                    np.dot(flow.direction.vec, cell.n.vec)
+                    / (cell.n.norm * flow.direction.norm)
+                )
+
+                # Solve flow for this cell
+                if theta < 0:
+                    # Rearward facing cell
+                    if theta == np.deg2rad(-90):
+                        dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+
+                    else:
+                        # Use Prandtl-Meyer expansion theory
+                        dM2, dp2, dT2 = self.dp_dtheta_pm(
+                            abs(theta),
+                            flow.M,
+                            cell.flowstate,
+                            flow.P,
+                            flow.T,
+                            flow.gamma,
+                        )
+
+                elif theta > 0:
+                    # Use shock theory
+                    beta_max = OPM.beta_max(M=flow.M, gamma=flow.gamma)
+                    theta_max = OPM.theta_from_beta(
+                        M1=flow.M, beta=beta_max, gamma=flow.gamma
+                    )
+                    if theta > theta_max:
+                        # Detached shock
+                        dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+
+                    else:
+                        # Use oblique shock theory
+                        dM2, dp2, dT2 = self.dp_dtheta_obl(
+                            theta, flow.M, cell.flowstate, flow.P, flow.T, flow.gamma
+                        )
+
+                else:
+                    # Cell is parallel to flow, assume no change
+                    dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+
+                # For each parameter
+                for p_i in range(cell.dndp.shape[1]):
+                    # Calculate pressure sensitivity for each direction
+                    for i, direction in enumerate(all_directions):
+                        dF = (
+                            dp2 * cell.A * np.dot(cell.n.vec, direction.vec)
+                            + cell.flowstate.P
+                            * cell.dAdp[p_i]
+                            * np.dot(cell.n.vec, direction.vec)
+                            + cell.flowstate.P
+                            * cell.A
+                            * np.dot(-cell.dndp[:, p_i], direction.vec)
+                        )
+                        sensitivities[p_i, i] = dF
+
+                    # Now evaluate moment sensitivities
+                    moment_sensitivities[p_i, :] = np.cross(
+                        r.vec, sensitivities[p_i, :]
+                    ) + np.cross(cell.dcdp[:, p_i], F)
+
+                # Append to cell
+                cell.sensitivities = sensitivities
+                cell.moment_sensitivities = moment_sensitivities
+
+                # Update
+                dFdp += sensitivities
+                dMdp += moment_sensitivities
+
+                # Update progress bar
+                if self.verbosity > 0:
+                    pbar.update(1)
+
+            if self.verbosity > 0:
+                pbar.close()
+                print("Done.")
+
+            # Construct dataframes to return
+            df_f = pd.DataFrame(
+                dFdp, columns=["dFx/dp", "dFy/dp", "dFz/dp"], index=parameters
+            )
+            df_m = pd.DataFrame(
+                dMdp, columns=["dMx/dp", "dMy/dp", "dMz/dp"], index=parameters
+            )
+
+            # Construct results
+            result = SensitivityResults(
+                f_sens=df_f,
+                m_sens=df_m,
+            )
+
+            # Save
+            self.flow_sensitivity = result
 
         if self.verbosity > 0:
             print(result)
@@ -639,7 +677,12 @@ class OPM(FlowSolver):
 
     @staticmethod
     def dp_dtheta_obl(
-        theta: float, M1: float, p1: float = 1.0, T1: float = 1.0, gamma: float = 1.4
+        theta: float,
+        M1: float,
+        nominal_flowstate: FlowState,
+        p1: float = 1.0,
+        T1: float = 1.0,
+        gamma: float = 1.4,
     ):
         """Solves for the sensitivities at the given point using oblique shock
         theory.
@@ -651,6 +694,9 @@ class OPM(FlowSolver):
 
         M1 : float
             The pre-expansion Mach number.
+
+        nominal_flowstate : FlowState
+            The nominal flowstate at this point.
 
         p1 : float, optional
             The pre-expansion pressure (Pa). The default is 1.0.
@@ -672,23 +718,22 @@ class OPM(FlowSolver):
         dT2 : float
             The sensitivity of the post-expansion temperature (K).
         """
-        # TODO - could also return nominal flow conditions, to prevent running
-        # multiple times for the same info. Would also prevent needing to run
-        # solver initially, just for sens. Also need to ensure that the last
-        # solve was the mid point! So really, should always try run the solve
-        # again on the mid point, and skip if already done.
-
         # Create function handle
         func = lambda theta: OPM._solve_oblique(theta, M1, p1, T1, gamma)
 
         # Calculate derivitive by finite differencing
-        g = OPM._findiff(func, theta)
+        g = OPM._findiff(func, theta, nominal_flowstate)
 
         return g
 
     @staticmethod
     def dp_dtheta_pm(
-        theta: float, M1: float, p1: float = 1.0, T1: float = 1.0, gamma: float = 1.4
+        theta: float,
+        M1: float,
+        nominal_flowstate: FlowState,
+        p1: float = 1.0,
+        T1: float = 1.0,
+        gamma: float = 1.4,
     ):
         """Solves for the sensitivities at the given point using Prandtl-Meyer
         theory.
@@ -700,6 +745,9 @@ class OPM(FlowSolver):
 
         M1 : float
             The pre-expansion Mach number.
+
+        nominal_flowstate : FlowState
+            The nominal flowstate at this point.
 
         p1 : float, optional
             The pre-expansion pressure (Pa). The default is 1.0.
@@ -725,20 +773,29 @@ class OPM(FlowSolver):
         func = lambda theta: OPM._solve_pm(theta, M1, p1, T1, gamma)
 
         # Calculate derivitive by finite differencing
-        g = OPM._findiff(func, theta)
+        g = OPM._findiff(func, theta, nominal_flowstate)
 
         return g
 
     @staticmethod
-    def _findiff(func: callable, point: any, perturbation: float = 1e-3):
-        # vals = [func(p)[1] for p in [point*(1-perturbation), point, point*(1+perturbation)]]
+    def _findiff(
+        func: callable,
+        point: any,
+        nominal_flowstate: FlowState,
+        perturbation: float = 1e-3,
+    ):
+        # Generate flow value at points +/- perturbed from nominal point
         vals = [
-            func(p)
-            for p in [point * (1 - perturbation), point, point * (1 + perturbation)]
+            func(p) for p in [point * (1 - perturbation), point * (1 + perturbation)]
         ]
         Mvals = [v[0] for v in vals]
         pvals = [v[1] for v in vals]
         Tvals = [v[2] for v in vals]
+
+        # Inject nominal result
+        Mvals = [Mvals[0], nominal_flowstate.M, Mvals[1]]
+        pvals = [pvals[0], nominal_flowstate.P, pvals[1]]
+        Tvals = [Tvals[0], nominal_flowstate.T, Tvals[1]]
 
         dM = np.gradient(Mvals)
         dp = np.gradient(pvals)

@@ -69,15 +69,15 @@ class FlowSolver(AbstractFlowSolver):
         self._last_sens_freestream: FlowState = None
 
         # Results
-        self.result: FlowResults = None
-        self.sensitivity: SensitivityResults = None
+        self.flow_result: FlowResults = None
+        self.flow_sensitivity: SensitivityResults = None
 
     def solve(
         self,
         freestream: Optional[FlowState] = None,
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
-    ) -> FlowResults:
+    ) -> bool:
         """Run the flow solver.
 
         Parameters
@@ -96,8 +96,8 @@ class FlowSolver(AbstractFlowSolver):
 
         Returns
         -------
-        net_force : Vector
-            The net force vector.
+        result : FlowResults
+            The flow results.
 
         Raises
         ------
@@ -110,24 +110,28 @@ class FlowSolver(AbstractFlowSolver):
                 raise Exception("Please specify freestream conditions.")
             else:
                 # Use nominal freestream as base
-                fs = copy.copy(self.freestream)
+                freestream = copy.copy(self.freestream)
                 if Mach:
                     # Update mach number
-                    fs._M = Mach
+                    freestream._M = Mach
 
                 if aoa:
                     # Update flow direction
                     flow_direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
-                    fs.direction = flow_direction
-
-                # Update last solve freestream
-                self._last_solve_freestream = fs
+                    freestream.direction = flow_direction
 
         else:
             # Solve-specific freestream conditions provided
-            self._last_solve_freestream = freestream
             if Mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
+
+        # Check if already solved
+        if self._last_solve_freestream and freestream == self._last_solve_freestream:
+            return True
+        else:
+            # Update last solve freestream and continue
+            self._last_solve_freestream = freestream
+            return False
 
     def solve_sens(
         self,
@@ -153,7 +157,7 @@ class FlowSolver(AbstractFlowSolver):
 
         Returns
         -------
-
+        SensitivityResults
 
         Raises
         ------
@@ -166,24 +170,28 @@ class FlowSolver(AbstractFlowSolver):
                 raise Exception("Please specify freestream conditions.")
             else:
                 # Use nominal freestream as base
-                fs = copy.copy(self.freestream)
+                freestream = copy.copy(self.freestream)
                 if Mach:
                     # Update mach number
-                    fs._M = Mach
+                    freestream._M = Mach
 
                 if aoa:
                     # Update flow direction
                     flow_direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
-                    fs.direction = flow_direction
-
-                # Update last solve freestream
-                self._last_sens_freestream = fs
+                    freestream.direction = flow_direction
 
         else:
             # Solve-specific freestream conditions provided
-            self._last_sens_freestream = freestream
             if Mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
+
+        # Check if already solved
+        if self._last_sens_freestream and freestream == self._last_sens_freestream:
+            return True
+        else:
+            # Update last solve freestream and continue
+            self._last_sens_freestream = freestream
+            return False
 
     def save(self, name: str, attributes: Dict[str, list]):
         """Save the solution to VTK file format. Note that the
@@ -292,6 +300,9 @@ class FlowResults:
     def __str__(self) -> str:
         return f"Net force = {self.net_force} N"
 
+    def __repr__(self) -> str:
+        return self.__str__()
+
 
 class SensitivityResults:
     def __init__(self, f_sens: pd.DataFrame, m_sens: pd.DataFrame) -> None:
@@ -303,3 +314,6 @@ class SensitivityResults:
         s2 = f"Moment sensitivties:\n{self.m_sens}"
 
         return f"{s1}\n\n{s2}"
+
+    def __repr__(self) -> str:
+        return self.__str__()
