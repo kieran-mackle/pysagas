@@ -288,15 +288,18 @@ class FlowSolver(AbstractFlowSolver):
         D = N * np.sin(np.deg2rad(aoa)) + A * np.cos(np.deg2rad(aoa))
 
         # Construct new result
-        r = Vector(x=D, y=L, z=0.0)
+        r = Vector(x=D, y=L, z=v.z)
 
         return r
 
 
 class FlowResults:
-    def __init__(self, freestream: FlowState, net_force: Vector) -> None:
+    def __init__(
+        self, freestream: FlowState, net_force: Vector, net_moment: Vector
+    ) -> None:
         self.freestream = freestream
         self.net_force = net_force
+        self.net_moment = net_moment
 
         # Calculate angle of attack
         self.aoa = np.rad2deg(
@@ -309,11 +312,24 @@ class FlowResults:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def coefficients(self, A_ref: Optional[float] = 1.0):
+    def coefficients(self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0):
+        """Calculate the aerodynamic coefficients CL, CD and Cm.
+
+        Parameters
+        -----------
+        A_ref : float, optional
+            The reference area (m^2). The default is 1 m^2.
+
+        c_ref : float, optional
+            The reference length (m). The default is 1 m.
+        """
         w = FlowSolver.body_to_wind(v=self.net_force, aoa=self.aoa)
         C_L = w.y / (self.freestream.q * A_ref)
         C_D = w.x / (self.freestream.q * A_ref)
-        return C_L, C_D
+
+        mw = FlowSolver.body_to_wind(v=self.net_moment, aoa=self.aoa)
+        C_m = mw.z / (self.freestream.q * A_ref * c_ref)
+        return C_L, C_D, C_m
 
 
 class SensitivityResults:

@@ -1,8 +1,6 @@
-import numpy as np
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
-from pysagas.geometry import Vector
-from pysagas.geometry.parsers import PyMesh, TRI
+from pysagas.geometry.parsers import PyMesh
 
 
 # Load STL file
@@ -14,7 +12,7 @@ freestream = FlowState(mach=8, pressure=101e3, temperature=288)
 solver = OPM(cells, freestream)
 
 # Run solver
-result = solver.solve()
+result = solver.solve(aoa=5)
 
 # Can also evaluate at other flow conditions, with:
 # result = solver.solve(aoa=5, Mach=6) # Modified AoA/Mach
@@ -22,3 +20,6 @@ result = solver.solve()
 
 # Save results to VTK file for visualisation of solution
 solver.save("wedge")
+
+# Get aero coefficients
+CL, CD, Cm = solver.flow_result.coefficients()

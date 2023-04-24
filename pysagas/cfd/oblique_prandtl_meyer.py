@@ -35,6 +35,7 @@ class OPM(FlowSolver):
         freestream: Optional[FlowState] = None,
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
+        cog: Vector = Vector(0, 0, 0),
     ) -> FlowResults:
         already_run = super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
         if already_run:
@@ -58,13 +59,16 @@ class OPM(FlowSolver):
 
             # Iterate over all cells
             net_force = Vector(0, 0, 0)
-            # TODO - calculate net moment also
+            net_moment = Vector(0, 0, 0)
             for cell in self.cells:
                 # Calculate orientation of cell to flow
                 theta = np.pi / 2 - np.arccos(
                     np.dot(flow.direction.vec, cell.n.vec)
                     / (cell.n.norm * flow.direction.norm)
                 )
+
+                # Also calculate vector to COG from cell centroid
+                r = cell.c - cog
 
                 # Solve flow for this cell
                 if theta < 0:
@@ -121,7 +125,9 @@ class OPM(FlowSolver):
                 )
 
                 # Calculate force vector
-                net_force += cell.n * p2 * cell.A
+                F = cell.n * p2 * cell.A
+                net_force += F
+                net_moment += Vector.from_coordinates(np.cross(r.vec, F.vec))
 
                 # Update progress bar
                 if self.verbosity > 0:
@@ -132,7 +138,9 @@ class OPM(FlowSolver):
                 print("Done.")
 
             # Construct results
-            result = FlowResults(freestream=flow, net_force=net_force)
+            result = FlowResults(
+                freestream=flow, net_force=net_force, net_moment=net_moment
+            )
 
             # Save
             self.flow_result = result
