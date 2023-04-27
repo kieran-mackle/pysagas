@@ -32,10 +32,10 @@ class GasState:
         self._gamma = gamma
 
         # Calculate dependents
-        self._rho = self.P / (self.R * self.T)
-        self._a = (self.gamma * self.R * self.T) ** 0.5
-        self._v = self.M * self.a
-        self._q = 0.5 * self._rho * self._v**2
+        # self._rho = self.P / (self.R * self.T)
+        # self._a = (self.gamma * self.R * self.T) ** 0.5
+        # self._v = self.M * self.a
+        # self._q = 0.5 * self._rho * self._v**2
 
     def __str__(self) -> str:
         return f"Mach {self.M} flow condition with P = {self.P}, T = {self.T}."
@@ -67,19 +67,19 @@ class GasState:
 
     @property
     def a(self):
-        return self._a
+        return (self.gamma * self.R * self.T) ** 0.5
 
     @property
     def rho(self):
-        return self._rho
+        return self.P / (self.R * self.T)
 
     @property
     def v(self):
-        return self._v
+        return self.M * self.a
 
     @property
     def q(self):
-        return self._q
+        return 0.5 * self.rho * self.v**2
 
     @property
     def gamma(self):
