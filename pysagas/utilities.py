@@ -193,7 +193,7 @@ def add_sens_data(
     match_tolerance: Optional[float] = 1e-5,
     rounding_tolerance: Optional[float] = 1e-8,
     force: Optional[bool] = False,
-) -> float:
+) -> None:
     """Appends shape sensitivity data to a list of Cell objects.
 
     Parameters
@@ -227,7 +227,7 @@ def add_sens_data(
 
     # Construct progress bar
     if verbosity > 0:
-        print("\nAdding sensitivity data to cells.")
+        print("\nAdding geometry-parameter sensitivity data to cells:")
         pbar = tqdm(
             total=len(cells),
             position=0,
@@ -270,3 +270,5 @@ def add_sens_data(
     if verbosity > 0:
         pbar.close()
         print("Done.")
+
+    # TODO - allow dumping data to file

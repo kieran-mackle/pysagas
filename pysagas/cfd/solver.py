@@ -328,12 +328,15 @@ class FlowResults:
         C_D = w.x / (self.freestream.q * A_ref)
 
         mw = FlowSolver.body_to_wind(v=self.net_moment, aoa=self.aoa)
-        C_m = mw.z / (self.freestream.q * A_ref * c_ref)
+        C_m = -mw.z / (self.freestream.q * A_ref * c_ref)
         return C_L, C_D, C_m
 
 
 class SensitivityResults:
-    def __init__(self, f_sens: pd.DataFrame, m_sens: pd.DataFrame) -> None:
+    def __init__(
+        self, freestream: FlowState, f_sens: pd.DataFrame, m_sens: pd.DataFrame
+    ) -> None:
+        self.freestream = freestream
         self.f_sens = f_sens
         self.m_sens = m_sens
 

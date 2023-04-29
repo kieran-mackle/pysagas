@@ -28,7 +28,7 @@ class OPM(FlowSolver):
     """
 
     method = "Oblique/Prandtl-Meyer combination"
-    PM_ANGLE_THRESHOLD = -40  # degrees
+    PM_ANGLE_THRESHOLD = -20  # degrees
 
     def solve(
         self,
@@ -520,6 +520,7 @@ class OPM(FlowSolver):
     def solve_sens(
         self,
         sensitivity_filepath: str,
+        cells_have_sens_data: bool = False,
         freestream: Optional[FlowState] = None,
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
@@ -551,15 +552,20 @@ class OPM(FlowSolver):
                 # Solver has not run yet at all, run it now
                 self.solve(flow)
 
-            # Load sensitivity data and parameters
-            sensdata, parameters = self._load_sens_data(sensitivity_filepath)
-            params_sens_cols = []
-            for p in parameters:
-                for d in ["x", "y", "z"]:
-                    params_sens_cols.append(f"d{d}d_{p}")
+            if cells_have_sens_data:
+                # Need to extract parameters
+                _, parameters = self._load_sens_data(sensitivity_filepath)
 
-            # Add sensitivity data to cells
-            add_sens_data(cells=self.cells, data=sensdata, verbosity=self.verbosity)
+            else:
+                # Load sensitivity data and parameters
+                sensdata, parameters = self._load_sens_data(sensitivity_filepath)
+                # params_sens_cols = []
+                # for p in parameters:
+                #     for d in ["x", "y", "z"]:
+                #         params_sens_cols.append(f"d{d}d_{p}")
+
+                # Add sensitivity data to cells
+                add_sens_data(cells=self.cells, data=sensdata, verbosity=self.verbosity)
 
             # Construct progress bar
             if self.verbosity > 0:
@@ -672,6 +678,7 @@ class OPM(FlowSolver):
 
             # Construct results
             result = SensitivityResults(
+                freestream=flow,
                 f_sens=df_f,
                 m_sens=df_m,
             )
