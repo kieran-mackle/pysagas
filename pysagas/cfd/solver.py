@@ -292,6 +292,51 @@ class FlowSolver(AbstractFlowSolver):
 
         return r
 
+    def sweep(self, aoa_range: list[float], mach_range: list[float]) -> pd.DataFrame:
+        """Evaluate the aerodynamic coefficients over a sweep of angle
+        of attack and mach numbers.
+
+        Parameters
+        -----------
+        aoa_range : list[float]
+            The angles of attack to evaluate at, specified in degrees.
+
+        mach_range : list[float]
+            The Mach numbers to evaluate at.
+
+        Returns
+        --------
+        results : pd.DataFrame
+            A Pandas DataFrame of the aerodynamic coefficients at each angle of
+            attack and Mach number combination.
+        """
+        # TODO - add bool to evaluate gradients on the sweep
+        # Run sweep
+        i = 0
+        results = pd.DataFrame()
+        for aoa in aoa_range:
+            for mach in mach_range:
+                flowresult: FlowResults = self.solve(aoa=aoa, Mach=mach)
+                CL, CD, Cm = flowresult.coefficients()
+
+                coefficients_df = pd.DataFrame(
+                    data={"aoa": aoa, "mach": mach, "CL": CL, "CD": CD, "Cm": Cm},
+                    index=[i],
+                )
+
+                # Append results
+                results = pd.concat(
+                    [
+                        results,
+                        coefficients_df,
+                    ]
+                )
+
+                # Iterate index
+                i += 1
+
+        return results
+
 
 class FlowResults:
     def __init__(
