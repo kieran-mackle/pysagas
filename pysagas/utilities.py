@@ -234,6 +234,9 @@ def add_sens_data(
             leave=True,
         )
 
+    # TODO - add match percentage
+    matched_points = 0
+    total_points = 0
     for cell in cells:
         # Check if cell already has sensitivity data
         if cell.dvdp is None or force:
@@ -257,9 +260,15 @@ def add_sens_data(
                         for k, c in enumerate(["x", "y", "z"]):
                             dvdp[3 * i + k, j] = matched_data[f"d{c}d{p}"]
 
+                    # Update match count
+                    matched_points += 1
+
                 except IndexError:
                     # No match found, leave as zero sensitivity
                     pass
+
+                # Update total_points
+                total_points += 1
 
             cell._add_sensitivities(np.array(dvdp))
 
@@ -267,8 +276,11 @@ def add_sens_data(
         if verbosity > 0:
             pbar.update(1)
 
+    match_fraction = matched_points / total_points
     if verbosity > 0:
         pbar.close()
-        print("Done.")
+        print(f"Done - matched {100*match_fraction:.2f}% of points.")
 
     # TODO - allow dumping data to file
+
+    return match_fraction
