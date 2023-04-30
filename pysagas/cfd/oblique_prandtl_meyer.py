@@ -801,6 +801,7 @@ class OPM(FlowSolver):
         perturbation: float = 1e-3,
     ):
         # Generate flow value at points +/- perturbed from nominal point
+        xvals = [point * (1 - perturbation), point, point * (1 + perturbation)]
         vals = [
             func(p) for p in [point * (1 - perturbation), point * (1 + perturbation)]
         ]
@@ -813,9 +814,9 @@ class OPM(FlowSolver):
         pvals = [pvals[0], nominal_flowstate.P, pvals[1]]
         Tvals = [Tvals[0], nominal_flowstate.T, Tvals[1]]
 
-        dM = np.gradient(Mvals)
-        dp = np.gradient(pvals)
-        dT = np.gradient(Tvals)
+        dM = np.gradient(Mvals, xvals)
+        dp = np.gradient(pvals, xvals)
+        dT = np.gradient(Tvals, xvals)
 
         return dM[1], dp[1], dT[1]
 
