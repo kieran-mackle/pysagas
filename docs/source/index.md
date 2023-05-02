@@ -42,7 +42,7 @@ Shape Optimisation <examples/nose_cone>
 :hidden:
 :caption: API REFERENCE
 
-Geometry Module <api_ref/geometry>
+Geometry Module <api_ref/geometry/index>
 Flow Module <api_ref/flow>
 Utilities <api_ref/utilities>
 Wrappers <api_ref/wrappers/index>
