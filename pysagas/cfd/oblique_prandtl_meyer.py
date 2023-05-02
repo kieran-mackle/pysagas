@@ -525,6 +525,7 @@ class OPM(FlowSolver):
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
+        perturbation: float = 0.05,
     ) -> SensitivityResults:
         # TODO - add to cell attributes for visualisation
         # TODO - return Mach and Temp sensitivities
@@ -559,10 +560,6 @@ class OPM(FlowSolver):
             else:
                 # Load sensitivity data and parameters
                 sensdata, parameters = self._load_sens_data(sensitivity_filepath)
-                # params_sens_cols = []
-                # for p in parameters:
-                #     for d in ["x", "y", "z"]:
-                #         params_sens_cols.append(f"d{d}d_{p}")
 
                 # Add sensitivity data to cells
                 add_sens_data(cells=self.cells, data=sensdata, verbosity=self.verbosity)
@@ -610,6 +607,7 @@ class OPM(FlowSolver):
                             flow.P,
                             flow.T,
                             flow.gamma,
+                            perturbation,
                         )
 
                 elif theta > 0:
@@ -625,7 +623,13 @@ class OPM(FlowSolver):
                     else:
                         # Use oblique shock theory
                         dM2, dp2, dT2 = self.dp_dtheta_obl(
-                            theta, flow.M, cell.flowstate, flow.P, flow.T, flow.gamma
+                            theta,
+                            flow.M,
+                            cell.flowstate,
+                            flow.P,
+                            flow.T,
+                            flow.gamma,
+                            perturbation,
                         )
 
                 else:
@@ -699,6 +703,7 @@ class OPM(FlowSolver):
         p1: float = 1.0,
         T1: float = 1.0,
         gamma: float = 1.4,
+        perturbation: float = 0.05,
     ):
         """Solves for the sensitivities at the given point using oblique shock
         theory.
@@ -723,6 +728,11 @@ class OPM(FlowSolver):
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
 
+        perturbation : float, optional
+            The perturbation amount. Perturbations are calculated
+            according to a multiple of (1 +/- perturbation). The
+            default is 0.05.
+
         Returns
         --------
         dM2 : float
@@ -738,7 +748,7 @@ class OPM(FlowSolver):
         func = lambda theta: OPM._solve_oblique(theta, M1, p1, T1, gamma)
 
         # Calculate derivitive by finite differencing
-        g = OPM._findiff(func, theta, nominal_flowstate)
+        g = OPM._findiff(func, theta, nominal_flowstate, perturbation)
 
         return g
 
@@ -750,6 +760,7 @@ class OPM(FlowSolver):
         p1: float = 1.0,
         T1: float = 1.0,
         gamma: float = 1.4,
+        perturbation: float = 0.05,
     ):
         """Solves for the sensitivities at the given point using Prandtl-Meyer
         theory.
@@ -774,6 +785,11 @@ class OPM(FlowSolver):
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
 
+        perturbation : float, optional
+            The perturbation amount. Perturbations are calculated
+            according to a multiple of (1 +/- perturbation). The
+            default is 0.05.
+
         Returns
         --------
         dM2 : float
@@ -789,7 +805,7 @@ class OPM(FlowSolver):
         func = lambda theta: OPM._solve_pm(theta, M1, p1, T1, gamma)
 
         # Calculate derivitive by finite differencing
-        g = OPM._findiff(func, theta, nominal_flowstate)
+        g = OPM._findiff(func, theta, nominal_flowstate, perturbation)
 
         return g
 
@@ -798,7 +814,7 @@ class OPM(FlowSolver):
         func: callable,
         point: any,
         nominal_flowstate: FlowState,
-        perturbation: float = 1e-3,
+        perturbation: float = 0.05,
     ):
         # Generate flow value at points +/- perturbed from nominal point
         xvals = [point * (1 - perturbation), point, point * (1 + perturbation)]
