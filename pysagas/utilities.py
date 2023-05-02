@@ -234,11 +234,13 @@ def add_sens_data(
             leave=True,
         )
 
-    # TODO - add match percentage
     matched_points = 0
     total_points = 0
+    skipped_cells = 0
+    total_cells = 0
     for cell in cells:
         # Check if cell already has sensitivity data
+        total_cells += 1
         if cell.dvdp is None or force:
             # Initialise sensitivity
             dvdp = np.zeros((9, len(parameters)))
@@ -270,16 +272,29 @@ def add_sens_data(
                 # Update total_points
                 total_points += 1
 
+                print(f"Matched {matched_points} of {total_points} points", end="\r")
+
             cell._add_sensitivities(np.array(dvdp))
+
+        else:
+            # Skip this cell
+            skipped_cells += 1
 
         # Update progress bar
         if verbosity > 0:
             pbar.update(1)
 
-    match_fraction = matched_points / total_points
+    try:
+        match_fraction = matched_points / total_points
+    except:
+        match_fraction = 1
+
     if verbosity > 0:
         pbar.close()
-        print(f"Done - matched {100*match_fraction:.2f}% of points.")
+        print(
+            f"Done - matched {100*match_fraction:.2f}% of points "
+            + f"(skipped {100*skipped_cells/total_cells:.2f}% of cells)."
+        )
 
     # TODO - allow dumping data to file
 
