@@ -81,7 +81,6 @@ class OPMShapeOpt(ShapeOpt):
 
 
 def evaluate_objective(x: dict):
-    print("Evaluating objective with: ", x)
     # Pre-process parameters
     _process_parameters(x)
 
@@ -122,7 +121,6 @@ def evaluate_objective(x: dict):
 
 
 def evaluate_gradient(x: dict, objective: dict):
-    print("Evaluating gradient with:  ", x)
     # Pre-process parameters
     _process_parameters(x)
 
@@ -260,6 +258,7 @@ def _run_sensitivities():
         solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
 
     # TODO - how will sens combining be handled?
+    # TODO - remove hard coding below
     sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
 
     # Non-dimensionalise
