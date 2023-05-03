@@ -339,6 +339,21 @@ class FlowSolver(AbstractFlowSolver):
 
 
 class FlowResults:
+    """A class containing the aerodynamic force and moment
+    information with respect to design parameters.
+
+    Attributes
+    ----------
+    freestream : FlowState
+        The freestream flow state.
+
+    net_force : pd.DataFrame
+        The net force in cartesian coordinate frame (x,y,z).
+
+    m_sense : pd.DataFrame
+        The net moment in cartesian coordinate frame (x,y,z).
+    """
+
     def __init__(
         self, freestream: FlowState, net_force: Vector, net_moment: Vector
     ) -> None:
@@ -378,6 +393,21 @@ class FlowResults:
 
 
 class SensitivityResults:
+    """A class containing the aerodynamic force and moment sensitivity
+    information with respect to design parameters.
+
+    Attributes
+    ----------
+    freestream : FlowState
+        The freestream flow state.
+
+    f_sense : pd.DataFrame
+        The force sensitivities in cartesian coordinate frame (x,y,z).
+
+    m_sense : pd.DataFrame
+        The moment sensitivities in cartesian coordinate frame (x,y,z).
+    """
+
     def __init__(
         self, freestream: FlowState, f_sens: pd.DataFrame, m_sens: pd.DataFrame
     ) -> None:
