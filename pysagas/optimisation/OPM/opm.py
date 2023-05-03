@@ -261,7 +261,7 @@ def _run_sensitivities():
     sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
 
     # Non-dimensionalise
-    coef_sens = sens_results.f_sens / (0.5 * fs_flow.rho * _A_ref * fs_flow.v**2)
+    coef_sens = sens_results.f_sens / (fs_flow.q * _A_ref)
 
     # Construct coefficient dictionary
     CL, CD, Cm = solver.flow_result.coefficients()
