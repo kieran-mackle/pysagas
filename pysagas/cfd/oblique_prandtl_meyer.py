@@ -596,11 +596,11 @@ class OPM(FlowSolver):
                 if theta < 0:
                     # Rearward facing cell
                     if theta < np.deg2rad(self.PM_ANGLE_THRESHOLD):
-                        dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+                        _, dP_dtheta, _ = (0.0, 0.0, 0.0)
 
                     else:
                         # Use Prandtl-Meyer expansion theory
-                        dM2, dp2, dT2 = self.dp_dtheta_pm(
+                        _, dP_dtheta, _ = self.dp_dtheta_pm(
                             abs(theta),
                             flow.M,
                             cell.flowstate,
@@ -618,11 +618,11 @@ class OPM(FlowSolver):
                     )
                     if theta > theta_max:
                         # Detached shock
-                        dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+                        _, dP_dtheta, _ = (0.0, 0.0, 0.0)
 
                     else:
                         # Use oblique shock theory
-                        dM2, dp2, dT2 = self.dp_dtheta_obl(
+                        _, dP_dtheta, _ = self.dp_dtheta_obl(
                             theta,
                             flow.M,
                             cell.flowstate,
@@ -634,14 +634,27 @@ class OPM(FlowSolver):
 
                 else:
                     # Cell is parallel to flow, assume no change
-                    dM2, dp2, dT2 = (0.0, 0.0, 0.0)
+                    _, dP_dtheta, _ = (0.0, 0.0, 0.0)
 
                 # For each parameter
                 for p_i in range(cell.dndp.shape[1]):
+                    # Calculate gradient of pressure with respect to parameter
+                    dtheta_dp = (
+                        -np.dot(cell.dndp[:, p_i], flow.direction.vec)
+                        / (1 - np.dot(cell.n.unit.vec, flow.direction.unit.vec) ** 2)
+                        ** 0.5
+                    )
+
+                    if np.isnan(dtheta_dp):
+                        # Normal vector parallel to flow
+                        dtheta_dp = 0
+
+                    dPdp = dP_dtheta * dtheta_dp
+
                     # Calculate pressure sensitivity for each direction
                     for i, direction in enumerate(all_directions):
                         dF = (
-                            dp2 * cell.A * np.dot(cell.n.vec, direction.vec)
+                            dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
                             + cell.flowstate.P
                             * cell.dAdp[p_i]
                             * np.dot(cell.n.vec, direction.vec)
@@ -735,14 +748,17 @@ class OPM(FlowSolver):
 
         Returns
         --------
-        dM2 : float
-            The sensitivity of the post-expansion Mach number.
+        dM_dtheta : float
+            The sensitivity of the post-expansion Mach number with respect
+            to the deflection angle theta.
 
-        dp2 : float
-            The sensitivity of the post-expansion pressure (Pa).
+        dP_dtheta : float
+            The sensitivity of the post-expansion pressure (Pa) with respect
+            to the deflection angle theta.
 
-        dT2 : float
-            The sensitivity of the post-expansion temperature (K).
+        dT_dtheta : float
+            The sensitivity of the post-expansion temperature (K) with respect
+            to the deflection angle theta.
         """
         # Create function handle
         func = lambda theta: OPM._solve_oblique(theta, M1, p1, T1, gamma)
@@ -792,14 +808,17 @@ class OPM(FlowSolver):
 
         Returns
         --------
-        dM2 : float
-            The sensitivity of the post-expansion Mach number.
+        dM_dtheta : float
+            The sensitivity of the post-expansion Mach number with respect
+            to the deflection angle theta.
 
-        dp2 : float
-            The sensitivity of the post-expansion pressure (Pa).
+        dP_dtheta : float
+            The sensitivity of the post-expansion pressure (Pa) with respect
+            to the deflection angle theta.
 
-        dT2 : float
-            The sensitivity of the post-expansion temperature (K).
+        dT_dtheta : float
+            The sensitivity of the post-expansion temperature (K) with respect
+            to the deflection angle theta.
         """
         # Create function handle
         func = lambda theta: OPM._solve_pm(theta, M1, p1, T1, gamma)
