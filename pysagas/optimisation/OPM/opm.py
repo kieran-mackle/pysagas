@@ -6,7 +6,7 @@ import pandas as pd
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
 from pysagas.optimisation import ShapeOpt
-from pysagas.geometry.parsers import PyMesh
+from pysagas.geometry.parsers import PyMesh, STL
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
 from hypervehicle.utilities import SensitivityStudy
@@ -226,7 +226,10 @@ def _run_simulation():
 
     # Load cells from geometry
     if cells is None:
-        cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        try:
+            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        except:
+            cells = STL.load_from_file(geom_filename, verbosity=0)
 
     # Run OPM solver
     if solver is None:
@@ -234,7 +237,7 @@ def _run_simulation():
     sim_results = solver.solve()
 
     # Construct coefficient dictionary
-    CL, CD = sim_results.coefficients()
+    CL, CD, Cm = sim_results.coefficients()
     coefficients = {"CL": CL, "CD": CD}
 
     return coefficients
@@ -245,7 +248,10 @@ def _run_sensitivities():
 
     # Load cells from geometry
     if cells is None:
-        cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        try:
+            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        except:
+            cells = STL.load_from_file(geom_filename, verbosity=0)
 
     # Run OPM solver
     if solver is None:
@@ -258,7 +264,7 @@ def _run_sensitivities():
     coef_sens = sens_results.f_sens / (0.5 * fs_flow.rho * _A_ref * fs_flow.v**2)
 
     # Construct coefficient dictionary
-    CL, CD = solver.flow_result.coefficients()
+    CL, CD, Cm = solver.flow_result.coefficients()
     coefficients = {"CL": CL, "CD": CD}
 
     return coefficients, coef_sens
