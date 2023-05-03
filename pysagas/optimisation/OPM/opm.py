@@ -113,7 +113,9 @@ def evaluate_objective(x: dict):
         properties = None
 
     # Evaluate objective function
-    funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
+    funcs = obj_cb(
+        loads_dict=loads_dict, volmass=volmass, properties=properties, parameters=x
+    )
     failed = False
 
     return funcs, failed
@@ -275,7 +277,10 @@ def _compare_parameters(x):
     parameters."""
     try:
         with open("parameters.pkl", "rb") as f:
-            xp = pickle.load(f)
+            try:
+                xp = pickle.load(f)
+            except EOFError:
+                return False
 
         # Compare to current parameters
         already_run = x == xp
