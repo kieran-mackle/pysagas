@@ -81,7 +81,6 @@ class OPMShapeOpt(ShapeOpt):
 
 
 def evaluate_objective(x: dict):
-    print("Evaluating objective with: ", x)
     # Pre-process parameters
     _process_parameters(x)
 
@@ -122,7 +121,6 @@ def evaluate_objective(x: dict):
 
 
 def evaluate_gradient(x: dict, objective: dict):
-    print("Evaluating gradient with:  ", x)
     # Pre-process parameters
     _process_parameters(x)
 
@@ -215,6 +213,7 @@ def _process_parameters(x):
 
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
+        print("  Generating new geometry       ", end="\r")
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
