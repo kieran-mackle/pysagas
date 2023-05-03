@@ -272,8 +272,6 @@ def add_sens_data(
                 # Update total_points
                 total_points += 1
 
-                print(f"Matched {matched_points} of {total_points} points", end="\r")
-
             cell._add_sensitivities(np.array(dvdp))
 
         else:
