@@ -525,7 +525,7 @@ class OPM(FlowSolver):
         Mach: Optional[float] = None,
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
-        perturbation: float = 0.05,
+        perturbation: float = 1e-3,
     ) -> SensitivityResults:
         # TODO - add to cell attributes for visualisation
         # TODO - return Mach and Temp sensitivities
@@ -716,7 +716,7 @@ class OPM(FlowSolver):
         p1: float = 1.0,
         T1: float = 1.0,
         gamma: float = 1.4,
-        perturbation: float = 0.05,
+        perturbation: float = 1e-3,
     ):
         """Solves for the sensitivities at the given point using oblique shock
         theory.
@@ -744,7 +744,7 @@ class OPM(FlowSolver):
         perturbation : float, optional
             The perturbation amount. Perturbations are calculated
             according to a multiple of (1 +/- perturbation). The
-            default is 0.05.
+            default is 1e-3.
 
         Returns
         --------
@@ -776,7 +776,7 @@ class OPM(FlowSolver):
         p1: float = 1.0,
         T1: float = 1.0,
         gamma: float = 1.4,
-        perturbation: float = 0.05,
+        perturbation: float = 1e-3,
     ):
         """Solves for the sensitivities at the given point using Prandtl-Meyer
         theory.
@@ -804,7 +804,7 @@ class OPM(FlowSolver):
         perturbation : float, optional
             The perturbation amount. Perturbations are calculated
             according to a multiple of (1 +/- perturbation). The
-            default is 0.05.
+            default is 1e-3.
 
         Returns
         --------
@@ -833,7 +833,7 @@ class OPM(FlowSolver):
         func: callable,
         point: any,
         nominal_flowstate: FlowState,
-        perturbation: float = 0.05,
+        perturbation: float = 1e-3,
     ):
         # Generate flow value at points +/- perturbed from nominal point
         xvals = [point * (1 - perturbation), point, point * (1 + perturbation)]

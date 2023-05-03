@@ -213,6 +213,7 @@ def _process_parameters(x):
 
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
+        print("  Generating new geometry       ", end="\r")
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
