@@ -193,7 +193,7 @@ def add_sens_data(
     match_tolerance: Optional[float] = 1e-5,
     rounding_tolerance: Optional[float] = 1e-8,
     force: Optional[bool] = False,
-) -> None:
+) -> float:
     """Appends shape sensitivity data to a list of Cell objects.
 
     Parameters
@@ -218,6 +218,11 @@ def add_sens_data(
         Force the sensitivity data to be added, even if a cell
         already has sensitivity data. This can be used if new
         data is being used. The default is False.
+
+    Returns
+    --------
+    match_fraction : float
+        The fraction of points matched.
     """
     # Extract parameters
     parameters = []
