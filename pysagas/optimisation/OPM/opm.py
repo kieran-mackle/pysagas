@@ -244,6 +244,9 @@ def _run_simulation():
     """Prepare and run the CFD simulation with the OPM solver."""
     global cells, solver
 
+    cells = None
+    solver = None
+
     # Load cells from geometry
     if cells is None:
         try:
@@ -269,6 +272,9 @@ def _run_simulation():
 
 def _run_sensitivities():
     global cells, solver
+
+    cells = None
+    solver = None
 
     # Load cells from geometry
     if cells is None:
