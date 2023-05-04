@@ -213,7 +213,6 @@ def _process_parameters(x):
 
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
-        print("  Generating new geometry       ", end="\r")
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
@@ -223,18 +222,21 @@ def _process_parameters(x):
 
 def _run_simulation():
     """Prepare and run the CFD simulation with the OPM solver."""
-    global cells, solver
+    # global cells, solver
 
-    # Load cells from geometry
-    if cells is None:
-        try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-        except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+    # # Load cells from geometry
+    # if cells is None:
+    #     try:
+    #         cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+    #     except:
+    #         cells = STL.load_from_file(geom_filename, verbosity=0)
 
-    # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # # Run OPM solver
+    # if solver is None:
+    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+
+    cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+    solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
     sim_results = solver.solve()
 
     # Construct coefficient dictionary
@@ -245,18 +247,21 @@ def _run_simulation():
 
 
 def _run_sensitivities():
-    global cells, solver
+    # global cells, solver
 
-    # Load cells from geometry
-    if cells is None:
-        try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-        except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+    # # Load cells from geometry
+    # if cells is None:
+    #     try:
+    #         cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+    #     except:
+    #         cells = STL.load_from_file(geom_filename, verbosity=0)
 
-    # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # # Run OPM solver
+    # if solver is None:
+    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+
+    cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+    solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
 
     # TODO - how will sens combining be handled?
     # TODO - remove hard coding below
