@@ -28,6 +28,7 @@ class OPMShapeOpt(ShapeOpt):
         working_dir_name: str = "working_dir",
         basefiles_dir_name: str = "basefiles",
         save_evolution: bool = True,
+        verbosity: int = 1,
     ) -> None:
         # Declare global variables
         global fs_flow
@@ -38,6 +39,7 @@ class OPMShapeOpt(ShapeOpt):
         global sens_filename, basefiles_dir
         global geom_filename
         global _A_ref
+        global verbose
 
         # Dynamics global variables
         global cells, solver
@@ -52,6 +54,7 @@ class OPMShapeOpt(ShapeOpt):
         sens_filename = sensitivity_filename
         generator = vehicle_generator
         save_geom = save_evolution
+        verbose = verbosity
 
         if save_geom:
             # Create evolution history directory
@@ -81,6 +84,9 @@ class OPMShapeOpt(ShapeOpt):
 
 
 def evaluate_objective(x: dict):
+    if verbose > 0:
+        print("\n\033[1mEvaluating objective function\033[0m")
+
     # Pre-process parameters
     _process_parameters(x)
 
@@ -117,10 +123,16 @@ def evaluate_objective(x: dict):
     )
     failed = False
 
+    if verbose > 0:
+        print("  Done evaluating objective function.")
+
     return funcs, failed
 
 
 def evaluate_gradient(x: dict, objective: dict):
+    if verbose > 0:
+        print("\n\033[1mEvaluating gradient function\033[0m")
+
     # Pre-process parameters
     _process_parameters(x)
 
@@ -176,6 +188,9 @@ def evaluate_gradient(x: dict, objective: dict):
         property_sens=property_sens,
     )
 
+    if verbose > 0:
+        print("  Done evaluating gradient function.")
+
     return jac
 
 
@@ -185,6 +200,9 @@ def _process_parameters(x):
 
     # Load existing parameters to compare
     already_started = _compare_parameters(x)
+
+    if already_started and verbose > 0:
+        print("  Picking up solution from file..")
 
     if not already_started:
         # These parameters haven't run yet, prepare the working directory
@@ -214,6 +232,8 @@ def _process_parameters(x):
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
         # No sensitivity files generated yet, or this is new geometry
+        if verbose > 0:
+            print("  Running geometric sensitivity study.")
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
@@ -222,21 +242,22 @@ def _process_parameters(x):
 
 def _run_simulation():
     """Prepare and run the CFD simulation with the OPM solver."""
-    # global cells, solver
+    global cells, solver
 
-    # # Load cells from geometry
-    # if cells is None:
-    #     try:
-    #         cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-    #     except:
-    #         cells = STL.load_from_file(geom_filename, verbosity=0)
+    # Load cells from geometry
+    if cells is None:
+        try:
+            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        except:
+            cells = STL.load_from_file(geom_filename, verbosity=0)
 
-    # # Run OPM solver
-    # if solver is None:
-    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # Run OPM solver
+    if solver is None:
+        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
 
-    cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-    solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    if verbose > 0:
+        print("  Running OPM flow solver.")
+
     sim_results = solver.solve()
 
     # Construct coefficient dictionary
@@ -247,24 +268,23 @@ def _run_simulation():
 
 
 def _run_sensitivities():
-    # global cells, solver
+    global cells, solver
 
-    # # Load cells from geometry
-    # if cells is None:
-    #     try:
-    #         cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-    #     except:
-    #         cells = STL.load_from_file(geom_filename, verbosity=0)
+    # Load cells from geometry
+    if cells is None:
+        try:
+            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+        except:
+            cells = STL.load_from_file(geom_filename, verbosity=0)
 
-    # # Run OPM solver
-    # if solver is None:
-    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # Run OPM solver
+    if solver is None:
+        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
 
-    cells = PyMesh.load_from_file(geom_filename, verbosity=0)
-    solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
-
-    # TODO - how will sens combining be handled?
+    # TODO - how will sens combining be handled? Need to use merged STL
     # TODO - remove hard coding below
+    if verbose > 0:
+        print("  Running OPM sensitivity flow solver.")
     sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
 
     # Non-dimensionalise

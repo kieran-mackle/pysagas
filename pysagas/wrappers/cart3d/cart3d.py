@@ -32,19 +32,26 @@ class Cart3DWrapper(Wrapper):
         ----------
         a_inf : float
             The freestream speed of sound (m/s).
+
         rho_inf : float
             The freestream density (kg/m^3).
+
         sensitivity_filepath : str
             The filepath to the geometry sensitivities.
+
         components_filepath : str, optional
             The filepath to the Components.i.plt file to be processed.
             The default is None.
+
         pointdata : pd.DataFrame, optional
             The point data. Must be supplied with celldata.
+
         celldata : pd.DataFrame, optional
             The cell data. Must be supplied with pointdata.
+
         write_data : bool, optional
             Write the flow data to CSV files. The default is True.
+
         verbosity : int, optional
             The verbosity of the code. The defualt is 1.
         """
