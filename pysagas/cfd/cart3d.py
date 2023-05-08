@@ -76,6 +76,7 @@ class Cart3D(FlowSolver):
 
         # Private attributes
         self._killed = False
+        self._donefile = None
 
         # Complete instantiation
         super().__init__(None, freestream, verbosity)
@@ -158,9 +159,14 @@ class Cart3D(FlowSolver):
 
     def running(self) -> bool:
         """Returns True if Cart3D is actively running, else False."""
-        return self._c3d_running(
-            os.path.join(self._sim_dir, self.c3d_log_name), self._donefile
-        )
+        if self._donefile:
+            # Donefile has been assigned
+            return self._c3d_running(
+                os.path.join(self._sim_dir, self.c3d_log_name), self._donefile
+            )[0]
+        else:
+            # Donefile has not been assigned
+            return True
 
     def save(self, name: str, attributes: Dict[str, list]):
         raise NotImplementedError("Coming soon.")
@@ -312,19 +318,24 @@ class Cart3D(FlowSolver):
             return False, None
 
         # DONE file doesn't exist, read logfile for clues
-        with open(c3d_log_name) as f:
-            # Get last line in log file
-            for line in f:
+        if os.path.exists(c3d_log_name):
+            try:
+                with open(c3d_log_name) as f:
+                    # Get last line in log file
+                    for line in f:
+                        pass
+
+                    # Check if if it is in the known errors
+                    for e in Cart3D._C3D_errors:
+                        if e in line:
+                            return False, e
+
+                    # Check if it says done
+                    if Cart3D._C3D_done in line:
+                        return False, None
+            except:
+                # Threading read error
                 pass
-
-            # Check if if it is in the known errors
-            for e in Cart3D._C3D_errors:
-                if e in line:
-                    return False, e
-
-            # Check if it says done
-            if Cart3D._C3D_done in line:
-                return False, None
 
         # No errors
         return True, None
