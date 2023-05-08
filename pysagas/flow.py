@@ -1,3 +1,4 @@
+import numpy as np
 from .geometry.vector import Vector
 
 
@@ -97,6 +98,7 @@ class FlowState(GasState):
         pressure: float,
         temperature: float,
         direction: Vector = None,
+        aoa: float = 0.0,
         gamma: float = 1.4,
     ) -> None:
         """Define a new flow state.
@@ -105,20 +107,30 @@ class FlowState(GasState):
         -----------
         mach : float
             The flow Mach number.
+
         pressure : float
             The flow pressure (Pa).
+
         temperature : float
             The flow temperature (K).
+
         direction : Vector, optional
             The direction vector of the flow. The default is Vector(1,0,0).
+
+        aoa : float, optional
+            The angle of attack of the flow. The default is 0.0 (specified in
+            degrees).
+
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
         """
         super().__init__(mach, pressure, temperature, gamma)
         if direction:
+            # Use direction provided
             self.direction = direction.unit
         else:
-            self.direction = Vector(1, 0, 0)
+            # Use AoA to calculate direction
+            self.direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
 
         # Velocity vector
         self._Vector = self.direction * self.v
@@ -148,6 +160,11 @@ class FlowState(GasState):
     @property
     def Vector(self):
         return self._Vector
+
+    @property
+    def aoa(self):
+        aoa = np.rad2deg(np.arctan(self.vec[1] / self.vec[0]))
+        return round(aoa, 6)
 
 
 if __name__ == "__main__":
