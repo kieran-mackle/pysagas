@@ -3,8 +3,8 @@ import time
 import shutil
 import subprocess
 import numpy as np
+from pysagas import FlowState, Vector
 from typing import Dict, List, Optional
-from pysagas import Cell, FlowState, Vector
 from pysagas.optimisation.cart3d.utilities import C3DPrep
 from pysagas.cfd.solver import FlowSolver, FlowResults, SensitivityResults
 
@@ -20,6 +20,7 @@ class Cart3D(FlowSolver):
         "ERROR: ADAPT failed with status = 1",
         "ERROR",
     ]
+    _C3D_done = "Done aero.csh"
 
     def __init__(
         self,
@@ -73,6 +74,9 @@ class Cart3D(FlowSolver):
         self.ref_area = ref_area
         self.ref_length = ref_length
 
+        # Private attributes
+        self._killed = False
+
         # Complete instantiation
         super().__init__(None, freestream, verbosity)
 
@@ -118,7 +122,31 @@ class Cart3D(FlowSolver):
             # Save
             self.flow_result = result
 
+            if self.verbosity > 1:
+                print("Cart3D done.")
+
         return result
+
+    @property
+    def status(self):
+        """Returns the status of the wrapper."""
+        running, error = self.running()
+        if error:
+            print(f"Failed with error {error}.")
+        else:
+            if running:
+                print("Running.")
+            else:
+                print("Complete.")
+
+    def stop(self):
+        """Stop running Cart3D."""
+        self._killed = True
+        if self.verbosity > 0:
+            print("Kill signal received. Stopping Cart3D.")
+        stopfile = os.path.join(self._sim_dir, "STOP")
+        with open(stopfile, "w"):
+            pass
 
     def solve_sens(
         self,
@@ -127,6 +155,12 @@ class Cart3D(FlowSolver):
         aoa: Optional[float] = None,
     ) -> SensitivityResults:
         raise NotImplementedError("Coming soon.")
+
+    def running(self) -> bool:
+        """Returns True if Cart3D is actively running, else False."""
+        return self._c3d_running(
+            os.path.join(self._sim_dir, self.c3d_log_name), self._donefile
+        )
 
     def save(self, name: str, attributes: Dict[str, list]):
         raise NotImplementedError("Coming soon.")
@@ -155,6 +189,7 @@ class Cart3D(FlowSolver):
         """Run the simulation."""
         # Prepare sim directory
         sim_dir = os.path.join(self._root_dir, f"M{mach}A{aoa}")
+        self._sim_dir = sim_dir
         run_intersect, intersected = self._prepare_sim_dir(sim_dir)
 
         # Attempt simulation
@@ -203,6 +238,7 @@ class Cart3D(FlowSolver):
                 os.chdir(sim_dir)
                 target_adapt = self._infer_adapt(self._aerocsh_path)
                 c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+                self._donefile = c3d_donefile
                 run_cmd = "./aero.csh restart"
                 _restarts = 0
                 if not os.path.exists(c3d_donefile):
@@ -215,12 +251,24 @@ class Cart3D(FlowSolver):
                         time.sleep(5)
 
                         # Check for C3D failure
-                        running, e = self._c3d_running(c3d_logname=self.c3d_log_name)
+                        running, e = self._c3d_running(
+                            c3d_log_name=self.c3d_log_name, donefile=c3d_donefile
+                        )
+
+                        # Check for kill status
+                        if self._killed:
+                            if self.verbosity > 1:
+                                print("Kill signal received, exiting simulation loop.")
+                            sim_success = False
+                            break
 
                         if not running:
                             # C3D failed, try restart it
                             if _restarts > 3:
                                 return False
+
+                            if self.verbosity > 0:
+                                print(f"Warning: Cart3D failed with error '{e}'")
 
                             f = open(self.c3d_log_name, "a")
                             subprocess.run(
@@ -248,7 +296,7 @@ class Cart3D(FlowSolver):
         return loads_dict
 
     @staticmethod
-    def _c3d_running(c3d_log_name) -> bool:
+    def _c3d_running(c3d_log_name: str, donefile: str) -> bool:
         """Watches the Cart3D log file to check for errors and return False
         if Cart3D has stopped running.
 
@@ -260,6 +308,10 @@ class Cart3D(FlowSolver):
         error : str
             The error message, if an error has occured.
         """
+        if os.path.exists(donefile):
+            return False, None
+
+        # DONE file doesn't exist, read logfile for clues
         with open(c3d_log_name) as f:
             # Get last line in log file
             for line in f:
@@ -269,6 +321,10 @@ class Cart3D(FlowSolver):
             for e in Cart3D._C3D_errors:
                 if e in line:
                     return False, e
+
+            # Check if it says done
+            if Cart3D._C3D_done in line:
+                return False, None
 
         # No errors
         return True, None

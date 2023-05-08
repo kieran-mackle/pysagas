@@ -396,6 +396,11 @@ class FlowResults:
         C_m = -mw.z / (self.freestream.q * A_ref * c_ref)
         return C_L, C_D, C_m
 
+    @property
+    def coef(self):
+        CL, CD, Cm = self.coefficients()
+        print(f"CL = {CL:.3f}\nCD = {CD:.3f}\nCm = {Cm:.3f}")
+
 
 class SensitivityResults:
     """A class containing the aerodynamic force and moment sensitivity
