@@ -2,6 +2,7 @@ import os
 import time
 import shutil
 from random import random
+from typing import Optional
 
 
 class C3DPrep:
@@ -160,7 +161,7 @@ class C3DPrep:
         os.system(f"intersect >> {self._logfile} 2>&1")
 
     @staticmethod
-    def _get_stl_files():
+    def _get_stl_files() -> list[str]:
         path = os.getcwd()
         all_files = [
             f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))
@@ -182,7 +183,7 @@ class C3DPrep:
             success = True
         return success
 
-    def intersect_stls(self) -> bool:
+    def intersect_stls(self, stl_files: Optional[list[str]] = None) -> bool:
         """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
@@ -190,7 +191,8 @@ class C3DPrep:
             return True
 
         # Continue
-        stl_files = self._get_stl_files()
+        if not stl_files:
+            stl_files = self._get_stl_files()
         tri_files = self._run_stl2tri(stl_files)
 
         # First try intersect original files

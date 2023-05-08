@@ -4,6 +4,7 @@ import copy
 import meshio
 import numpy as np
 import pandas as pd
+from pysagas import banner
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict
 from pysagas import Cell, FlowState, Vector
@@ -75,7 +76,7 @@ class FlowSolver(AbstractFlowSolver):
     def solve(
         self,
         freestream: Optional[FlowState] = None,
-        Mach: Optional[float] = None,
+        mach: Optional[float] = None,
         aoa: Optional[float] = None,
     ) -> bool:
         """Run the flow solver.
@@ -86,7 +87,7 @@ class FlowSolver(AbstractFlowSolver):
             The free-stream flow state. The default is the freestream provided
             upon instantiation of the solver.
 
-        Mach : float, optional
+        mach : float, optional
             The free-stream Mach number. The default is that specified in
             the freestream flow state.
 
@@ -103,6 +104,10 @@ class FlowSolver(AbstractFlowSolver):
         ------
         Exception : when no freestream can be found.
         """
+        if self.verbosity > 0:
+            banner()
+            print(f"\033[4m{self.__repr__()}\033[0m".center(50, " "))
+
         if not freestream:
             # No freestream conditions specified
             if not self.freestream:
@@ -111,9 +116,9 @@ class FlowSolver(AbstractFlowSolver):
             else:
                 # Use nominal freestream as base
                 freestream = copy.copy(self.freestream)
-                if Mach:
+                if mach:
                     # Update mach number
-                    freestream._M = Mach
+                    freestream._M = mach
 
                 if aoa:
                     # Update flow direction
@@ -122,7 +127,7 @@ class FlowSolver(AbstractFlowSolver):
 
         else:
             # Solve-specific freestream conditions provided
-            if Mach or aoa:
+            if mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
 
         # Check if already solved
@@ -136,7 +141,7 @@ class FlowSolver(AbstractFlowSolver):
     def solve_sens(
         self,
         freestream: Optional[FlowState] = None,
-        Mach: Optional[float] = None,
+        mach: Optional[float] = None,
         aoa: Optional[float] = None,
     ) -> SensitivityResults:
         """Run the flow solver to obtain sensitivity information.
@@ -171,9 +176,9 @@ class FlowSolver(AbstractFlowSolver):
             else:
                 # Use nominal freestream as base
                 freestream = copy.copy(self.freestream)
-                if Mach:
+                if mach:
                     # Update mach number
-                    freestream._M = Mach
+                    freestream._M = mach
 
                 if aoa:
                     # Update flow direction
@@ -182,7 +187,7 @@ class FlowSolver(AbstractFlowSolver):
 
         else:
             # Solve-specific freestream conditions provided
-            if Mach or aoa:
+            if mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
 
         # Check if already solved

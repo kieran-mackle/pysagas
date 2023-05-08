@@ -33,11 +33,11 @@ class OPM(FlowSolver):
     def solve(
         self,
         freestream: Optional[FlowState] = None,
-        Mach: Optional[float] = None,
+        mach: Optional[float] = None,
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
     ) -> FlowResults:
-        already_run = super().solve(freestream=freestream, Mach=Mach, aoa=aoa)
+        already_run = super().solve(freestream=freestream, mach=mach, aoa=aoa)
         if already_run:
             # Already have a result
             if self.verbosity > 1:
@@ -522,7 +522,7 @@ class OPM(FlowSolver):
         sensitivity_filepath: str,
         cells_have_sens_data: bool = False,
         freestream: Optional[FlowState] = None,
-        Mach: Optional[float] = None,
+        mach: Optional[float] = None,
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
         perturbation: float = 1e-3,
@@ -530,7 +530,7 @@ class OPM(FlowSolver):
         # TODO - add to cell attributes for visualisation
         # TODO - return Mach and Temp sensitivities
 
-        already_run = super().solve_sens(freestream=freestream, Mach=Mach, aoa=aoa)
+        already_run = super().solve_sens(freestream=freestream, mach=mach, aoa=aoa)
         if already_run:
             # Already have a result
             if self.verbosity > 1:
