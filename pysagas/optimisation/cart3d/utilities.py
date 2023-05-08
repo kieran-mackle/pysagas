@@ -3,6 +3,7 @@ import time
 import shutil
 from random import random
 from typing import Optional
+from hypervehicle.utilities import append_sensitivities_to_tri
 
 
 class C3DPrep:
@@ -286,3 +287,49 @@ class C3DPrep:
     def _log(self, msg: str):
         with open(self._info, "a") as f:
             f.write("\nC3DPrep: " + msg)
+
+
+def combine_sense_data(
+    components_filepath: str,
+    sensitivity_files: list[str],
+    match_target: float = 0.9,
+    tol_0: float = 1e-5,
+    max_tol: float = 1e-1,
+    outdir: Optional[str] = None,
+):
+    """Combine the individual component sensitivity data with the
+    intersected geometry file (eg. Components.i.tri).
+    """
+    match_frac = 0
+    tol = tol_0
+    while match_frac < match_target:
+        # Check tolerance
+        if tol > max_tol:
+            raise Exception(
+                "Cannot combine sensitivity data (match fraction: "
+                + f"{match_frac}, tolerance: {tol}, max tolerance: {max_tol})."
+            )
+
+        # Run matching algorithm
+        match_frac = append_sensitivities_to_tri(
+            dp_filenames=sensitivity_files,
+            components_filepath=components_filepath,
+            match_tolerance=tol,
+            verbosity=0,
+            outdir=outdir,
+        )
+
+        if match_frac < match_target:
+            print(
+                "Failed to combine sensitivity data "
+                f"({100*match_frac:.02f}% match rate)."
+            )
+            print(f"  Increasing matching tolerance to {tol*10} and trying again.")
+        else:
+            print(
+                "Component sensitivity data matched to intersected geometry "
+                + f"with {100*match_frac:.02f}% match rate."
+            )
+
+        # Increase matching tolerance
+        tol *= 10

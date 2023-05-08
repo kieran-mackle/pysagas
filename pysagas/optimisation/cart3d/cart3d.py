@@ -11,7 +11,7 @@ from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
 from typing import List, Dict, Optional, Optional
-from pysagas.optimisation.cart3d.utilities import C3DPrep
+from pysagas.optimisation.cart3d.utilities import C3DPrep, combine_sense_data
 from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
@@ -251,7 +251,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             working_dir, sim_dir_name, "Components.i.tri"
         )
         sensitivity_files = glob.glob(os.path.join("*sensitivity*"))
-        _combine_sense_data(
+        combine_sense_data(
             tri_components_filepath,
             sensitivity_files=sensitivity_files,
             match_target=_matching_target,
@@ -413,7 +413,7 @@ def _run_simulation(no_attempts: int = 3):
 
             # Create all_components_sensitivity.csv
             if not os.path.exists(sens_filename):
-                _combine_sense_data(
+                combine_sense_data(
                     components_filepath,
                     sensitivity_files=glob.glob("*sensitivity*"),
                     match_target=_matching_target,
@@ -510,51 +510,6 @@ def _read_c3d_loads(
                     load_dict["{0}-{1}".format(coeff, tag)] = number
 
     return load_dict
-
-
-def _combine_sense_data(
-    components_filepath: str,
-    sensitivity_files: List[str],
-    match_target: float = 0.9,
-    tol_0: float = 1e-5,
-    max_tol: float = 1e-1,
-    outdir: Optional[str] = None,
-):
-    """Combine the individual component sensitivity data with the
-    intersected geometry file (eg. Components.i.tri)."""
-    match_frac = 0
-    tol = tol_0
-    while match_frac < match_target:
-        # Check tolerance
-        if tol > max_tol:
-            raise Exception(
-                "Cannot combine sensitivity data (match fraction: "
-                + f"{match_frac}, tolerance: {tol}, max tolerance: {max_tol})."
-            )
-
-        # Run matching algorithm
-        match_frac = append_sensitivities_to_tri(
-            dp_filenames=sensitivity_files,
-            components_filepath=components_filepath,
-            match_tolerance=tol,
-            verbosity=0,
-            outdir=outdir,
-        )
-
-        if match_frac < match_target:
-            print(
-                "Failed to combine sensitivity data "
-                f"({100*match_frac:.02f}% match rate)."
-            )
-            print(f"  Increasing matching tolerance to {tol*10} and trying again.")
-        else:
-            print(
-                "Component sensitivity data matched to intersected geometry "
-                + f"with {100*match_frac:.02f}% match rate."
-            )
-
-        # Increase matching tolerance
-        tol *= 10
 
 
 def _c3d_running() -> bool:
