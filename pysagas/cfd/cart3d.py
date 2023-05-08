@@ -131,7 +131,9 @@ class Cart3D(FlowSolver):
     @property
     def status(self):
         """Returns the status of the wrapper."""
-        running, error = self.running()
+        running, error = self._c3d_running(
+            os.path.join(self._sim_dir, self.c3d_log_name), self._donefile
+        )
         if error:
             print(f"Failed with error {error}.")
         else:
@@ -186,6 +188,13 @@ class Cart3D(FlowSolver):
             run_intersect = not os.path.exists(components_filepath)
             intersected = True
 
+        # Copy STL files into sim directory
+        for file in self.stl_files:
+            shutil.copyfile(
+                os.path.join(self._root_dir, file),
+                os.path.join(sim_dir, file),
+            )
+
         if self.verbosity > 0:
             print(f"Running simulation in {sim_dir}.")
 
@@ -197,6 +206,9 @@ class Cart3D(FlowSolver):
         sim_dir = os.path.join(self._root_dir, f"M{mach}A{aoa}")
         self._sim_dir = sim_dir
         run_intersect, intersected = self._prepare_sim_dir(sim_dir)
+
+        # Move into sim directory
+        os.chdir(sim_dir)
 
         # Attempt simulation
         sim_success = False
@@ -213,9 +225,9 @@ class Cart3D(FlowSolver):
                 if not os.path.exists(os.path.join(sim_dir, "input.cntl")):
                     # Move files to simulation directory (including Components.i.tri)
                     self._prepper.run_autoinputs()
-                    os.system(
-                        f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_log_name} 2>&1"
-                    )
+                    # os.system(
+                    #     f"mv *.tri Config.xml input.c3d preSpec.c3d.cntl {sim_dir} >> {self.c3d_log_name} 2>&1"
+                    # )
 
                     # Copy sim files and permissions
                     for filename, fp in {
@@ -223,11 +235,11 @@ class Cart3D(FlowSolver):
                         "aero.csh": self._aerocsh_path,
                     }.items():
                         shutil.copyfile(
-                            fp,
+                            os.path.join(self._root_dir, filename),
                             os.path.join(sim_dir, filename),
                         )
                         shutil.copymode(
-                            fp,
+                            os.path.join(self._root_dir, filename),
                             os.path.join(sim_dir, filename),
                         )
 
@@ -241,7 +253,6 @@ class Cart3D(FlowSolver):
                     )
 
                 # Run Cart3D and await result
-                os.chdir(sim_dir)
                 target_adapt = self._infer_adapt(self._aerocsh_path)
                 c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
                 self._donefile = c3d_donefile
