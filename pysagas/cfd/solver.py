@@ -433,3 +433,18 @@ class SensitivityResults:
 
     def __repr__(self) -> str:
         return self.__str__()
+
+    def coefficients(self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0):
+        """Calculate the aerodynamic coefficients CL, CD and Cm.
+
+        Parameters
+        -----------
+        A_ref : float, optional
+            The reference area (m^2). The default is 1 m^2.
+
+        c_ref : float, optional
+            The reference length (m). The default is 1 m.
+        """
+        cf_sens = self.f_sens / (self.freestream.q * A_ref)
+        cm_sens = self.m_sens / (self.freestream.q * A_ref * c_ref)
+        return cf_sens, cm_sens

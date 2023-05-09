@@ -5,6 +5,7 @@ import subprocess
 import numpy as np
 from pysagas import FlowState, Vector
 from typing import Dict, List, Optional
+from pysagas.wrappers import Cart3DWrapper
 from pysagas.optimisation.cart3d.utilities import C3DPrep
 from pysagas.cfd.solver import FlowSolver, FlowResults, SensitivityResults
 
@@ -153,11 +154,68 @@ class Cart3D(FlowSolver):
 
     def solve_sens(
         self,
+        sensitivity_filepath: str,
         freestream: Optional[FlowState] = None,
-        Mach: Optional[float] = None,
+        mach: Optional[float] = None,
         aoa: Optional[float] = None,
     ) -> SensitivityResults:
-        raise NotImplementedError("Coming soon.")
+        already_run = super().solve_sens(freestream=freestream, mach=mach, aoa=aoa)
+        if already_run:
+            # Already have a result
+            if self.verbosity > 1:
+                print("Attention: this flowstate sensitivity has already been solved.")
+            result = self.flow_sensitivity
+
+        else:
+            # Get flow
+            flow = self._last_sens_freestream
+
+            # Check that nominal flow condition has been solved already
+            if self._last_solve_freestream:
+                # Solver has run before
+                if self._last_solve_freestream != flow:
+                    # Run flow solver first at the nominal flow conditions
+                    if self.verbosity > 0:
+                        print("Running flow solver to prepare sensitivities.")
+                    self.solve(flow)
+                else:
+                    if self.verbosity > 0:
+                        print("Using previously run flow solution.")
+            else:
+                # Solver has not run yet at all, run it now
+                if self.verbosity > 0:
+                    print("Running flow solver to prepare sensitivities.")
+                self.solve(flow)
+
+            # Create sensitivity wrapper
+            components_filepath = os.path.join(
+                self._sim_dir, "BEST/FLOW/Components.i.plt"
+            )
+            wrapper = Cart3DWrapper(
+                a_inf=flow.a,
+                rho_inf=flow.rho,
+                sensitivity_filepath=sensitivity_filepath,
+                components_filepath=components_filepath,
+                verbosity=0,
+            )
+
+            # Calculate sensitivities
+            df_f, df_m = wrapper.calculate()
+
+            # Construct results
+            result = SensitivityResults(
+                freestream=flow,
+                f_sens=df_f,
+                m_sens=df_m,
+            )
+
+            # Save
+            self.flow_sensitivity = result
+
+        if self.verbosity > 0:
+            print(result)
+
+        return result
 
     def running(self) -> bool:
         """Returns True if Cart3D is actively running, else False."""
