@@ -6,13 +6,15 @@ import shutil
 import subprocess
 import numpy as np
 import pandas as pd
+import multiprocess as mp
+from pysagas.flow import FlowState
+from pysagas.cfd.cart3d import Cart3D
 from pysagas.optimisation import ShapeOpt
 from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
-from typing import List, Dict, Optional, Optional
+from hypervehicle.utilities import SensitivityStudy
 from pysagas.optimisation.cart3d.utilities import C3DPrep, combine_sense_data
-from hypervehicle.utilities import SensitivityStudy, append_sensitivities_to_tri
 
 
 np.seterr(all="ignore")
@@ -117,10 +119,12 @@ class Cart3DShapeOpt(ShapeOpt):
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
         global sens_filename, basefiles_dir, _c3dprepper, sim_dir_name
         global _rho_inf, _V_inf, _a_inf, _A_ref
-        global working_dir, f_sense_filename
+        global home_dir, working_dir, f_sense_filename
         global obj_cb, jac_cb
         global generator
         global save_comptri, evo_dir
+        global moo
+        moo = False
 
         save_comptri = save_evolution
 
@@ -174,6 +178,200 @@ class Cart3DShapeOpt(ShapeOpt):
             working_dir=working_dir,
             optimiser_options=optimiser_options,
         )
+
+
+class Cart3DMooShapeOpt(Cart3DShapeOpt):
+    def __init__(
+        self,
+        a_inf: float,
+        rho_inf: float,
+        V_inf: float,
+        A_ref: float,
+        optimiser: Optimizer,
+        vehicle_generator: Generator,
+        objective_callback: callable,
+        jacobian_callback: callable,
+        mach_aoa_points: list[tuple[float, float]],
+        optimiser_options: dict = None,
+        sensitivity_filename: str = "all_components_sensitivity.csv",
+        working_dir_name: str = "working_dir",
+        sim_directory_name: str = "simulation",
+        basefiles_dir_name: str = "basefiles",
+        c3d_log_name: str = "C3D_log",
+        c3d_info_file: str = None,
+        matching_tolerance: float = 0.00001,
+        save_evolution: bool = True,
+        write_config_xml: bool = True,
+    ) -> None:
+        super().__init__(
+            a_inf,
+            rho_inf,
+            V_inf,
+            A_ref,
+            optimiser,
+            vehicle_generator,
+            objective_callback,
+            jacobian_callback,
+            optimiser_options,
+            sensitivity_filename,
+            working_dir_name,
+            sim_directory_name,
+            basefiles_dir_name,
+            c3d_log_name,
+            c3d_info_file,
+            matching_tolerance,
+            save_evolution,
+            write_config_xml,
+        )
+        global sim_points
+        sim_points = mach_aoa_points
+
+        global moo
+        moo = True
+
+        # Overload
+        self.opt_problem = Optimization(
+            name="Cart3D-PySAGAS Shape Optimisation",
+            objFun=evaluate_moo_objective,
+            sens=evaluate_moo_gradient,
+        )
+
+        self.opt_problem: Optimization
+        self.optimiser = optimiser(options=optimiser_options)
+
+
+def evaluate_moo_objective(x: dict) -> dict:
+    # Pre-process parameters
+    _process_parameters(x)
+
+    print("Deploying simulation tasks to pool.")
+    pool = mp.Pool()
+    results = []
+    for result in pool.starmap(aero_wrapper, sim_points):
+        results.append(result)
+    print("  Done.")
+
+    # Load properties
+    properties_dir = glob.glob("*_properties")
+    if properties_dir:
+        volmass = pd.read_csv(
+            glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+            index_col=0,
+        )
+
+        # Fetch user-defined properties
+        properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
+        if len(properties_file) > 0:
+            # File exists, load it
+            properties = pd.read_csv(
+                properties_file[0],
+                index_col=0,
+            )["0"]
+        else:
+            properties = None
+
+    # Objective function callback
+    funcs = obj_cb(
+        parameters=_unwrap_x(x), results=results, volmass=volmass, properties=properties
+    )
+
+    return funcs, False
+
+
+def aero_wrapper(mach, aoa):
+    freestream = FlowState(mach=mach, pressure=101e3, temperature=288, aoa=aoa)
+    c3d = Cart3D(stl_files=stl_files, freestream=freestream, verbosity=0)
+    flow_result = c3d.solve()
+    return flow_result
+
+
+def sens_wrapper(mach, aoa):
+    freestream = FlowState(mach=mach, pressure=101e3, temperature=288, aoa=aoa)
+    c3d = Cart3D(stl_files=stl_files, freestream=freestream, verbosity=0)
+
+    sens_file = "all_components_sensitivity.csv"
+    if not os.path.exists(sens_file):
+        sim_dir = os.path.join(working_dir, f"M{mach}A{float(aoa)}")
+        components_filepath = os.path.join(sim_dir, "Components.i.tri")
+        combine_sense_data(
+            components_filepath=components_filepath,
+            sensitivity_files=sensitivity_files,
+            match_target=_matching_target,
+            tol_0=_matching_tolerance,
+            max_tol=_max_matching_tol,
+            outdir=working_dir,
+            verbosity=0,
+        )
+
+    # Run the sensitivity solver
+    sens_result = c3d.solve_sens(sensitivity_filepath=sens_file)
+    flow_result = c3d.flow_result
+
+    return flow_result, sens_result
+
+
+def evaluate_moo_gradient(x: dict, objective: dict) -> dict:
+    """Evaluates the gradient function at the parameter set `x`."""
+
+    # Pre-process parameters
+    _process_parameters(x)
+
+    print("Deploying sensitivity tasks to pool.")
+    pool = mp.Pool()
+    results = []
+    for result in pool.starmap(sens_wrapper, sim_points):
+        results.append(result)
+    print("  Done.")
+
+    # Calculate Jacobian
+    properties_dir = glob.glob("*_properties")
+    if properties_dir:
+        scalar_sens_dir = os.path.join("scalar_sensitivities")
+        vm = pd.read_csv(
+            glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+            index_col=0,
+        )
+        vm_sens = pd.read_csv(
+            os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
+            index_col=0,
+        )[x.keys()]
+
+        # Fetch user-defined properties and sensitivities
+        properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
+        if len(properties_file) > 0:
+            # File exists, load it
+            properties = pd.read_csv(
+                properties_file[0],
+                index_col=0,
+            )["0"]
+
+            # Also load sensitivity file
+            property_sens = pd.read_csv(
+                os.path.join(scalar_sens_dir, "property_sensitivity.csv"),
+                index_col=0,
+            )[x.keys()]
+        else:
+            properties = None
+            property_sens = None
+
+    else:
+        # No properties data found
+        vm = None
+        vm_sens = None
+        properties = None
+        property_sens = None
+
+    # Call function
+    jac = jac_cb(
+        parameters=_unwrap_x(x),
+        results=results,
+        volmass=vm,
+        volmass_sens=vm_sens,
+        properties=properties,
+        property_sens=property_sens,
+    )
+
+    return jac
 
 
 def evaluate_objective(x: dict) -> dict:
@@ -258,6 +456,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             tol_0=_matching_tolerance,
             max_tol=_max_matching_tol,
             outdir=working_dir,
+            verbosity=0,
         )
 
         # Re-instantiate the wrapper
@@ -361,9 +560,26 @@ def _process_parameters(x):
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
         # No sensitivity files generated yet, or this is new geometry
         parameters = _unwrap_x(x)
-        ss = SensitivityStudy(vehicle_constructor=generator)
+        ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
+
+    if moo:
+        # Multi-objective optimisation
+        global stl_files, sensitivity_files
+        stl_files = glob.glob("*.stl")
+        sensitivity_files = glob.glob("*sensitivity*")
+
+        # Also copy aero.csh and input.cntl into working directory
+        for filename in ["input.cntl", "aero.csh"]:
+            shutil.copyfile(
+                os.path.join(home_dir, filename),
+                os.path.join(working_dir, filename),
+            )
+            shutil.copymode(
+                os.path.join(home_dir, filename),
+                os.path.join(working_dir, filename),
+            )
 
 
 def _run_simulation(no_attempts: int = 3):
@@ -419,6 +635,7 @@ def _run_simulation(no_attempts: int = 3):
                     match_target=_matching_target,
                     tol_0=_matching_tolerance,
                     max_tol=_max_matching_tol,
+                    verbosity=0,
                 )
 
             # Run Cart3D and await result

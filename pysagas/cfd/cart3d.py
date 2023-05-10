@@ -76,6 +76,7 @@ class Cart3D(FlowSolver):
         self.ref_length = ref_length
 
         # Private attributes
+        self._sim_dir = None
         self._killed = False
         self._donefile = None
 
