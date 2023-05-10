@@ -296,6 +296,7 @@ def combine_sense_data(
     tol_0: float = 1e-5,
     max_tol: float = 1e-1,
     outdir: Optional[str] = None,
+    verbosity: Optional[int] = 1,
 ):
     """Combine the individual component sensitivity data with the
     intersected geometry file (eg. Components.i.tri).
@@ -315,17 +316,17 @@ def combine_sense_data(
             dp_filenames=sensitivity_files,
             components_filepath=components_filepath,
             match_tolerance=tol,
-            verbosity=0,
+            verbosity=verbosity,
             outdir=outdir,
         )
 
-        if match_frac < match_target:
+        if match_frac < match_target and verbosity > 0:
             print(
                 "Failed to combine sensitivity data "
                 f"({100*match_frac:.02f}% match rate)."
             )
             print(f"  Increasing matching tolerance to {tol*10} and trying again.")
-        else:
+        elif verbosity > 0:
             print(
                 "Component sensitivity data matched to intersected geometry "
                 + f"with {100*match_frac:.02f}% match rate."
