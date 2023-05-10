@@ -20,6 +20,7 @@ class Cart3D(FlowSolver):
         "ERROR: CUBES failed",
         "ERROR: ADAPT failed with status = 1",
         "ERROR",
+        "Try decreasing etol, increasing mesh growth or switching to 'a' cycles",
     ]
     _C3D_done = "Done aero.csh"
 

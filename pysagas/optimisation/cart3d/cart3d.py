@@ -241,6 +241,8 @@ class Cart3DMooShapeOpt(Cart3DShapeOpt):
 
 
 def evaluate_moo_objective(x: dict) -> dict:
+    print("Evaluating objective function.")
+
     # Pre-process parameters
     _process_parameters(x)
 
@@ -289,21 +291,21 @@ def sens_wrapper(mach, aoa):
     freestream = FlowState(mach=mach, pressure=101e3, temperature=288, aoa=aoa)
     c3d = Cart3D(stl_files=stl_files, freestream=freestream, verbosity=0)
 
-    sens_file = "all_components_sensitivity.csv"
-    if not os.path.exists(sens_file):
-        sim_dir = os.path.join(working_dir, f"M{mach}A{float(aoa)}")
-        components_filepath = os.path.join(sim_dir, "Components.i.tri")
-        combine_sense_data(
-            components_filepath=components_filepath,
-            sensitivity_files=sensitivity_files,
-            match_target=_matching_target,
-            tol_0=_matching_tolerance,
-            max_tol=_max_matching_tol,
-            outdir=working_dir,
-            verbosity=0,
-        )
+    # Append sensitivity data to tri file
+    sim_dir = os.path.join(working_dir, f"M{mach}A{float(aoa)}")
+    components_filepath = os.path.join(sim_dir, "Components.i.tri")
+    combine_sense_data(
+        components_filepath=components_filepath,
+        sensitivity_files=sensitivity_files,
+        match_target=_matching_target,
+        tol_0=_matching_tolerance,
+        max_tol=_max_matching_tol,
+        outdir=sim_dir,
+        verbosity=0,
+    )
 
     # Run the sensitivity solver
+    sens_file = os.path.join(sim_dir, "all_components_sensitivity.csv")
     sens_result = c3d.solve_sens(sensitivity_filepath=sens_file)
     flow_result = c3d.flow_result
 
@@ -312,6 +314,7 @@ def sens_wrapper(mach, aoa):
 
 def evaluate_moo_gradient(x: dict, objective: dict) -> dict:
     """Evaluates the gradient function at the parameter set `x`."""
+    print("Evaluating gradient function.")
 
     # Pre-process parameters
     _process_parameters(x)
@@ -559,10 +562,12 @@ def _process_parameters(x):
     # Generate vehicle and geometry sensitivities
     if len(glob.glob("*sensitivity*")) == 0 or not already_started:
         # No sensitivity files generated yet, or this is new geometry
+        print("Running sensitivity study.")
         parameters = _unwrap_x(x)
         ss = SensitivityStudy(vehicle_constructor=generator, verbosity=0)
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
+        print("  Done.")
 
     if moo:
         # Multi-objective optimisation
