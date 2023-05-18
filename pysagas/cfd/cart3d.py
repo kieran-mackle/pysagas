@@ -44,6 +44,7 @@ class Cart3D(FlowSolver):
         stl_files : list[str]
             A list of filepaths to the STL files to intersect and
             simulate.
+
         aero_csh : str
             The filepath to the reference aero.csh file. The default
             option will look in the current working directory.

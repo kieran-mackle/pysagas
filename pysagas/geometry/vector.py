@@ -15,8 +15,10 @@ class Vector:
         ----------
         x : float, optional
             The x-component of the vector.
+
         y : float, optional
             The y-component of the vector.
+
         z : float, optional
             The z-component of the vector.
         """

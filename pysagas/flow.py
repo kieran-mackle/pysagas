@@ -19,10 +19,13 @@ class GasState:
         -----------
         mach : float
             The flow Mach number.
+
         pressure : float
             The flow pressure (Pa).
+
         temperature : float
             The flow temperature (K).
+
         gamma : float, optional
             The ratio of specific heats. The default is 1.4.
         """
@@ -31,12 +34,6 @@ class GasState:
         self._P = pressure
         self._M = mach
         self._gamma = gamma
-
-        # Calculate dependents
-        # self._rho = self.P / (self.R * self.T)
-        # self._a = (self.gamma * self.R * self.T) ** 0.5
-        # self._v = self.M * self.a
-        # self._q = 0.5 * self._rho * self._v**2
 
     def __str__(self) -> str:
         return f"Mach {self.M} flow condition with P = {self.P}, T = {self.T}."

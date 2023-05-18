@@ -16,6 +16,7 @@ def calculate_pressures(flow: FlowState, theta: float) -> float:
     ----------
     flow : FlowState
         The flow state.
+
     theta : float
         The deflection angle (radians).
 
@@ -37,9 +38,11 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     Parameters
     ----------
     P : float
-        The pressure.
+        The pressure (Pa).
+
     n : np.array
         The normal vector.
+
     A : float
         The reference area (m^2).
 
@@ -64,9 +67,11 @@ def cell_dfdp(
     ----------
     cell : Cell
         The cell.
+
     dPdp_method : Callable
         The method to use when calculating the pressure sensitivities.
-    cog : Vector, optiona
+
+    cog : Vector, optional
         The reference centre of gravity, used in calculating the moment
         sensitivities. The defualt is Vector(0,0,0).
 
@@ -152,10 +157,12 @@ def all_dfdp(
     ----------
     cells : list[Cell]
         The cells to be analysed.
+
     dPdp_method : Callable, optional
         The method used to calculate the pressure/parameter sensitivities.
         The default is the Panel method approximation panel_dPdp (see below).
-    cog : Vector, optiona
+
+    cog : Vector, optional
         The reference centre of gravity, used in calculating the moment
         sensitivities. The defualt is Vector(0,0,0).
 
@@ -163,12 +170,14 @@ def all_dfdp(
     --------
     dFdp : np.array
         The force sensitivity matrix with respect to the parameters.
+
     dMdp : np.array
         The moment sensitivity matrix with respect to the parameters.
 
     See Also
     --------
     cell_dfdp : the force sensitivity per cell
+
     panel_dPdp : pressure sensitivities calculated using Panel method
         approximations
     """

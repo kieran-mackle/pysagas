@@ -13,28 +13,40 @@ class Cell:
     -----------
     p0 : Vector
         The first vertex of the cell.
+
     p1 : Vector
         The second vertex of the cell.
+
     p2 : Vector
         The third vertex of the cell.
+
     A : float
         The cell face area.
+
     n : Vector
         The cell normal.
+
     dndv : np.array
         The sensitivity of the cell's normal vector to each vertex.
+
     dAdv : np.array
         The sensitivity of the cell's area to each vertex.
+
     dvdp : np.array
         The sensitivity of the cell's vertices to each geometric parameter.
+
     dndp : np.array
         The sensitivity of the cell's normal vector to each geometric parameter.
+
     dAdp : np.array
         The sensitivity of the cell's area to each geometric parameter.
+
     dcdp : np.array
         The sensitivity of the centroid to each geometric parameter.
+
     flowstate : FlowState
         The flowstate associated with the cell.
+
     sensitivities : np.array
         An array containing the [x,y,z] force sensitivities of the cell.
     """
@@ -48,8 +60,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
         """
@@ -177,8 +191,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -220,8 +236,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -250,8 +268,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -278,8 +298,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -451,8 +473,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -556,8 +580,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
