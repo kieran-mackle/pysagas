@@ -34,9 +34,10 @@ class Cart3DShapeOpt(ShapeOpt):
 
     def __init__(
         self,
-        a_inf: float,
-        rho_inf: float,
-        V_inf: float,
+        freestream: FlowState,
+        # a_inf: float,
+        # rho_inf: float,
+        # V_inf: float,
         A_ref: float,
         optimiser: Optimizer,
         vehicle_generator: Generator,
@@ -118,13 +119,16 @@ class Cart3DShapeOpt(ShapeOpt):
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
         global sens_filename, basefiles_dir, _c3dprepper, sim_dir_name
-        global _rho_inf, _V_inf, _a_inf, _A_ref
+        global _A_ref
+        global _freestream
         global home_dir, working_dir, f_sense_filename
         global obj_cb, jac_cb
         global generator
         global save_comptri, evo_dir
         global moo
         moo = False
+
+        _freestream = freestream
 
         save_comptri = save_evolution
 
@@ -149,10 +153,7 @@ class Cart3DShapeOpt(ShapeOpt):
         obj_cb = objective_callback
         jac_cb = jacobian_callback
 
-        # TODO - pass as flowstate
-        _rho_inf = rho_inf
-        _V_inf = V_inf
-        _a_inf = a_inf
+        # Save reference area
         _A_ref = A_ref
 
         # Create instance of Cart3D prepper
@@ -439,8 +440,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     # Create PySAGAS wrapper and run
     try:
         wrapper = Cart3DWrapper(
-            a_inf=_a_inf,
-            rho_inf=_rho_inf,
+            freestream=_freestream,
             sensitivity_filepath=sensitivity_filepath,
             components_filepath=components_filepath,
             verbosity=0,
@@ -464,8 +464,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
         # Re-instantiate the wrapper
         wrapper = Cart3DWrapper(
-            a_inf=_a_inf,
-            rho_inf=_rho_inf,
+            freestream=_freestream,
             sensitivity_filepath=sensitivity_filepath,
             components_filepath=components_filepath,
             verbosity=0,
@@ -474,7 +473,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     F_sense, _ = wrapper.calculate()
 
     # Non-dimensionalise
-    coef_sens = F_sense / (0.5 * _rho_inf * _A_ref * _V_inf**2)
+    coef_sens = F_sense / (_freestream.q * _A_ref)
 
     # Calculate Jacobian
     properties_dir = glob.glob("*_properties")

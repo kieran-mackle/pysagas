@@ -1,8 +1,7 @@
-import sys
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from typing import Union, List
+from typing import List, Optional
 from pysagas.flow import FlowState
 from pysagas.wrappers.wrapper import Wrapper
 from pysagas.geometry import Vector, Cell, DegenerateCell
@@ -16,25 +15,21 @@ class Cart3DWrapper(Wrapper):
 
     def __init__(
         self,
-        a_inf: float,
-        rho_inf: float,
+        freestream: FlowState,
         sensitivity_filepath: str,
-        components_filepath: str = None,
-        pointdata: pd.DataFrame = None,
-        celldata: pd.DataFrame = None,
-        write_data: bool = False,
-        verbosity: int = 1,
+        components_filepath: Optional[str] = None,
+        pointdata: Optional[pd.DataFrame] = None,
+        celldata: Optional[pd.DataFrame] = None,
+        write_data: Optional[bool] = False,
+        verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
         """A PySAGAS wrapper for Cart3D.
 
         Parameters
         ----------
-        a_inf : float
-            The freestream speed of sound (m/s).
-
-        rho_inf : float
-            The freestream density (kg/m^3).
+        freestream : FlowState
+            The flow state of the freestream.
 
         sensitivity_filepath : str
             The filepath to the geometry sensitivities.
@@ -62,8 +57,8 @@ class Cart3DWrapper(Wrapper):
             self.celldata = celldata
         else:
             self.pointdata, self.celldata = process_components_file(
-                a_inf,
-                rho_inf,
+                freestream.a,
+                freestream.rho,
                 components_filepath,
                 write_data=write_data,
                 verbosity=verbosity,

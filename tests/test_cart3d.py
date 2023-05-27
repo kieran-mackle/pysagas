@@ -1,19 +1,18 @@
 import os as os
 import numpy as np
 import pandas as pd
+from pysagas.flow import FlowState
 from pysagas.geometry import Vector
 from pysagas.wrappers import Cart3DWrapper
 
 
 def run_main(data_path):
     """Analyse the Cart3D solution."""
-    # Define flow conditions
-    M_inf = 6
     L_ref = 1  # m
     A_ref = 1  # m2
-    a_inf = 299.499  # m/s
-    rho_inf = 0.0308742  # kg/m3
-    V_inf = M_inf * a_inf  # m/s
+
+    # Create freestream flowstate
+    freestream = FlowState(mach=6, pressure=1.975e3, temperature=223)
 
     # Filepaths
     sensitivity_filepath = os.path.join(data_path, "combined.csv")
@@ -24,8 +23,7 @@ def run_main(data_path):
 
     # Create PySAGAS wrapper
     wrapper = Cart3DWrapper(
-        a_inf=a_inf,
-        rho_inf=rho_inf,
+        freestream=freestream,
         sensitivity_filepath=sensitivity_filepath,
         pointdata=pointdata,
         celldata=celldata,
@@ -36,8 +34,8 @@ def run_main(data_path):
     F_sense, M_sense = wrapper.calculate(cog=cog)
 
     # Non-dimensionalise
-    coef_sens = F_sense / (0.5 * rho_inf * A_ref * V_inf**2)
-    M_coef_sens = M_sense / (0.5 * rho_inf * A_ref * L_ref * V_inf**2)
+    coef_sens = F_sense / (freestream.q * A_ref)
+    M_coef_sens = M_sense / (freestream.q * A_ref * L_ref)
 
     print("\nCart 3D Finite Difference Result:")
     c3d_sens = np.array([[0.147517, 0.126153, 0]])
@@ -88,7 +86,7 @@ def test_cart3d_wedge():
     data_path = os.path.join(file_dir, "data")
     errors = run_main(data_path)
 
-    assert np.max(np.abs(errors)) < 5.6, "Adjoints inaccurately calculated"
+    assert np.max(np.abs(errors)) < 5.6, "Sensitivities inaccurately calculated"
 
 
 if __name__ == "__main__":

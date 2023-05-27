@@ -195,8 +195,7 @@ class Cart3D(FlowSolver):
                 self._sim_dir, "BEST/FLOW/Components.i.plt"
             )
             wrapper = Cart3DWrapper(
-                a_inf=flow.a,
-                rho_inf=flow.rho,
+                freestream=flow,
                 sensitivity_filepath=sensitivity_filepath,
                 components_filepath=components_filepath,
                 verbosity=0,

@@ -120,14 +120,47 @@ def cell_dfdp(
     return sensitivities, moment_sensitivities
 
 
-def panel_dPdp(cell: Cell, p_i, **kwargs):
+def piston_dPdp(cell: Cell, p_i, **kwargs):
     """Calculates the pressure-parameter sensitivity using
-    the Panel method approximation."""
+    local piston theory.
+    """
     dPdp = (
         cell.flowstate.rho
         * cell.flowstate.a
         * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
     )
+    return dPdp
+
+
+def van_dyke_dPdp(cell: Cell, p_i, freestream: FlowState, **kwargs):
+    """
+    Calculates the pressure-parameter sensitivity using
+    Van Dyke second-order theory.
+    """
+    mach_inf = freestream.M
+    a_inf = freestream.a
+    gamma = freestream.gamma
+
+    mach = cell.flowstate.M
+    beta = np.sqrt(mach**2 - 1)
+    v_n = 1  # not sure how to get this...
+
+    a = (
+        -cell.flowstate.vec
+        * (2 / (mach_inf**2))
+        * (
+            mach_inf / (a_inf * beta)
+            + (v_n / a_inf)
+            * ((gamma + 1) * mach_inf**4 - 4 * (mach**2 - 1))
+            / (2 * a_inf * (mach**2 - 1))
+        )
+    )
+
+    dCPdp = np.dot(a, cell.dndp[:, p_i])
+
+    # Normalise to pressure sensitivity
+    dPdp = dCPdp * freestream.q
+
     return dPdp
 
 
@@ -147,7 +180,7 @@ def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
 
 def all_dfdp(
     cells: List[Cell],
-    dPdp_method: Callable = panel_dPdp,
+    dPdp_method: Callable = piston_dPdp,
     cog: Vector = Vector(0, 0, 0),
     **kwargs,
 ) -> Tuple[np.array, np.array]:
@@ -311,3 +344,7 @@ def add_sens_data(
     # TODO - allow dumping data to file
 
     return match_fraction
+
+
+if __name__ == "__main__":
+    van_dyke_dPdp()
