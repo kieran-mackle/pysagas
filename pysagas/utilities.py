@@ -1,11 +1,11 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from typing import Optional
 import gdtk.ideal_gas_flow as igf
+from numpy.typing import ArrayLike
 from pysagas.flow import FlowState
-from typing import List, Callable, Tuple
 from pysagas.geometry import Vector, Cell
+from typing import List, Callable, Tuple, Union, Optional
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:
@@ -132,7 +132,12 @@ def piston_dPdp(cell: Cell, p_i, **kwargs):
     return dPdp
 
 
-def van_dyke_dPdp(cell: Cell, p_i, freestream: FlowState, **kwargs):
+def van_dyke_dPdp(
+    cell: Cell,
+    p_i,
+    freestream: FlowState,
+    dp: Union[List, ArrayLike],
+):
     """
     Calculates the pressure-parameter sensitivity using
     Van Dyke second-order theory.
@@ -143,7 +148,9 @@ def van_dyke_dPdp(cell: Cell, p_i, freestream: FlowState, **kwargs):
 
     mach = cell.flowstate.M
     beta = np.sqrt(mach**2 - 1)
-    v_n = 1  # not sure how to get this...
+
+    # Calculate normal velocity
+    v_n = np.dot(cell.flowstate.vec, -cell.dndp[:, p_i] * dp[p_i])
 
     a = (
         -cell.flowstate.vec
@@ -344,7 +351,3 @@ def add_sens_data(
     # TODO - allow dumping data to file
 
     return match_fraction
-
-
-if __name__ == "__main__":
-    van_dyke_dPdp()

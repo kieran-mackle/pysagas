@@ -4,12 +4,14 @@ import pandas as pd
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector
 from pysagas.wrappers import Cart3DWrapper
+from pysagas.utilities import van_dyke_dPdp
 
 
 def run_main(data_path):
     """Analyse the Cart3D solution."""
     L_ref = 1  # m
     A_ref = 1  # m2
+    cog = Vector(2.25, 0, 0)
 
     # Create freestream flowstate
     freestream = FlowState(mach=6, pressure=1.975e3, temperature=223)
@@ -29,13 +31,22 @@ def run_main(data_path):
         celldata=celldata,
     )
 
+    F_sensev, M_sensev = wrapper.calculate(
+        cog=cog,
+        dPdp_method=van_dyke_dPdp,
+        freestream=freestream,
+        dp=[0.1 * 0.05],
+    )
+
+    coef_sensv = F_sensev / (freestream.q * A_ref)
+    _ = M_sensev / (freestream.q * A_ref * L_ref)
+
     # Calculate sensitivities
-    cog = Vector(2.25, 0, 0)
     F_sense, M_sense = wrapper.calculate(cog=cog)
 
     # Non-dimensionalise
     coef_sens = F_sense / (freestream.q * A_ref)
-    M_coef_sens = M_sense / (freestream.q * A_ref * L_ref)
+    _ = M_sense / (freestream.q * A_ref * L_ref)
 
     print("\nCart 3D Finite Difference Result:")
     c3d_sens = np.array([[0.147517, 0.126153, 0]])
@@ -43,9 +54,10 @@ def run_main(data_path):
 
     # Print results
     print("\nPySAGAS Result:")
+    print("Piston theory:")
     print(coef_sens)
-    print("")
-    print(M_coef_sens)
+    print("Van Dykes theory:")
+    print(coef_sensv)
 
     print("\nError (%):")
     errors = np.nan_to_num(100 * (coef_sens - c3d_sens) / c3d_sens, posinf=0, neginf=0)
