@@ -147,6 +147,11 @@ def van_dyke_dPdp(
     gamma = freestream.gamma
 
     mach = cell.flowstate.M
+
+    if mach < 1.0:
+        # Subsonic cell, skip
+        return 0
+
     beta = np.sqrt(mach**2 - 1)
 
     # Calculate normal velocity
