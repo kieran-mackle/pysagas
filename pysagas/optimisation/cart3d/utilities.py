@@ -280,9 +280,10 @@ class C3DPrep:
 
         return False
 
-    def run_autoinputs(self):
+    def run_autoinputs(self, *args):
         """Runs autoInputs to create input.c3d."""
-        os.system(f"autoInputs -r 2 >> {self._logfile} 2>&1")
+        extra_args = "-" + " -".join(args) if args else ""
+        os.system(f"autoInputs -r 2 {extra_args} >> {self._logfile} 2>&1")
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
