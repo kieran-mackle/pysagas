@@ -280,10 +280,23 @@ class C3DPrep:
 
         return False
 
-    def run_autoinputs(self, *args):
-        """Runs autoInputs to create input.c3d."""
+    def run_autoinputs(self, r: int = 2, *args):
+        """Runs autoInputs to create input.c3d.
+
+        Parameters
+        -----------
+        r : int, optional
+            The distance to farfield normalized by max geometry size. The default is 2.
+        args : str, optional
+            Any extra arguments to provide to autoInputs, as strings. For arguments with
+            values, just include the value in the string.
+        """
         extra_args = "-" + " -".join(args) if args else ""
         os.system(f"autoInputs -r 2 {extra_args} >> {self._logfile} 2>&1")
+
+    def run_aero(self):
+        """Runs aero.csh."""
+        os.system("./aero.csh restart")
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
