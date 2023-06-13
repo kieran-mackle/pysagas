@@ -1,3 +1,71 @@
+## v0.10.0 (2023-06-13)
+
+### Feat
+
+- **C3DPrep**: improved docstrings
+- **C3DPrep**: allow passing args to autoinputs
+- **utilities.py**: implemented van dykes second order theory for sensitivities
+- **Cart3DMooShapeOpt**: added multi-objective cart3d shape optimiser
+- **combine_sense_data**: added verbosity control
+- **Cart3D**: solve_sens method implemented
+- **Cart3D**: improved running function
+- **Cart3D**: added status and stop functionality
+- **Cart3D**: added cfd wrapper for cart3d
+- **FlowState**: define direction by aoa
+- **OPMShapeOpt**: added verbosity
+- **OPMShapeOpt**: pass parameters to objective callback
+- **add_sens_data**: improved reporting
+- **OPM**: added perturbation amount argument for sens
+- **add_sens_data**: return point match fraction metric
+- **FlowSolver**: added sweep method to generate aerodeck
+- **OPM**: calculate net moment
+- first implementation of OPM optimisation wrapper
+- **FlowResults**: improved aero coefficient helper method
+- **FlowSolver**: added aero coefficient helper
+- **PyMesh**: implemented multiprocessing for parser
+- **FlowSolver**: check if a flow state has already been solved before proceeding
+- **OPM**: implemented sensitivity solver
+- **add_sens_data**: function to append sensitivity data to cells
+- **FlowSolver**: added method to convert body to wind axes
+- **GasState**: added default flow direction and q property
+- **FlowSolver**: added convenience inputs of aoa and mach for solver instance
+- **OPM**: added finite difference sensitivities for PM and oblique
+- **OPM**: use normal shock relations for theta > theta_max
+- **TRI-Parser**: now includes connectivity information
+- **FlowSolver**: added vtk file save method
+- **OPM**: first implementation running to produce net force vector
+- **Parser**: implemented stl and tri parsers
+- **OPM**: added oblique theory methods
+
+### Fix
+
+- **van_dyke_dPdp**: skip subsonic cells
+- **Cart3DMooShapeOpt**: combine sens data for each sim point
+- **Cart3D**: path management
+- **OPMShapeOpt**: force reloading cells and instantiating solver
+- **OPMShapeOpt**: re-instantiate cells and solver on each evaluation
+- **OPM-ShapeOpt**: chain rule theta through parameter
+- **OPMShapeOpt**: try load with pymesh, except use STL
+- **add_sens_data**: removed print line interfering with progress bar
+- **OPM**: fixed sensitivity evaluation
+- **OPM**: allow solving sens with cells that already have geom sens data
+- **GasState**: dynamically return properties to allow updating state
+- **OPM**: threshold expansion cells
+- **FlowResults**: __str__ return type
+- **Cell**: ambiguity of numpy array
+- **geometry**: fixed namespace generation
+
+### Refactor
+
+- **Cart3DWrapper**: pass flowstate instead of individual properties
+- **combine_sense_data**: moved to pysagas.optimisation.cartd.utilities
+- **geometry**: tidied geometry module into submodule
+- **FlowSolver**: started implemented prelimary flow solvers
+
+### Perf
+
+- **Cell**: delay calculation of geometric sensitivities until required
+
 ## v0.9.0 (2023-04-15)
 
 ### Feat
