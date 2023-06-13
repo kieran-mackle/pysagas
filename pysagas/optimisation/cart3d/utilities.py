@@ -2,6 +2,8 @@ import os
 import time
 import shutil
 from random import random
+from typing import Optional
+from hypervehicle.utilities import append_sensitivities_to_tri
 
 
 class C3DPrep:
@@ -160,7 +162,7 @@ class C3DPrep:
         os.system(f"intersect >> {self._logfile} 2>&1")
 
     @staticmethod
-    def _get_stl_files():
+    def _get_stl_files() -> list[str]:
         path = os.getcwd()
         all_files = [
             f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))
@@ -182,7 +184,7 @@ class C3DPrep:
             success = True
         return success
 
-    def intersect_stls(self) -> bool:
+    def intersect_stls(self, stl_files: Optional[list[str]] = None) -> bool:
         """Create Components.i.tri by intersecting all STL files."""
         # Check for existing intersected file
         if self._check_for_success():
@@ -190,7 +192,8 @@ class C3DPrep:
             return True
 
         # Continue
-        stl_files = self._get_stl_files()
+        if not stl_files:
+            stl_files = self._get_stl_files()
         tri_files = self._run_stl2tri(stl_files)
 
         # First try intersect original files
@@ -277,10 +280,71 @@ class C3DPrep:
 
         return False
 
-    def run_autoinputs(self):
-        """Runs autoInputs to create input.c3d."""
-        os.system(f"autoInputs -r 2 >> {self._logfile} 2>&1")
+    def run_autoinputs(self, r: int = 2, *args):
+        """Runs autoInputs to create input.c3d.
+
+        Parameters
+        -----------
+        r : int, optional
+            The distance to farfield normalized by max geometry size. The default is 2.
+        args : str, optional
+            Any extra arguments to provide to autoInputs, as strings. For arguments with
+            values, just include the value in the string.
+        """
+        extra_args = "-" + " -".join(args) if args else ""
+        os.system(f"autoInputs -r 2 {extra_args} >> {self._logfile} 2>&1")
+
+    def run_aero(self):
+        """Runs aero.csh."""
+        os.system("./aero.csh restart")
 
     def _log(self, msg: str):
         with open(self._info, "a") as f:
             f.write("\nC3DPrep: " + msg)
+
+
+def combine_sense_data(
+    components_filepath: str,
+    sensitivity_files: list[str],
+    match_target: float = 0.9,
+    tol_0: float = 1e-5,
+    max_tol: float = 1e-1,
+    outdir: Optional[str] = None,
+    verbosity: Optional[int] = 1,
+):
+    """Combine the individual component sensitivity data with the
+    intersected geometry file (eg. Components.i.tri).
+    """
+    match_frac = 0
+    tol = tol_0
+    while match_frac < match_target:
+        # Check tolerance
+        if tol > max_tol:
+            raise Exception(
+                "Cannot combine sensitivity data (match fraction: "
+                + f"{match_frac}, tolerance: {tol}, max tolerance: {max_tol})."
+            )
+
+        # Run matching algorithm
+        match_frac = append_sensitivities_to_tri(
+            dp_filenames=sensitivity_files,
+            components_filepath=components_filepath,
+            match_tolerance=tol,
+            verbosity=verbosity,
+            outdir=outdir,
+        )
+
+        if match_frac < match_target and verbosity > 0:
+            print(
+                "Failed to combine sensitivity data "
+                f"({100*match_frac:.02f}% match rate)."
+            )
+            print(f"  Increasing matching tolerance to {tol*10} and trying again.")
+        elif verbosity > 0:
+            print(
+                "Component sensitivity data matched to intersected geometry "
+                + f"with {100*match_frac:.02f}% match rate."
+            )
+
+        # Increase matching tolerance
+        tol *= 10

@@ -3,7 +3,7 @@ import pandas as pd
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector
 from typing import List, Callable, Tuple
-from pysagas.utilities import all_dfdp, panel_dPdp
+from pysagas.utilities import all_dfdp, piston_dPdp
 
 
 class AbstractWrapper(ABC):
@@ -66,7 +66,7 @@ class Wrapper(AbstractWrapper):
 
     def calculate(
         self,
-        dPdp_method: Callable = panel_dPdp,
+        dPdp_method: Callable = piston_dPdp,
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:

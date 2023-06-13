@@ -1,8 +1,11 @@
 import numpy as np
+import pandas as pd
+from tqdm import tqdm
 import gdtk.ideal_gas_flow as igf
+from numpy.typing import ArrayLike
 from pysagas.flow import FlowState
-from typing import List, Callable, Tuple
 from pysagas.geometry import Vector, Cell
+from typing import List, Callable, Tuple, Union, Optional
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:
@@ -13,6 +16,7 @@ def calculate_pressures(flow: FlowState, theta: float) -> float:
     ----------
     flow : FlowState
         The flow state.
+
     theta : float
         The deflection angle (radians).
 
@@ -34,9 +38,11 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     Parameters
     ----------
     P : float
-        The pressure.
+        The pressure (Pa).
+
     n : np.array
         The normal vector.
+
     A : float
         The reference area (m^2).
 
@@ -52,39 +58,6 @@ def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
     return [F_x, F_y, F_z]
 
 
-def newtonian_cp(cell: Cell, v: Vector):
-    """Calculates all direction force sensitivities.
-
-    Parameters
-    ----------
-    cell : Cell
-        The cell.
-    flow : FlowState
-        The freestream flow condition.
-
-    Returns
-    --------
-    Cp : float
-        The non-dimensional pressure coefficient for the cell.
-    """
-    return 2 * np.dot(cell.n.vec, v.unit.vec) ** 2
-
-
-def newtonian_impact_solver(
-    cells: List[Cell], v: Vector, p_inf: float, q_inf: float
-) -> Tuple[Vector, np.array]:
-    c_ps = [newtonian_cp(c, v) for c in cells]
-    ps = [c_p * q_inf + p_inf for c_p in c_ps]
-
-    # Calculate forces
-    fs = [c.n * ps[i] * c.A for i, c in enumerate(cells)]
-    net_force = Vector(0, 0, 0)
-    for f in fs:
-        net_force += f
-
-    return net_force, None
-
-
 def cell_dfdp(
     cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
 ) -> Tuple[np.array, np.array]:
@@ -94,9 +67,11 @@ def cell_dfdp(
     ----------
     cell : Cell
         The cell.
+
     dPdp_method : Callable
         The method to use when calculating the pressure sensitivities.
-    cog : Vector, optiona
+
+    cog : Vector, optional
         The reference centre of gravity, used in calculating the moment
         sensitivities. The defualt is Vector(0,0,0).
 
@@ -145,14 +120,59 @@ def cell_dfdp(
     return sensitivities, moment_sensitivities
 
 
-def panel_dPdp(cell: Cell, p_i, **kwargs):
+def piston_dPdp(cell: Cell, p_i, **kwargs):
     """Calculates the pressure-parameter sensitivity using
-    the Panel method approximation."""
+    local piston theory.
+    """
     dPdp = (
         cell.flowstate.rho
         * cell.flowstate.a
         * np.dot(cell.flowstate.vec, -cell.dndp[:, p_i])
     )
+    return dPdp
+
+
+def van_dyke_dPdp(
+    cell: Cell,
+    p_i,
+    freestream: FlowState,
+    dp: Union[List, ArrayLike],
+):
+    """
+    Calculates the pressure-parameter sensitivity using
+    Van Dyke second-order theory.
+    """
+    mach_inf = freestream.M
+    a_inf = freestream.a
+    gamma = freestream.gamma
+
+    mach = cell.flowstate.M
+
+    if mach < 1.0:
+        # Subsonic cell, skip
+        return 0
+
+    beta = np.sqrt(mach**2 - 1)
+
+    # Calculate normal velocity
+    v_n = np.dot(cell.flowstate.vec, -cell.dndp[:, p_i] * dp[p_i])
+
+    a = (
+        -cell.flowstate.vec
+        * (2 / (mach_inf**2))
+        * (
+            mach_inf / (a_inf * beta)
+            + (v_n / a_inf)
+            * ((gamma + 1) * mach_inf**4 - 4 * (mach**2 - 1))
+            / (2 * a_inf * (mach**2 - 1))
+        )
+    )
+
+    dCPdp = np.dot(a, cell.dndp[:, p_i])
+
+    # Normalise to pressure sensitivity
+    dPdp = dCPdp * freestream.q
+
     return dPdp
 
 
@@ -172,9 +192,9 @@ def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
 
 def all_dfdp(
     cells: List[Cell],
-    dPdp_method: Callable = panel_dPdp,
+    dPdp_method: Callable = piston_dPdp,
     cog: Vector = Vector(0, 0, 0),
-    **kwargs
+    **kwargs,
 ) -> Tuple[np.array, np.array]:
     """Calcualtes the force sensitivities for a list of Cells.
 
@@ -182,10 +202,12 @@ def all_dfdp(
     ----------
     cells : list[Cell]
         The cells to be analysed.
+
     dPdp_method : Callable, optional
         The method used to calculate the pressure/parameter sensitivities.
         The default is the Panel method approximation panel_dPdp (see below).
-    cog : Vector, optiona
+
+    cog : Vector, optional
         The reference centre of gravity, used in calculating the moment
         sensitivities. The defualt is Vector(0,0,0).
 
@@ -193,12 +215,14 @@ def all_dfdp(
     --------
     dFdp : np.array
         The force sensitivity matrix with respect to the parameters.
+
     dMdp : np.array
         The moment sensitivity matrix with respect to the parameters.
 
     See Also
     --------
     cell_dfdp : the force sensitivity per cell
+
     panel_dPdp : pressure sensitivities calculated using Panel method
         approximations
     """
@@ -214,3 +238,121 @@ def all_dfdp(
         dMdp += dMdp_c
 
     return dFdp, dMdp
+
+
+def add_sens_data(
+    cells: List[Cell],
+    data: pd.DataFrame,
+    verbosity: Optional[int] = 1,
+    match_tolerance: Optional[float] = 1e-5,
+    rounding_tolerance: Optional[float] = 1e-8,
+    force: Optional[bool] = False,
+) -> float:
+    """Appends shape sensitivity data to a list of Cell objects.
+
+    Parameters
+    ----------
+    cells : List[Cell]
+        A list of cell objects.
+
+    data : pd.DataFrame
+        The sensitivity data to be transcribed onto the cells.
+
+    verbosity : int, optional
+        The verbosity. The default is 1.
+
+    match_tolerance : float, optional
+        The precision tolerance for matching point coordinates. The
+        default is 1e-5.
+
+    rounding_tolerance : float, optional
+        The tolerance to round data off to. The default is 1e-8.
+
+    force : bool, optional
+        Force the sensitivity data to be added, even if a cell
+        already has sensitivity data. This can be used if new
+        data is being used. The default is False.
+
+    Returns
+    --------
+    match_fraction : float
+        The fraction of points matched.
+    """
+    # Extract parameters
+    parameters = []
+    param_cols = data.columns[3:]
+    for i in range(int(len(param_cols) / 3)):
+        parameters.append(param_cols[int(i * 3)].split("dxd")[-1])
+
+    # Construct progress bar
+    if verbosity > 0:
+        print("\nAdding geometry-parameter sensitivity data to cells:")
+        pbar = tqdm(
+            total=len(cells),
+            position=0,
+            leave=True,
+        )
+
+    matched_points = 0
+    total_points = 0
+    skipped_cells = 0
+    total_cells = 0
+    for cell in cells:
+        # Check if cell already has sensitivity data
+        total_cells += 1
+        if cell.dvdp is None or force:
+            # Initialise sensitivity
+            dvdp = np.zeros((9, len(parameters)))
+            for i, point in enumerate([cell.p0, cell.p1, cell.p2]):
+                match_x = (point.x - data["x"]).abs() < match_tolerance
+                match_y = (point.y - data["y"]).abs() < match_tolerance
+                match_z = (point.z - data["z"]).abs() < match_tolerance
+
+                match = match_x & match_y & match_z
+                try:
+                    # Get match
+                    matched_data = data[match].iloc[0][param_cols]
+
+                    # Round off infinitesimally small values
+                    matched_data[abs(matched_data) < rounding_tolerance] = 0
+
+                    for j, p in enumerate(parameters):
+                        # For each parameter (column)
+                        for k, c in enumerate(["x", "y", "z"]):
+                            dvdp[3 * i + k, j] = matched_data[f"d{c}d{p}"]
+
+                    # Update match count
+                    matched_points += 1
+
+                except IndexError:
+                    # No match found, leave as zero sensitivity
+                    pass
+
+                # Update total_points
+                total_points += 1
+
+            cell._add_sensitivities(np.array(dvdp))
+
+        else:
+            # Skip this cell
+            skipped_cells += 1
+
+        # Update progress bar
+        if verbosity > 0:
+            pbar.update(1)
+
+    try:
+        match_fraction = matched_points / total_points
+    except:
+        match_fraction = 1
+
+    if verbosity > 0:
+        pbar.close()
+        print(
+            f"Done - matched {100*match_fraction:.2f}% of points "
+            + f"(skipped {100*skipped_cells/total_cells:.2f}% of cells)."
+        )
+
+    # TODO - allow dumping data to file
+
+    return match_fraction

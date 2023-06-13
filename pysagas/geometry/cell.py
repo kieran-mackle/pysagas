@@ -1,142 +1,9 @@
 from __future__ import annotations
 import numpy as np
 import pysagas.flow
-from typing import Union, List
+from .vector import Vector
 from numpy.typing import ArrayLike
-
-
-class Vector:
-    """An N-dimensional vector."""
-
-    PRECISION = 3
-
-    def __init__(self, x: float = None, y: float = None, z: float = None):
-        """Define a new vector.
-
-        Parameters
-        ----------
-        x : float, optional
-            The x-component of the vector.
-        y : float, optional
-            The y-component of the vector.
-        z : float, optional
-            The z-component of the vector.
-        """
-        self._x = x
-        self._y = y
-        self._z = z
-
-        self._non_none = [str(i) for i in [x, y, z] if i is not None]
-        self._round_non_none = [
-            str(round(i, self.PRECISION)) for i in [x, y, z] if i is not None
-        ]
-        self._dimensions = len(self._non_none)
-
-    def __str__(self) -> str:
-        s = f"{self._dimensions}-dimensional vector: ({', '.join(self._round_non_none)})"
-        return s
-
-    def __repr__(self) -> str:
-        return f"Vector({', '.join(self._round_non_none)})"
-
-    def __neg__(self):
-        """Returns the vector pointing in the opposite direction."""
-        return Vector(x=-1 * self.x, y=-1 * self.y, z=-1 * self.z)
-
-    def __add__(self, other):
-        """Element-wise vector addition.
-
-        Parameters
-        ----------
-        other : Vector
-            Another Vector object to be added. This Vector must be of the same
-            dimension as the one it is being added to.
-        """
-        if not isinstance(other, Vector):
-            raise Exception(f"Cannot add a {type(other)} to a vector.")
-        return Vector(x=self.x + other.x, y=self.y + other.y, z=self.z + other.z)
-
-    def __sub__(self, other):
-        """Element-wise vector subtraction.
-
-        Parameters
-        ----------
-        other : Vector
-            Another Vector object to be added. This Vector must be of the same
-            dimension as the one it is being added to.
-        """
-        if not isinstance(other, Vector):
-            raise Exception(f"Cannot add a {type(other)} to a vector.")
-        return Vector(x=self.x - other.x, y=self.y - other.y, z=self.z - other.z)
-
-    def __truediv__(self, denominator: Union[float, int]):
-        """Element-wise vector division.
-
-        Parameters
-        ----------
-        denominator : float | int
-            The denominator to use in the division.
-        """
-        return Vector(
-            x=self.x / denominator, y=self.y / denominator, z=self.z / denominator
-        )
-
-    def __mul__(self, multiple: Union[float, int]):
-        """Element-wise vector multiplication.
-
-        Parameters
-        ----------
-        multiple : float | int
-            The multiple to use in the multiplication.
-        """
-        return Vector(x=self.x * multiple, y=self.y * multiple, z=self.z * multiple)
-
-    @property
-    def x(self) -> float:
-        return self._x
-
-    @property
-    def y(self) -> float:
-        return self._y
-
-    @property
-    def z(self) -> float:
-        return self._z
-
-    @property
-    def vec(self) -> np.array:
-        """The vector represented as a Numpy array."""
-        return np.array([float(i) for i in self._non_none])
-
-    @property
-    def unit(self) -> Vector:
-        """The unit vector associated with the Vector."""
-        return self / self.norm
-
-    @property
-    def norm(self) -> Vector:
-        """The norm associated with the Vector."""
-        return np.linalg.norm(self.vec)
-
-    @classmethod
-    def from_coordinates(cls, coordinates: np.array) -> Vector:
-        """Constructs a Vector object from an array of coordinates.
-
-        Parameters
-        ----------
-        coordinates : np.array
-            The coordinates of the vector.
-
-        Returns
-        -------
-        Vector
-
-        Examples
-        --------
-        >>> Vector.from_coordinates([1,2,3])
-        Vector(1, 2, 3)
-        """
-        return cls(*coordinates)
+from typing import Union, List, Optional
 
 
 class Cell:
@@ -146,41 +13,57 @@ class Cell:
     -----------
     p0 : Vector
         The first vertex of the cell.
+
     p1 : Vector
         The second vertex of the cell.
+
     p2 : Vector
         The third vertex of the cell.
+
     A : float
         The cell face area.
+
     n : Vector
         The cell normal.
+
     dndv : np.array
         The sensitivity of the cell's normal vector to each vertex.
+
     dAdv : np.array
         The sensitivity of the cell's area to each vertex.
+
     dvdp : np.array
         The sensitivity of the cell's vertices to each geometric parameter.
+
     dndp : np.array
         The sensitivity of the cell's normal vector to each geometric parameter.
+
     dAdp : np.array
         The sensitivity of the cell's area to each geometric parameter.
+
     dcdp : np.array
         The sensitivity of the centroid to each geometric parameter.
+
     flowstate : FlowState
         The flowstate associated with the cell.
+
     sensitivities : np.array
         An array containing the [x,y,z] force sensitivities of the cell.
     """
 
-    def __init__(self, p0: Vector, p1: Vector, p2: Vector):
+    def __init__(
+        self, p0: Vector, p1: Vector, p2: Vector, face_ids: Optional[int] = None
+    ):
         """Constructs a cell, defined by three points.
 
         Parameters
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
         """
@@ -189,15 +72,18 @@ class Cell:
         self.p1 = p1
         self.p2 = p2
 
+        # Save connectivity information (PyMesh)
+        self._face_ids = face_ids
+
         # Calculate cell properites
         self.n = -self.calc_normal(p0, p1, p2)
         self.A = self.calc_area(p0, p1, p2)
         self.c = self.calc_centroid(p0, p1, p2)
 
         # Calculate geometric sensitivities
-        self.dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
-        self.dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
-        self.dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
+        self._dndv: ArrayLike = None
+        self._dAdv: ArrayLike = None
+        self._dcdv: ArrayLike = None
 
         # Parameter sensitivities
         self.dvdp: ArrayLike = None  # vertex-parameter sensitivities
@@ -212,6 +98,44 @@ class Cell:
         self.sensitivities = None
         self.moment_sensitivities = None
 
+        # Cell attributes
+        self.attributes = {}
+
+    @property
+    def dndv(self):
+        if self._dndv is not None:
+            # Already exists, return it
+            return self._dndv
+        else:
+            # Calculate and return it
+            self._dndv = self.n_sensitivity(self.p0, self.p1, self.p2)
+            return self._dndv
+
+    @property
+    def dAdv(self):
+        if self._dAdv is not None:
+            # Already exists, return it
+            return self._dAdv
+        else:
+            # Calculate and return it
+            self._dAdv = self.A_sensitivity(self.p0, self.p1, self.p2)
+            return self._dAdv
+
+    @property
+    def dcdv(self):
+        if self._dcdv is not None:
+            # Already exists, return it
+            return self._dcdv
+        else:
+            # Calculate and return it
+            self._dcdv = self.c_sensitivity(self.p0, self.p1, self.p2)
+            return self._dcdv
+
+    @property
+    def vertices(self):
+        """The cell vertices."""
+        return np.array([getattr(self, p).vec for p in ["p0", "p1", "p2"]])
+
     def to_dict(self):
         """Returns the Cell as a dictionary."""
         # TODO - need to think about representing the cells
@@ -221,7 +145,9 @@ class Cell:
         pass
 
     @classmethod
-    def from_points(cls, points: Union[List[Vector], np.array[Vector]]) -> Cell:
+    def from_points(
+        cls, points: Union[List[Vector], np.array[Vector]], **kwargs
+    ) -> Cell:
         """Constructs a Vector object from an array of coordinates.
 
         Parameters
@@ -233,7 +159,7 @@ class Cell:
         -------
         Cell
         """
-        return cls(*points)
+        return cls(*points, **kwargs)
 
     def __repr__(self) -> str:
         return f"Cell({self.p0}, {self.p1}, {self.p2})"
@@ -242,7 +168,16 @@ class Cell:
         return "A Cell"
 
     def _add_sensitivities(self, dvdp: np.array) -> None:
-        """Adds the cell sensitivities to the cell."""
+        """Adds the cell sensitivities to the cell.
+
+        Parameters
+        -----------
+        dvdp : array
+            The sensitivity of each vertex x, y and z, with respect to each
+            parameter. The dimensions of dvdp are (9, p), for p parameters.
+            Each 3 rows corresponds to the x, y and z sensitivities for each
+            vertex of the cell. Each column is for the relevant parameter.
+        """
         self.dvdp = dvdp
         self.dndp = np.dot(self.dndv, self.dvdp)
         self.dAdp = np.dot(self.dAdv, self.dvdp)
@@ -256,8 +191,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -299,8 +236,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -329,8 +268,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -357,8 +298,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -530,8 +473,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -635,8 +580,10 @@ class Cell:
         ----------
         p0 : Vector
             The first point defining the cell.
+
         p1 : Vector
             The second point defining the cell.
+
         p2 : Vector
             The third point defining the cell.
 
@@ -655,31 +602,6 @@ class Cell:
             ]
         )
         return c_sens
-
-
-def calculate_3d_normal(p0: Vector, p1: Vector, p2: Vector) -> np.array:
-    """Calculates the normal vector of a plane defined by 3 points.
-
-    Parameters
-    ----------
-    p0 : Vector
-        The first point defining the cell.
-    p1 : Vector
-        The second point defining the cell.
-    p2 : Vector
-        The third point defining the cell.
-
-    Returns
-    -------
-    n : np.array
-        The normal vector.
-    """
-    n = np.cross(
-        np.array([p1.x - p0.x, p1.y - p0.y, p1.z - p0.z]),
-        np.array([p2.x - p0.x, p2.y - p0.y, p2.z - p0.z]),
-    )
-    n = n / np.sqrt(np.sum(n**2))
-    return n
 
 
 class DegenerateCell(Exception):
