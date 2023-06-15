@@ -54,7 +54,7 @@ setuptools.setup(
     packages=setuptools.find_packages(where="."),
     python_requires=">=3.7",
     install_requires=[
-        "numpy == 1.23.5",
+        "numpy >= 1.23.5",
         "pandas >= 1.5.2",
         "tqdm >= 4.64.1",
         "art >= 5.8",
