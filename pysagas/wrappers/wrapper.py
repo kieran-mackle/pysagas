@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 from abc import ABC, abstractmethod
-from pysagas.geometry import Vector
-from typing import List, Callable, Tuple
-from pysagas.utilities import all_dfdp, piston_dPdp
+from pysagas.geometry import Vector, Cell
+from typing import List, Callable, Tuple, Optional
+from pysagas.utilities import all_dfdp, piston_dPdp, add_sens_data
 
 
 class AbstractWrapper(ABC):
@@ -40,7 +40,7 @@ class AbstractWrapper(ABC):
         pass
 
     @abstractmethod
-    def _extract_parameters(self):
+    def _extract_parameters(self) -> List[str]:
         """Extract the geometry parameters.
 
         Returns
@@ -61,7 +61,6 @@ class Wrapper(AbstractWrapper):
     """Wrapper base class."""
 
     def __init__(self, **kwargs) -> None:
-        # Cell data
         self.cells = None
 
     def calculate(
@@ -75,7 +74,7 @@ class Wrapper(AbstractWrapper):
         """
         parameters = self._extract_parameters()
         if self.cells is None:
-            self.cells = self._transcribe_cells(parameters)
+            self.cells = self._transcribe_cells(parameters=parameters)
 
         params_sens_cols = []
         for p in parameters:
@@ -104,3 +103,55 @@ class Wrapper(AbstractWrapper):
 
         else:
             raise Exception("No cells have been transcribed.")
+
+
+class GenericWrapper(Wrapper):
+    solver = "Generic Flow Solver"
+
+    def __init__(
+        self,
+        cells: List[Cell],
+        sensitivity_filepath: str,
+        verbosity: Optional[int] = 1,
+        **kwargs,
+    ) -> None:
+        """Instantiate a generic PySAGAS sensitivity wrapper.
+
+        Parameters
+        ----------
+        cells : list[Cell]
+            A list of transcribed Cell objects, containing the nominal flow solution.
+
+        sensitivity_filepath : str
+            The filepath to the geometry sensitivities.
+
+        verbosity : int, optional
+            The verbosity of the code. The defualt is 1.
+        """
+        self._pre_transcribed_cells = cells
+        self.sensdata = pd.read_csv(sensitivity_filepath)
+        self.verbosity = verbosity
+
+        super().__init__(**kwargs)
+
+    def _transcribe_cells(self, **kwargs) -> List[Cell]:
+        """This is a dummy method to satisfy the abstract base class. Transcribed cells
+        are provided upon instantiation of the wrapper.
+        """
+        # Add sens data to _pre_transcribed_cells
+        add_sens_data(
+            cells=self._pre_transcribed_cells,
+            data=self.sensdata,
+            verbosity=self.verbosity,
+        )
+
+        return self._pre_transcribed_cells
+
+    def _extract_parameters(self):
+        parameters = set()
+        for e in self.sensdata.columns:
+            e: str
+            if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
+                # Sensitivity coluns
+                parameters.add(e[3:])
+        return list(parameters)
