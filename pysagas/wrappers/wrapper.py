@@ -111,7 +111,8 @@ class GenericWrapper(Wrapper):
     def __init__(
         self,
         cells: List[Cell],
-        sensitivity_filepath: str,
+        sensitivity_filepath: Optional[str] = None,
+        cells_have_sens_data: Optional[bool] = False,
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
@@ -123,22 +124,33 @@ class GenericWrapper(Wrapper):
             A list of transcribed Cell objects, containing the nominal flow solution.
 
         sensitivity_filepath : str
-            The filepath to the geometry sensitivities.
+            The filepath to the geometry sensitivities. This must be provided, if the
+            cells do not have geometric sensitivity information attached. This must
+            also be provided anyway, to determine the geometric design parameters.
+
+        cells_have_sens_data : bool, optional
+            The cells already have geometric sensitivity data matched to them. When this
+            is True, the sensitivity_filepath argument (if provided) is ignored. The
+            default is False.
 
         verbosity : int, optional
             The verbosity of the code. The defualt is 1.
         """
-        self._pre_transcribed_cells = cells
+        super().__init__(**kwargs)
+
+        if cells_have_sens_data:
+            self.cells = cells
+        else:
+            self._pre_transcribed_cells = cells
+
         self.sensdata = pd.read_csv(sensitivity_filepath)
         self.verbosity = verbosity
-
-        super().__init__(**kwargs)
 
     def _transcribe_cells(self, **kwargs) -> List[Cell]:
         """This is a dummy method to satisfy the abstract base class. Transcribed cells
         are provided upon instantiation of the wrapper.
         """
-        # Add sens data to _pre_transcribed_cells
+        # Add sensitivity data to _pre_transcribed_cells
         add_sens_data(
             cells=self._pre_transcribed_cells,
             data=self.sensdata,
