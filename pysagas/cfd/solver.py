@@ -387,6 +387,10 @@ class FlowResults:
 
         c_ref : float, optional
             The reference length (m). The default is 1 m.
+
+        Returns
+        -------
+        C_L, C_D, C_m
         """
         w = FlowSolver.body_to_wind(v=self.net_force, aoa=self.aoa)
         C_L = w.y / (self.freestream.q * A_ref)
@@ -437,7 +441,9 @@ class SensitivityResults:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def coefficients(self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0):
+    def coefficients(
+        self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Calculate the aerodynamic coefficients CL, CD and Cm.
 
         Parameters
@@ -447,7 +453,13 @@ class SensitivityResults:
 
         c_ref : float, optional
             The reference length (m). The default is 1 m.
+
+        Returns
+        -------
+        A tuple (cf_sens, cm_sens) containing the force and moment coefficient sensitivities.
         """
+        # TODO - translate to aero frame
+        # TODO - rename columns of returns
         cf_sens = self.f_sens / (self.freestream.q * A_ref)
         cm_sens = self.m_sens / (self.freestream.q * A_ref * c_ref)
         return cf_sens, cm_sens

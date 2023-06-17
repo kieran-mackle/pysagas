@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pysagas.flow import FlowState
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
 from pysagas.cfd.solver import SensitivityResults
@@ -67,12 +68,25 @@ class Wrapper(AbstractWrapper):
 
     def calculate(
         self,
-        dPdp_method: Callable = piston_dPdp,
-        cog: Vector = Vector(0, 0, 0),
+        dPdp_method: Optional[Callable] = piston_dPdp,
+        cog: Optional[Vector] = Vector(0, 0, 0),
+        flowstate: Optional[FlowState] = None,
         **kwargs,
     ) -> SensitivityResults:
         """Calculate the force sensitivities of the surface to the
         parameters.
+
+        Parameters
+        ----------
+        dPdp_method : callable, optional
+            The sensitivity method to use - either piston_dPdp or van_dyke_dPdp. The
+            default is piston_dPdp.
+
+        cog : Vector, optional
+            The centre of gravity. The default is Vector(0, 0, 0).
+
+        flowstate : FlowState, optional
+            The flowstate associated with this result. The default is None.
 
         Returns
         -------
@@ -110,6 +124,7 @@ class Wrapper(AbstractWrapper):
         result = SensitivityResults(
             f_sens=df_f,
             m_sens=df_m,
+            freestream=flowstate,
         )
 
         return result
