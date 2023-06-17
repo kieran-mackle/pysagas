@@ -179,11 +179,10 @@ class Sensdeck(Deck):
         f_sens, m_sens = result.coefficients(A_ref=self._a_ref, c_ref=self._c_ref)
 
         for param in self._parameters:
-            # TODO - review col names for sens below
             # Extract data for this parameter
             data = {
-                "dCL": f_sens.loc[param]["dFx/dp"],
-                "dCD": f_sens.loc[param]["dFy/dp"],
+                "dCL": f_sens.loc[param]["dCL"],
+                "dCD": f_sens.loc[param]["dCD"],
                 "dCm": m_sens.loc[param]["dMz/dp"],
             }
 

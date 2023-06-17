@@ -460,8 +460,23 @@ class SensitivityResults:
         -------
         A tuple (cf_sens, cm_sens) containing the force and moment coefficient sensitivities.
         """
-        # TODO - translate to aero frame
-        # TODO - rename columns of returns
-        cf_sens = self.f_sens / (self.freestream.q * A_ref)
-        cm_sens = self.m_sens / (self.freestream.q * A_ref * c_ref)
+        # Non-dimensionalise
+        cf_sens: pd.DataFrame = self.f_sens / (self.freestream.q * A_ref)
+        cm_sens: pd.DataFrame = self.m_sens / (self.freestream.q * A_ref * c_ref)
+
+        # Translate to aero frame
+        aoa = self.freestream.aoa
+        cf_sens["dFy/dp"] = cf_sens["dFy/dp"] * np.cos(np.deg2rad(aoa)) - cf_sens[
+            "dFx/dp"
+        ] * np.sin(np.deg2rad(aoa))
+        cf_sens["dFx/dp"] = cf_sens["dFy/dp"] * np.sin(np.deg2rad(aoa)) + cf_sens[
+            "dFx/dp"
+        ] * np.cos(np.deg2rad(aoa))
+
+        # Rename columns
+        cf_sens.rename(
+            columns={"dFx/dp": "dCD", "dFy/dp": "dCL", "dFz/dp": "dCZ"}, inplace=True
+        )
+        # cm_sens.rename(columns={"dMx/dp": "dCl", "dMy/dp": "dCn", "dMz/dp": "dCm"}, inplace=True)
+
         return cf_sens, cm_sens
