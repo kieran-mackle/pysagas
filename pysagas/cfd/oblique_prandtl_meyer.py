@@ -50,7 +50,9 @@ class OPM(FlowSolver):
 
             # Construct progress bar
             if self.verbosity > 0:
-                print("\nSolving cell properties.")
+                print(
+                    f"\nSolving cell properties using OPM solver at AoA = {flow.aoa:.2f} and Mach = {flow.M:.2f}."
+                )
                 pbar = tqdm(
                     total=len(self.cells),
                     position=0,
@@ -135,7 +137,6 @@ class OPM(FlowSolver):
 
             if self.verbosity > 0:
                 pbar.close()
-                print("Done.")
 
             # Construct results
             result = FlowResults(
@@ -146,7 +147,7 @@ class OPM(FlowSolver):
             self.flow_result = result
 
         # Print result
-        if self.verbosity > 0:
+        if self.verbosity > 1:
             print(result)
 
         return result
