@@ -419,11 +419,14 @@ class SensitivityResults:
     """
 
     def __init__(
-        self, freestream: FlowState, f_sens: pd.DataFrame, m_sens: pd.DataFrame
+        self,
+        f_sens: pd.DataFrame,
+        m_sens: pd.DataFrame,
+        freestream: Optional[FlowState] = None,
     ) -> None:
-        self.freestream = freestream
         self.f_sens = f_sens
         self.m_sens = m_sens
+        self.freestream = freestream
 
     def __str__(self) -> str:
         s1 = f"Force sensitivties:\n{self.f_sens}"

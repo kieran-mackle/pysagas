@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
+from pysagas.cfd.solver import SensitivityResults
 from typing import List, Callable, Tuple, Optional
 from pysagas.utilities import all_dfdp, piston_dPdp, add_sens_data
 
@@ -69,9 +70,13 @@ class Wrapper(AbstractWrapper):
         dPdp_method: Callable = piston_dPdp,
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    ) -> SensitivityResults:
         """Calculate the force sensitivities of the surface to the
         parameters.
+
+        Returns
+        -------
+        SensitivityResults : the sensitivity results object.
         """
         if self.verbosity > 0:
             print("\nCalculating aerodynamic sensitivities.")
@@ -101,7 +106,13 @@ class Wrapper(AbstractWrapper):
         if self.verbosity > 0:
             print("Done.")
 
-        return df_f, df_m
+        # Construct results
+        result = SensitivityResults(
+            f_sens=df_f,
+            m_sens=df_m,
+        )
+
+        return result
 
     def to_csv(self):
         """Dumps the sensitivity data to CSV file."""

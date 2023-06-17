@@ -31,22 +31,22 @@ def run_main(data_path):
         celldata=celldata,
     )
 
-    F_sensev, M_sensev = wrapper.calculate(
+    vd_result = wrapper.calculate(
         cog=cog,
         dPdp_method=van_dyke_dPdp,
         freestream=freestream,
         dp=[0.1 * 0.05],
     )
 
-    coef_sensv = F_sensev / (freestream.q * A_ref)
-    _ = M_sensev / (freestream.q * A_ref * L_ref)
+    coef_sensv = vd_result.f_sens / (freestream.q * A_ref)
+    _ = vd_result.m_sens / (freestream.q * A_ref * L_ref)
 
     # Calculate sensitivities
-    F_sense, M_sense = wrapper.calculate(cog=cog)
+    piston_result = wrapper.calculate(cog=cog)
 
     # Non-dimensionalise
-    coef_sens = F_sense / (freestream.q * A_ref)
-    _ = M_sense / (freestream.q * A_ref * L_ref)
+    coef_sens = piston_result.f_sens / (freestream.q * A_ref)
+    _ = piston_result.m_sens / (freestream.q * A_ref * L_ref)
 
     print("\nCart 3D Finite Difference Result:")
     c3d_sens = np.array([[0.147517, 0.126153, 0]])
