@@ -73,6 +73,11 @@ class FlowSolver(AbstractFlowSolver):
         self.flow_result: FlowResults = None
         self.flow_sensitivity: SensitivityResults = None
 
+        # Print banner
+        if self.verbosity > 0:
+            banner()
+            print(f"\033[4m{self.__repr__()}\033[0m".center(50, " "))
+
     def solve(
         self,
         freestream: Optional[FlowState] = None,
@@ -104,9 +109,6 @@ class FlowSolver(AbstractFlowSolver):
         ------
         Exception : when no freestream can be found.
         """
-        if self.verbosity > 0:
-            banner()
-            print(f"\033[4m{self.__repr__()}\033[0m".center(50, " "))
 
         if not freestream:
             # No freestream conditions specified
