@@ -30,11 +30,6 @@ class AbstractDeck(ABC):
     def to_csv(self):
         pass
 
-    # @classmethod
-    # @abstractmethod
-    # def from_csv(cls):
-    #     pass
-
     # @abstractmethod
     # def interpolate(self, **kwargs):
     #     pass
@@ -42,6 +37,7 @@ class AbstractDeck(ABC):
 
 class Deck(AbstractDeck):
     TYPE = "deck"
+    _COLS = []
 
     def __init__(
         self, inputs: list[str], a_ref: Optional[float] = 1, c_ref: Optional[float] = 1
@@ -59,7 +55,7 @@ class Deck(AbstractDeck):
         c_ref : float, optional
             The reference length. The default is 1.
         """
-        self._deck = pd.DataFrame(columns=inputs + ["CL", "CD", "Cm"])
+        self._deck = pd.DataFrame(columns=inputs + self._COLS)
         self._inputs = inputs
         self._a_ref = a_ref
         self._c_ref = c_ref
@@ -91,6 +87,7 @@ class Aerodeck(Deck):
     """Aerodynamic coefficient deck."""
 
     TYPE = "aerodeck"
+    _COLS = ["CL", "CD", "Cm"]
 
     def insert(self, result: FlowResults, **kwargs):
         # Check inputs
@@ -118,11 +115,27 @@ class Aerodeck(Deck):
             [self._deck, pd.DataFrame(data, index=[len(self._deck)])]
         )
 
+    @classmethod
+    def from_csv(cls, filepath: str, **kwargs):
+        """Create an Aerodeck from a CSV file."""
+        # Read data from file
+        data = pd.read_csv(filepath)
+
+        # Extract inputs
+        inputs = list(data.columns)
+        [inputs.pop(inputs.index(coef)) for coef in Aerodeck._COLS]
+
+        # Instantiate aerodeck
+        aerodeck = cls(inputs=inputs, **kwargs)
+        aerodeck._deck = data
+        return aerodeck
+
 
 class Sensdeck(Deck):
     """Aerodynamic coefficient sensitivity deck."""
 
     TYPE = "sensdeck"
+    _COLS = ["dCL", "dCD", "dCm"]
 
     def __init__(
         self,
@@ -151,7 +164,7 @@ class Sensdeck(Deck):
         self._parameters = list(parameters)
 
         # Override self._deck
-        base_deck = pd.DataFrame(columns=inputs + ["dCL", "dCD", "dCm"])
+        base_deck = pd.DataFrame(columns=inputs + Sensdeck._COLS)
         self._deck = {p: base_deck.copy() for p in self._parameters}
 
     def insert(self, result: SensitivityResults, **kwargs):
@@ -201,3 +214,28 @@ class Sensdeck(Deck):
 
         for p, df in decks.items():
             df.to_csv(f"{p}_{file_prefix}.csv", index=False)
+
+    @classmethod
+    def from_csv(cls, param_filepaths: dict[str, str], **kwargs):
+        """Create an Aerodeck from a CSV file.
+
+        Parameters
+        ----------
+        param_filepaths : dict[str, str]
+            A dictionary of filepaths, keyed by the associated parameter.
+        """
+        decks = {}
+        for param, filepath in param_filepaths.items():
+            # Load data
+            data = pd.read_csv(filepath)
+            decks[param] = data
+
+        # Extract inputs
+        inputs = list(data.columns)
+        [inputs.pop(inputs.index(coef)) for coef in Sensdeck._COLS]
+
+        # Instantiate sensdeck
+        sensdeck = cls(inputs=inputs, parameters=param_filepaths.keys(), **kwargs)
+        sensdeck._deck = decks
+
+        return sensdeck
