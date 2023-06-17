@@ -122,7 +122,7 @@ class Aerodeck(Deck):
 class Sensdeck(Deck):
     """Aerodynamic coefficient sensitivity deck."""
 
-    TYPE = "sensitivity deck"
+    TYPE = "sensdeck"
 
     def __init__(
         self,
