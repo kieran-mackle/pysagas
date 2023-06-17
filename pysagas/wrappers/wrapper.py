@@ -62,6 +62,7 @@ class Wrapper(AbstractWrapper):
 
     def __init__(self, **kwargs) -> None:
         self.cells = None
+        self.verbosity = 1
 
     def calculate(
         self,
@@ -72,6 +73,9 @@ class Wrapper(AbstractWrapper):
         """Calculate the force sensitivities of the surface to the
         parameters.
         """
+        if self.verbosity > 0:
+            print("\nCalculating aerodynamic sensitivities.")
+
         parameters = self._extract_parameters()
         if self.cells is None:
             self.cells = self._transcribe_cells(parameters=parameters)
@@ -93,6 +97,9 @@ class Wrapper(AbstractWrapper):
         df_m = pd.DataFrame(
             M_sense, columns=["dMx/dp", "dMy/dp", "dMz/dp"], index=parameters
         )
+
+        if self.verbosity > 0:
+            print("Done.")
 
         return df_f, df_m
 
