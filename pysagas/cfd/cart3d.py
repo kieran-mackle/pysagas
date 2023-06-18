@@ -206,9 +206,9 @@ class Cart3D(FlowSolver):
 
             # Construct results
             result = SensitivityResults(
-                freestream=flow,
                 f_sens=df_f,
                 m_sens=df_m,
+                freestream=flow,
             )
 
             # Save

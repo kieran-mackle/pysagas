@@ -179,10 +179,9 @@ PySAGAS is being developed along the following roadmap.
 * [x] Moment sensitivities
 * [x] Control over surface tags / faces being analysed
 * [x] Visualisation of sensitivities on mesh (cell-wise)
+* [x] Implementation of additional sensitivity models
 * [ ] Visualisation of pressures from Newton impact solver
-* [ ] Implement line search for optimal step sizing (with Cart3D warm-starts)
 * [ ] CLI, to access `ShapeOpt` and `NewtonImpact` flow solver
-* [ ] Implementation of higher-fidelity correction models
 * [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
 
 

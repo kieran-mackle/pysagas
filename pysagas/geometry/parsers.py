@@ -1,10 +1,12 @@
+import pandas as pd
 from stl import mesh
 from tqdm import tqdm
-from typing import List
 import multiprocess as mp
 import xml.etree.ElementTree as ET
 from abc import ABC, abstractmethod
+from typing import List, Optional, Union
 from pysagas.geometry import Cell, Vector
+from pysagas.utilities import add_sens_data
 
 
 class AbstractParser(ABC):
@@ -50,7 +52,7 @@ class STL(Parser):
         cells = []
         # TODO - can face ids be inferred?
         if self.verbosity > 0:
-            print("Transcribing cells:")
+            print("\nTranscribing cells:")
             pbar = tqdm(
                 total=len(mesh_obj.vectors),
                 position=0,
@@ -117,7 +119,7 @@ class PyMesh(Parser):
         mesh_obj = self._pymesh.load_mesh(self.filepath)
 
         if self.verbosity > 0:
-            print("Transcribing cells.")
+            print("\nTranscribing cells.")
 
         # Create multiprocessing pool to construct cells
         cells = []
@@ -133,13 +135,58 @@ class PyMesh(Parser):
         return cells
 
     @classmethod
-    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
-        """Convenience method for loading cells from file."""
+    def load_from_file(
+        cls,
+        filepath: str,
+        geom_sensitivities: Optional[Union[str, pd.DataFrame]] = None,
+        verbosity: Optional[int] = 1,
+        **kwargs,
+    ) -> List[Cell]:
+        """Convenience method for loading cells from file.
+
+        Parameters
+        ----------
+        filepath : str
+            The filepath to the geometry.
+
+        geom_sensitivities : str | DataFrame, optional
+            The geometry sensitivity data, to optionally add to the loaded cells. This can
+            be provided as a path to the data in csv format, or directly as a Pandas
+            DataFrame. The default is None.
+
+        verbosity : int, optional
+            The verbosity of the code. The defualt is 1.
+
+        **kwargs
+            Additional keyword arguments can be provided to control the sensitivity matching
+            algorithm.
+
+        See Also
+        --------
+        pysagas.utilities.add_sens_data
+        """
         # Create parser instance
         parser = cls(filepath, verbosity)
 
         # Load file
         cells = parser.load()
+
+        if geom_sensitivities:
+            # Check input type
+            if isinstance(geom_sensitivities, str):
+                # File path provided, load into dataframe
+                geom_sensitivities = pd.read_csv(geom_sensitivities)
+
+            elif not isinstance(geom_sensitivities, pd.DataFrame):
+                raise TypeError("Invalid data provided for 'geom_sensitivities'.")
+
+            # Add sensitivity data to cells
+            add_sens_data(
+                cells=cells,
+                data=geom_sensitivities,
+                verbosity=verbosity,
+                **kwargs,
+            )
 
         return cells
 
@@ -167,7 +214,7 @@ class TRI(Parser):
 
         cells = []
         if self.verbosity > 0:
-            print("Transcribing cells:")
+            print("\nTranscribing cells:")
             pbar = tqdm(
                 total=len(cells_data_list),
                 position=0,

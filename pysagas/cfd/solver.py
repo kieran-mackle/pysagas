@@ -73,6 +73,11 @@ class FlowSolver(AbstractFlowSolver):
         self.flow_result: FlowResults = None
         self.flow_sensitivity: SensitivityResults = None
 
+        # Print banner
+        if self.verbosity > 0:
+            banner()
+            print(f"\033[4m{self.__repr__()}\033[0m".center(50, " "))
+
     def solve(
         self,
         freestream: Optional[FlowState] = None,
@@ -104,9 +109,6 @@ class FlowSolver(AbstractFlowSolver):
         ------
         Exception : when no freestream can be found.
         """
-        if self.verbosity > 0:
-            banner()
-            print(f"\033[4m{self.__repr__()}\033[0m".center(50, " "))
 
         if not freestream:
             # No freestream conditions specified
@@ -387,6 +389,10 @@ class FlowResults:
 
         c_ref : float, optional
             The reference length (m). The default is 1 m.
+
+        Returns
+        -------
+        C_L, C_D, C_m
         """
         w = FlowSolver.body_to_wind(v=self.net_force, aoa=self.aoa)
         C_L = w.y / (self.freestream.q * A_ref)
@@ -419,11 +425,14 @@ class SensitivityResults:
     """
 
     def __init__(
-        self, freestream: FlowState, f_sens: pd.DataFrame, m_sens: pd.DataFrame
+        self,
+        f_sens: pd.DataFrame,
+        m_sens: pd.DataFrame,
+        freestream: Optional[FlowState] = None,
     ) -> None:
-        self.freestream = freestream
         self.f_sens = f_sens
         self.m_sens = m_sens
+        self.freestream = freestream
 
     def __str__(self) -> str:
         s1 = f"Force sensitivties:\n{self.f_sens}"
@@ -434,7 +443,9 @@ class SensitivityResults:
     def __repr__(self) -> str:
         return self.__str__()
 
-    def coefficients(self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0):
+    def coefficients(
+        self, A_ref: Optional[float] = 1.0, c_ref: Optional[float] = 1.0
+    ) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Calculate the aerodynamic coefficients CL, CD and Cm.
 
         Parameters
@@ -444,7 +455,28 @@ class SensitivityResults:
 
         c_ref : float, optional
             The reference length (m). The default is 1 m.
+
+        Returns
+        -------
+        A tuple (cf_sens, cm_sens) containing the force and moment coefficient sensitivities.
         """
-        cf_sens = self.f_sens / (self.freestream.q * A_ref)
-        cm_sens = self.m_sens / (self.freestream.q * A_ref * c_ref)
+        # Non-dimensionalise
+        cf_sens: pd.DataFrame = self.f_sens / (self.freestream.q * A_ref)
+        cm_sens: pd.DataFrame = self.m_sens / (self.freestream.q * A_ref * c_ref)
+
+        # Translate to aero frame
+        aoa = self.freestream.aoa
+        cf_sens["dFy/dp"] = cf_sens["dFy/dp"] * np.cos(np.deg2rad(aoa)) - cf_sens[
+            "dFx/dp"
+        ] * np.sin(np.deg2rad(aoa))
+        cf_sens["dFx/dp"] = cf_sens["dFy/dp"] * np.sin(np.deg2rad(aoa)) + cf_sens[
+            "dFx/dp"
+        ] * np.cos(np.deg2rad(aoa))
+
+        # Rename columns
+        cf_sens.rename(
+            columns={"dFx/dp": "dCD", "dFy/dp": "dCL", "dFz/dp": "dCZ"}, inplace=True
+        )
+        # cm_sens.rename(columns={"dMx/dp": "dCl", "dMy/dp": "dCn", "dMz/dp": "dCm"}, inplace=True)
+
         return cf_sens, cm_sens

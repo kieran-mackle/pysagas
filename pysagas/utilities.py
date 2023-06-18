@@ -286,9 +286,11 @@ def add_sens_data(
 
     # Construct progress bar
     if verbosity > 0:
-        print("\nAdding geometry-parameter sensitivity data to cells:")
+        print()
+        desc = "Adding geometry-parameter sensitivity data to cells"
         pbar = tqdm(
             total=len(cells),
+            desc=desc,
             position=0,
             leave=True,
         )

@@ -50,9 +50,11 @@ class OPM(FlowSolver):
 
             # Construct progress bar
             if self.verbosity > 0:
-                print("\nSolving cell properties.")
+                print()
+                desc = f"Running OPM solver at AoA = {flow.aoa:.2f} and Mach = {flow.M:.2f}"
                 pbar = tqdm(
                     total=len(self.cells),
+                    desc=desc,
                     position=0,
                     leave=True,
                 )
@@ -135,7 +137,6 @@ class OPM(FlowSolver):
 
             if self.verbosity > 0:
                 pbar.close()
-                print("Done.")
 
             # Construct results
             result = FlowResults(
@@ -146,7 +147,7 @@ class OPM(FlowSolver):
             self.flow_result = result
 
         # Print result
-        if self.verbosity > 0:
+        if self.verbosity > 1:
             print(result)
 
         return result
@@ -566,9 +567,11 @@ class OPM(FlowSolver):
 
             # Construct progress bar
             if self.verbosity > 0:
-                print("\nSolving cell flow sensitivities.")
+                print()
+                desc = "Solving cell flow sensitivities."
                 pbar = tqdm(
                     total=len(self.cells),
+                    desc=desc,
                     position=0,
                     leave=True,
                 )
@@ -695,9 +698,9 @@ class OPM(FlowSolver):
 
             # Construct results
             result = SensitivityResults(
-                freestream=flow,
                 f_sens=df_f,
                 m_sens=df_m,
+                freestream=flow,
             )
 
             # Save
