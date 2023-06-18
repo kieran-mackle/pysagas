@@ -237,7 +237,6 @@ class AeroDeck(Deck):
 
 
 class SensDeck(MultiDeck):
-
     TYPE = "sensdeck"
 
     def __init__(
@@ -292,7 +291,6 @@ class SensDeck(MultiDeck):
         return self.__repr__()
 
     def insert(self, result: SensitivityResults, **kwargs):
-
         # Get coefficients
         f_sens, m_sens = result.coefficients(A_ref=self._a_ref, c_ref=self._c_ref)
 
