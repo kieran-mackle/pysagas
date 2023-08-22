@@ -120,9 +120,18 @@ def cell_dfdp(
     return sensitivities, moment_sensitivities
 
 
-def piston_dPdp(cell: Cell, p_i, **kwargs):
+def piston_dPdp(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     local piston theory.
+
+    Parameters
+    ----------
+    cell : Cell
+        The cell object.
+
+    p_i : int
+        The index of the parameter to find the sensitivity for. This is used to
+        index cell.dndp.
     """
     dPdp = (
         cell.flowstate.rho
@@ -141,6 +150,15 @@ def van_dyke_dPdp(
     """
     Calculates the pressure-parameter sensitivity using
     Van Dyke second-order theory.
+
+     Parameters
+    ----------
+    cell : Cell
+        The cell object.
+
+    p_i : int
+        The index of the parameter to find the sensitivity for. This is used to
+        index cell.dndp.
     """
     mach_inf = freestream.M
     a_inf = freestream.a
@@ -271,7 +289,8 @@ def add_sens_data(
     force : bool, optional
         Force the sensitivity data to be added, even if a cell
         already has sensitivity data. This can be used if new
-        data is being used. The default is False.
+        data is being used, or if the append is being repeated with
+        a different matching tolerance. The default is False.
 
     Returns
     --------
