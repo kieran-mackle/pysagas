@@ -176,6 +176,25 @@ def van_dyke_dPdp(
     return dPdp
 
 
+def van_dyke_dPdp_ingo(
+    cell: Cell,
+    p_i,
+):
+    """
+    Calculates the pressure-parameter sensitivity using
+    Van Dyke second-order theory.
+    """
+    M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+
+    piston = piston_dPdp(cell=cell, p_i=p_i)
+    dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
+
+    return dPdp
+
+
 def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     the isentropic flow relation directly."""
