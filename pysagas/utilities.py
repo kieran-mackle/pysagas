@@ -197,6 +197,7 @@ def van_dyke_dPdp(
 def van_dyke_dPdp_ingo(
     cell: Cell,
     p_i,
+    **kwargs,
 ):
     """
     Calculates the pressure-parameter sensitivity using
