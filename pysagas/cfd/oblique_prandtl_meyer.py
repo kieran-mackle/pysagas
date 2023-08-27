@@ -520,8 +520,9 @@ class OPM(FlowSolver):
 
     def solve_sens(
         self,
-        sensitivity_filepath: str,
-        cells_have_sens_data: bool = False,
+        sensitivity_filepath: Optional[str] = None,
+        parameters: Optional[list[str]] = None,
+        cells_have_sens_data: Optional[bool] = False,
         freestream: Optional[FlowState] = None,
         mach: Optional[float] = None,
         aoa: Optional[float] = None,
@@ -554,11 +555,10 @@ class OPM(FlowSolver):
                 # Solver has not run yet at all, run it now
                 self.solve(flow)
 
-            if cells_have_sens_data:
+            if cells_have_sens_data and not parameters:
                 # Need to extract parameters
                 _, parameters = self._load_sens_data(sensitivity_filepath)
-
-            else:
+            elif not cells_have_sens_data:
                 # Load sensitivity data and parameters
                 sensdata, parameters = self._load_sens_data(sensitivity_filepath)
 
