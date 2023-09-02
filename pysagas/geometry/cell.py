@@ -26,6 +26,9 @@ class Cell:
     n : Vector
         The cell normal.
 
+    c : Vector
+        The cell centroid.
+
     dndv : np.array
         The sensitivity of the cell's normal vector to each vertex.
 

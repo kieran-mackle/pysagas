@@ -9,7 +9,7 @@ from pysagas.wrappers.cart3d.utilities import process_components_file
 
 
 class Cart3DWrapper(Wrapper):
-    """PySAGAS Cart3D wrapper."""
+    """PySAGAS Cart3D flow sensitivity wrapper."""
 
     solver = "Cart3D"
 
@@ -24,7 +24,7 @@ class Cart3DWrapper(Wrapper):
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
-        """A PySAGAS wrapper for Cart3D.
+        """A PySAGAS sensitivity wrapper for Cart3D.
 
         Parameters
         ----------

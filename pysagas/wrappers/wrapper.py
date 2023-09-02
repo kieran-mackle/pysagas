@@ -63,7 +63,7 @@ class Wrapper(AbstractWrapper):
     """Wrapper base class."""
 
     def __init__(self, **kwargs) -> None:
-        self.cells = None
+        self.cells: list[Cell] = None
         self.verbosity = 1
 
     def calculate(
