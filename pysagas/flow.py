@@ -129,9 +129,6 @@ class FlowState(GasState):
             # Use AoA to calculate direction
             self.direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
 
-        # Velocity vector
-        self._Vector = self.direction * self.v
-
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, FlowState):
             raise Exception(f"Cannot compare {type(other)} to FlowState.")
@@ -140,23 +137,23 @@ class FlowState(GasState):
 
     @property
     def vx(self):
-        return self._Vector.x
+        return self.Vector.x
 
     @property
     def vy(self):
-        return self._Vector.y
+        return self.Vector.y
 
     @property
     def vz(self):
-        return self._Vector.z
+        return self.Vector.z
 
     @property
     def vec(self):
-        return self._Vector.vec
+        return self.Vector.vec
 
     @property
-    def Vector(self):
-        return self._Vector
+    def Vector(self) -> Vector:
+        return self.direction * self.v
 
     @property
     def aoa(self):
