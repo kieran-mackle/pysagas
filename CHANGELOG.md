@@ -1,3 +1,18 @@
+## v0.12.0 (2023-10-31)
+
+### Feat
+
+- **Parser**: STL load_from_file also appends sensitivity data
+- **OPM**: added count of bad cells for diagnosing bad solve
+- **OPM**: optionally provide parameters to avoid sens extraction
+- **FlowState**: add Vector property
+- **Cart3DShapeOpt**: provide kwargs for wrapper.calculate
+
+### Fix
+
+- **Wrapper**: _extract_parameters preserves parameter ordering
+- **van_dyke_dPdp_ingo**: take kwargs
+
 ## v0.11.0 (2023-06-18)
 
 ### Feat
