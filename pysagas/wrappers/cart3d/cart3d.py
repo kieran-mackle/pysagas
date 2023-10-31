@@ -9,7 +9,7 @@ from pysagas.wrappers.cart3d.utilities import process_components_file
 
 
 class Cart3DWrapper(Wrapper):
-    """PySAGAS Cart3D wrapper."""
+    """PySAGAS Cart3D flow sensitivity wrapper."""
 
     solver = "Cart3D"
 
@@ -24,7 +24,7 @@ class Cart3DWrapper(Wrapper):
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
-        """A PySAGAS wrapper for Cart3D.
+        """A PySAGAS sensitivity wrapper for Cart3D.
 
         Parameters
         ----------
@@ -164,12 +164,3 @@ class Cart3DWrapper(Wrapper):
                     print(f"{100*degen_cells/len(self.celldata):.2f}% degenerate cells")
 
         return cells
-
-    def _extract_parameters(self):
-        parameters = set()
-        for e in self.sensdata.columns:
-            e: str
-            if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
-                # Sensitivity coluns
-                parameters.add(e[3:])
-        return list(parameters)

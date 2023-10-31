@@ -465,6 +465,7 @@ class SensitivityResults:
         cm_sens: pd.DataFrame = self.m_sens / (self.freestream.q * A_ref * c_ref)
 
         # Translate to aero frame
+        # TODO - review if this might swap value order on overwrite of columns
         aoa = self.freestream.aoa
         cf_sens["dFy/dp"] = cf_sens["dFy/dp"] * np.cos(np.deg2rad(aoa)) - cf_sens[
             "dFx/dp"

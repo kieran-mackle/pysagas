@@ -87,8 +87,8 @@ def cell_dfdp(
     """
     # Initialisation
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-    sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
-    moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+    moment_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
 
     # Calculate moment dependencies
     r = cell.c - cog
@@ -120,9 +120,18 @@ def cell_dfdp(
     return sensitivities, moment_sensitivities
 
 
-def piston_dPdp(cell: Cell, p_i, **kwargs):
+def piston_dPdp(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     local piston theory.
+
+    Parameters
+    ----------
+    cell : Cell
+        The cell object.
+
+    p_i : int
+        The index of the parameter to find the sensitivity for. This is used to
+        index cell.dndp.
     """
     dPdp = (
         cell.flowstate.rho
@@ -141,6 +150,15 @@ def van_dyke_dPdp(
     """
     Calculates the pressure-parameter sensitivity using
     Van Dyke second-order theory.
+
+     Parameters
+    ----------
+    cell : Cell
+        The cell object.
+
+    p_i : int
+        The index of the parameter to find the sensitivity for. This is used to
+        index cell.dndp.
     """
     mach_inf = freestream.M
     a_inf = freestream.a
@@ -173,6 +191,35 @@ def van_dyke_dPdp(
     # Normalise to pressure sensitivity
     dPdp = dCPdp * freestream.q
 
+    return dPdp
+
+
+def van_dyke_dPdp_ingo(
+    cell: Cell,
+    p_i,
+    **kwargs,
+):
+    """
+    Calculates the pressure-parameter sensitivity using
+    Van Dyke second-order theory.
+    """
+    M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+
+    piston = piston_dPdp(cell=cell, p_i=p_i)
+    dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
+
+    return dPdp
+
+
+def piston_mach_limited(cell: Cell, p_i, **kwargs):
+    M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+    dPdp = piston_dPdp(cell=cell, p_i=p_i)
     return dPdp
 
 
@@ -271,7 +318,8 @@ def add_sens_data(
     force : bool, optional
         Force the sensitivity data to be added, even if a cell
         already has sensitivity data. This can be used if new
-        data is being used. The default is False.
+        data is being used, or if the append is being repeated with
+        a different matching tolerance. The default is False.
 
     Returns
     --------

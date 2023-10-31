@@ -53,6 +53,7 @@ class Cart3DShapeOpt(ShapeOpt):
         matching_tolerance: float = 1e-5,
         save_evolution: bool = True,
         write_config_xml: bool = True,
+        sensitivity_kwargs: dict = None,
     ) -> None:
         """Initialise Cart3D Shape Optimiser.
 
@@ -160,6 +161,10 @@ class Cart3DShapeOpt(ShapeOpt):
         _c3dprepper = C3DPrep(
             logfile=c3d_logname, info_file=c3d_info_file, write_config=write_config_xml
         )
+
+        # Save sensitivity kwargs
+        global _sens_kwargs
+        _sens_kwargs = sensitivity_kwargs if sensitivity_kwargs else {}
 
         # Other settings
         _matching_tolerance = matching_tolerance
@@ -470,7 +475,8 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             verbosity=0,
         )
 
-    F_sense, _ = wrapper.calculate()
+    result = wrapper.calculate(**_sens_kwargs)
+    F_sense = result.f_sens
 
     # Non-dimensionalise
     coef_sens = F_sense / (_freestream.q * _A_ref)
