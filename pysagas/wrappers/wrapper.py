@@ -96,6 +96,10 @@ class Wrapper(AbstractWrapper):
             print("\nCalculating aerodynamic sensitivities.")
 
         parameters = self._extract_parameters()
+
+        # if parameters != ["theta_2", "theta_1"]:
+        #     print("swapped.")
+
         if self.cells is None:
             self.cells = self._transcribe_cells(parameters=parameters)
 
@@ -108,6 +112,15 @@ class Wrapper(AbstractWrapper):
         F_sense, M_sense = all_dfdp(
             cells=self.cells, dPdp_method=dPdp_method, cog=cog, **kwargs
         )
+
+        # hm = np.array([[ 3.59853397e+04,  1.85845803e+04,  2.15575270e+03],
+        #     [ 5.79130106e+02,  1.81481290e+03, -1.05987335e-06]])
+
+        # if not np.all(np.isclose(hm, F_sense)):
+        #     print("\n\n\n\nbad")
+
+        # if parameters[0] != "theta_2":
+        #     print("\n\n\n\nwtf")
 
         # Construct dataframes to return
         df_f = pd.DataFrame(
@@ -136,6 +149,16 @@ class Wrapper(AbstractWrapper):
 
         else:
             raise Exception("No cells have been transcribed.")
+
+    def _extract_parameters(self):
+        parameters = []
+        for e in self.sensdata.columns:
+            e: str
+            if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
+                # Sensitivity coluns
+                if e[3:] not in parameters:
+                    parameters.append(e[3:])
+        return parameters
 
 
 class GenericWrapper(Wrapper):
@@ -191,12 +214,3 @@ class GenericWrapper(Wrapper):
         )
 
         return self._pre_transcribed_cells
-
-    def _extract_parameters(self):
-        parameters = set()
-        for e in self.sensdata.columns:
-            e: str
-            if e.startswith("dxd") or e.startswith("dyd") or e.startswith("dzd"):
-                # Sensitivity coluns
-                parameters.add(e[3:])
-        return list(parameters)

@@ -87,8 +87,8 @@ def cell_dfdp(
     """
     # Initialisation
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-    sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
-    moment_sensitivities = np.empty(shape=(cell.dndp.shape[1], 3))
+    sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+    moment_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
 
     # Calculate moment dependencies
     r = cell.c - cog
@@ -211,6 +211,15 @@ def van_dyke_dPdp_ingo(
     piston = piston_dPdp(cell=cell, p_i=p_i)
     dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
 
+    return dPdp
+
+
+def piston_mach_limited(cell: Cell, p_i, **kwargs):
+    M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+    dPdp = piston_dPdp(cell=cell, p_i=p_i)
     return dPdp
 
 

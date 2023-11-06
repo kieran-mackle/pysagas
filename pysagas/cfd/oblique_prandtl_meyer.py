@@ -62,6 +62,8 @@ class OPM(FlowSolver):
             # Iterate over all cells
             net_force = Vector(0, 0, 0)
             net_moment = Vector(0, 0, 0)
+            bad = 0
+            total = 0
             for cell in self.cells:
                 # Calculate orientation of cell to flow
                 theta = np.pi / 2 - np.arccos(
@@ -78,6 +80,7 @@ class OPM(FlowSolver):
                     if theta < np.deg2rad(self.PM_ANGLE_THRESHOLD):
                         M2, p2, T2 = (flow.M, 0.0, flow.T)
                         method = -1
+                        bad += 1
 
                     else:
                         # Use Prandtl-Meyer expansion theory
@@ -111,6 +114,8 @@ class OPM(FlowSolver):
                     method = 0
                     M2, p2, T2 = (flow.M, flow.P, flow.T)
 
+                total += 1
+
                 # Save results for this cell
                 cell.attributes["pressure"] = p2
                 cell.attributes["Mach"] = M2
@@ -137,6 +142,12 @@ class OPM(FlowSolver):
 
             if self.verbosity > 0:
                 pbar.close()
+
+                if bad / total > 0.25:
+                    print(
+                        f"WARNING: {100*bad/total:.2f}% of cells were not "
+                        "solved due to PM threshold."
+                    )
 
             # Construct results
             result = FlowResults(

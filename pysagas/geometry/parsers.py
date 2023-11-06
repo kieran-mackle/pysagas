@@ -30,6 +30,10 @@ class AbstractParser(ABC):
         # This is a placeholder for a class variable defining the parser file type
         pass
 
+    @abstractmethod
+    def load(self) -> List[Cell]:
+        """Load cells from file."""
+
     @classmethod
     @abstractmethod
     def load_from_file(self) -> List[Cell]:
@@ -40,6 +44,62 @@ class Parser(AbstractParser):
     def __init__(self, filepath: str, verbosity: int = 1) -> None:
         self.filepath = filepath
         self.verbosity = verbosity
+
+    @classmethod
+    def load_from_file(
+        cls,
+        filepath: str,
+        geom_sensitivities: Optional[Union[str, pd.DataFrame]] = None,
+        verbosity: Optional[int] = 1,
+        **kwargs,
+    ) -> List[Cell]:
+        """Convenience method for loading cells from file.
+
+        Parameters
+        ----------
+        filepath : str
+            The filepath to the geometry.
+
+        geom_sensitivities : str | DataFrame, optional
+            The geometry sensitivity data, to optionally add to the loaded cells. This can
+            be provided as a path to the data in csv format, or directly as a Pandas
+            DataFrame. The default is None.
+
+        verbosity : int, optional
+            The verbosity of the code. The defualt is 1.
+
+        **kwargs
+            Additional keyword arguments can be provided to control the sensitivity matching
+            algorithm.
+
+        See Also
+        --------
+        pysagas.utilities.add_sens_data
+        """
+
+        # Create parser instance
+        parser = cls(filepath, verbosity)
+
+        # Load file
+        cells = parser.load()
+
+        if geom_sensitivities:
+            # Check input type
+            if isinstance(geom_sensitivities, str):
+                # File path provided, load into dataframe
+                geom_sensitivities = pd.read_csv(geom_sensitivities)
+
+            elif not isinstance(geom_sensitivities, pd.DataFrame):
+                raise TypeError("Invalid data provided for 'geom_sensitivities'.")
+
+            # Add sensitivity data to cells
+            add_sens_data(
+                cells=cells,
+                data=geom_sensitivities,
+                verbosity=verbosity,
+                **kwargs,
+            )
+        return cells
 
 
 class STL(Parser):
@@ -75,17 +135,6 @@ class STL(Parser):
         if self.verbosity > 0:
             pbar.close()
             print("Done.")
-
-        return cells
-
-    @classmethod
-    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
-        """Convenience method for loading cells from file."""
-        # Create parser instance
-        parser = cls(filepath, verbosity)
-
-        # Load file
-        cells = parser.load()
 
         return cells
 
@@ -131,62 +180,6 @@ class PyMesh(Parser):
 
         if self.verbosity > 0:
             print("Done.")
-
-        return cells
-
-    @classmethod
-    def load_from_file(
-        cls,
-        filepath: str,
-        geom_sensitivities: Optional[Union[str, pd.DataFrame]] = None,
-        verbosity: Optional[int] = 1,
-        **kwargs,
-    ) -> List[Cell]:
-        """Convenience method for loading cells from file.
-
-        Parameters
-        ----------
-        filepath : str
-            The filepath to the geometry.
-
-        geom_sensitivities : str | DataFrame, optional
-            The geometry sensitivity data, to optionally add to the loaded cells. This can
-            be provided as a path to the data in csv format, or directly as a Pandas
-            DataFrame. The default is None.
-
-        verbosity : int, optional
-            The verbosity of the code. The defualt is 1.
-
-        **kwargs
-            Additional keyword arguments can be provided to control the sensitivity matching
-            algorithm.
-
-        See Also
-        --------
-        pysagas.utilities.add_sens_data
-        """
-        # Create parser instance
-        parser = cls(filepath, verbosity)
-
-        # Load file
-        cells = parser.load()
-
-        if geom_sensitivities:
-            # Check input type
-            if isinstance(geom_sensitivities, str):
-                # File path provided, load into dataframe
-                geom_sensitivities = pd.read_csv(geom_sensitivities)
-
-            elif not isinstance(geom_sensitivities, pd.DataFrame):
-                raise TypeError("Invalid data provided for 'geom_sensitivities'.")
-
-            # Add sensitivity data to cells
-            add_sens_data(
-                cells=cells,
-                data=geom_sensitivities,
-                verbosity=verbosity,
-                **kwargs,
-            )
 
         return cells
 
@@ -239,7 +232,7 @@ class TRI(Parser):
         return cells
 
     @classmethod
-    def load_from_file(cls, filepath: str, verbosity: int = 1) -> List[Cell]:
+    def load_from_file(cls, filepath: str, verbosity: int = 1, **kwargs) -> List[Cell]:
         """Convenience method for loading cells from file."""
         # Create parser instance
         parser = cls(filepath, verbosity)
