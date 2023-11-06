@@ -1,3 +1,9 @@
+## v0.12.1 (2023-11-06)
+
+### Refactor
+
+- **optimisation.cartd.__init__.py**: remove imports to simplify
+
 ## v0.12.0 (2023-10-31)
 
 ### Feat
