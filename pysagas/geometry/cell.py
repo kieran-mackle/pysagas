@@ -55,7 +55,7 @@ class Cell:
     """
 
     def __init__(
-        self, p0: Vector, p1: Vector, p2: Vector, face_ids: Optional[int] = None
+        self, p0: Vector, p1: Vector, p2: Vector, face_ids: Optional[list[int]] = None
     ):
         """Constructs a cell, defined by three points.
 
