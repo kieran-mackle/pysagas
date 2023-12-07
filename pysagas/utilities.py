@@ -32,6 +32,7 @@ def cell_dfdp(
     --------
     all_dfdp : a wrapper to calculate force sensitivities for many cells
     """
+    # TODO - move this into a class object along with others
     # Initialisation
     all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
     sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
@@ -80,6 +81,11 @@ def piston_dPdp(cell: Cell, p_i: int, **kwargs):
         The index of the parameter to find the sensitivity for. This is used to
         index cell.dndp.
     """
+    M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+
     dPdp = (
         cell.flowstate.rho
         * cell.flowstate.a
@@ -114,15 +120,6 @@ def van_dyke_dPdp(
     piston = piston_dPdp(cell=cell, p_i=p_i)
     dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
 
-    return dPdp
-
-
-def piston_mach_limited(cell: Cell, p_i, **kwargs):
-    M_l = cell.flowstate.M
-    if M_l < 1.0:
-        # Subsonic cell, skip
-        return 0
-    dPdp = piston_dPdp(cell=cell, p_i=p_i)
     return dPdp
 
 
