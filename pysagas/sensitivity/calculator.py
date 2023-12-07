@@ -3,9 +3,10 @@ import pandas as pd
 from pysagas.flow import FlowState
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
+from pysagas.utilities import add_sens_data
 from pysagas.cfd.solver import SensitivityResults
-from typing import List, Callable, Tuple, Optional
-from pysagas.utilities import piston_dPdp, add_sens_data
+from typing import List, Callable, Tuple, Optional, Union, Literal
+from pysagas.sensitivity.models import piston_dPdp, van_dyke_dPdp, isentropic_dPdp
 
 
 class AbstractSensitivityCalculator(ABC):
@@ -68,7 +69,9 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
     def calculate(
         self,
-        dPdp_method: Optional[Callable] = piston_dPdp,
+        dPdp_method: Optional[
+            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
+        ] = "van_dyke",
         cog: Optional[Vector] = Vector(0, 0, 0),
         flowstate: Optional[FlowState] = None,
         **kwargs,
@@ -151,7 +154,9 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
     @staticmethod
     def all_dfdp(
         cells: List[Cell],
-        dPdp_method: Callable = piston_dPdp,
+        dPdp_method: Optional[
+            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
+        ] = "van_dyke",
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
     ) -> Tuple[np.array, np.array]:
@@ -185,13 +190,22 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         panel_dPdp : pressure sensitivities calculated using Panel method
             approximations
         """
-        # TODO - use Enum for sens method used
+        # Get sensitivity handle
+        if isinstance(dPdp_method, Callable):
+            # Use function provided
+            dPdp_function = dPdp_method
+        elif isinstance(dPdp_method, str):
+            # Get function from method specified
+            dPdp_function = globals().get(f"{dPdp_method}_dPdp")
+            if dPdp_function is None:
+                raise Exception("Invalid sensitivity method specified.")
+
         dFdp = 0
         dMdp = 0
         for cell in cells:
             # Calculate force sensitivity
             dFdp_c, dMdp_c = SensitivityCalculator.cell_dfdp(
-                cell=cell, dPdp_method=dPdp_method, cog=cog, **kwargs
+                cell=cell, dPdp_function=dPdp_function, cog=cog, **kwargs
             )
 
             dFdp += dFdp_c
@@ -201,7 +215,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
     @staticmethod
     def cell_dfdp(
-        cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
+        cell: Cell, dPdp_function: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
     ) -> Tuple[np.array, np.array]:
         """Calculates all direction force sensitivities.
 
@@ -239,7 +253,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         # For each parameter
         for p_i in range(cell.dndp.shape[1]):
             # Calculate pressure sensitivity
-            dPdp = dPdp_method(cell=cell, p_i=p_i, **kwargs)
+            dPdp = dPdp_function(cell=cell, p_i=p_i, **kwargs)
 
             # Evaluate for sensitivities for each direction
             for i, direction in enumerate(all_directions):
