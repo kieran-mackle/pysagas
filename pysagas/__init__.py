@@ -1,4 +1,4 @@
-__version__ = "0.10.0"
+__version__ = "0.12.1"
 
 from .geometry import Vector, Cell
 from .flow import GasState, FlowState
