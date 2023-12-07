@@ -2,7 +2,7 @@ import numpy as np
 from pysagas.geometry import Cell
 
 
-def piston_dPdp(cell: Cell, p_i: int, **kwargs):
+def piston_sensitivity(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     local piston theory.
 
@@ -28,7 +28,7 @@ def piston_dPdp(cell: Cell, p_i: int, **kwargs):
     return dPdp
 
 
-def van_dyke_dPdp(
+def van_dyke_sensitivity(
     cell: Cell,
     p_i,
     **kwargs,
@@ -46,13 +46,13 @@ def van_dyke_dPdp(
         The index of the parameter to find the sensitivity for. This is used to
         index cell.dndp.
     """
-    piston = piston_dPdp(cell=cell, p_i=p_i)
+    piston = piston_sensitivity(cell=cell, p_i=p_i)
     M_l = cell.flowstate.M
     dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
     return dPdp
 
 
-def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
+def isentropic_sensitivity(cell: Cell, p_i: int, **kwargs):
     """Calculates the pressure-parameter sensitivity using
     the isentropic flow relation directly."""
     gamma = cell.flowstate.gamma

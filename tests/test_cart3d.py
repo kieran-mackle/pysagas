@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector
-from pysagas.sensitivity.models import van_dyke_dPdp
 from pysagas.sensitivity import Cart3DSensitivityCalculator
+from pysagas.sensitivity.models import van_dyke_sensitivity
 
 
 def run_main(data_path):
@@ -33,7 +33,7 @@ def run_main(data_path):
 
     vd_result = wrapper.calculate(
         cog=cog,
-        dPdp_method=van_dyke_dPdp,
+        sensitivity_model=van_dyke_sensitivity,
         freestream=freestream,
         dp=[0.1 * 0.05],
     )
@@ -42,7 +42,7 @@ def run_main(data_path):
     _ = vd_result.m_sens / (freestream.q * A_ref * L_ref)
 
     # Calculate sensitivities
-    piston_result = wrapper.calculate(cog=cog, dPdp_method="piston")
+    piston_result = wrapper.calculate(cog=cog, sensitivity_model="piston")
 
     # Non-dimensionalise
     coef_sens = piston_result.f_sens / (freestream.q * A_ref)

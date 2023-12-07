@@ -6,7 +6,11 @@ from pysagas.geometry import Vector, Cell
 from pysagas.utilities import add_sens_data
 from pysagas.cfd.solver import SensitivityResults
 from typing import List, Callable, Tuple, Optional, Union, Literal
-from pysagas.sensitivity.models import piston_dPdp, van_dyke_dPdp, isentropic_dPdp
+from pysagas.sensitivity.models import (
+    piston_sensitivity,
+    van_dyke_sensitivity,
+    isentropic_sensitivity,
+)
 
 
 class AbstractSensitivityCalculator(ABC):
@@ -69,7 +73,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
     def calculate(
         self,
-        dPdp_method: Optional[
+        sensitivity_model: Optional[
             Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
         ] = "van_dyke",
         cog: Optional[Vector] = Vector(0, 0, 0),
@@ -81,9 +85,9 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
         Parameters
         ----------
-        dPdp_method : callable, optional
-            The sensitivity method to use - either piston_dPdp or van_dyke_dPdp. The
-            default is piston_dPdp.
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
+            The model used to calculate the pressure/parameter sensitivities.
+            The default is Van Dyke's second-order theory model.
 
         cog : Vector, optional
             The centre of gravity. The default is Vector(0, 0, 0).
@@ -109,8 +113,8 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense, M_sense = self.all_dfdp(
-            cells=self.cells, dPdp_method=dPdp_method, cog=cog, **kwargs
+        F_sense, M_sense = self.net_sensitivity(
+            cells=self.cells, sensitivity_model=sensitivity_model, cog=cog, **kwargs
         )
 
         # Construct dataframes to return
@@ -152,24 +156,24 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         return parameters
 
     @staticmethod
-    def all_dfdp(
+    def net_sensitivity(
         cells: List[Cell],
-        dPdp_method: Optional[
+        sensitivity_model: Optional[
             Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
         ] = "van_dyke",
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
     ) -> Tuple[np.array, np.array]:
-        """Calcualtes the force sensitivities for a list of Cells.
+        """Calcualtes the net force and moment sensitivities for a list of Cells.
 
         Parameters
         ----------
         cells : list[Cell]
             The cells to be analysed.
 
-        dPdp_method : Callable, optional
-            The method used to calculate the pressure/parameter sensitivities.
-            The default is the Panel method approximation panel_dPdp (see below).
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
+            The model used to calculate the pressure/parameter sensitivities.
+            The default is Van Dyke's second-order theory model.
 
         cog : Vector, optional
             The reference centre of gravity, used in calculating the moment
@@ -182,30 +186,23 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
         dMdp : np.array
             The moment sensitivity matrix with respect to the parameters.
-
-        See Also
-        --------
-        cell_dfdp : the force sensitivity per cell
-
-        panel_dPdp : pressure sensitivities calculated using Panel method
-            approximations
         """
         # Get sensitivity handle
-        if isinstance(dPdp_method, Callable):
+        if isinstance(sensitivity_model, Callable):
             # Use function provided
-            dPdp_function = dPdp_method
-        elif isinstance(dPdp_method, str):
+            sensitivity_function = sensitivity_model
+        elif isinstance(sensitivity_model, str):
             # Get function from method specified
-            dPdp_function = globals().get(f"{dPdp_method}_dPdp")
-            if dPdp_function is None:
+            sensitivity_function = globals().get(f"{sensitivity_model}_sensitivity")
+            if sensitivity_function is None:
                 raise Exception("Invalid sensitivity method specified.")
 
         dFdp = 0
         dMdp = 0
         for cell in cells:
             # Calculate force sensitivity
-            dFdp_c, dMdp_c = SensitivityCalculator.cell_dfdp(
-                cell=cell, dPdp_function=dPdp_function, cog=cog, **kwargs
+            dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
+                cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
             )
 
             dFdp += dFdp_c
@@ -214,18 +211,21 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         return dFdp, dMdp
 
     @staticmethod
-    def cell_dfdp(
-        cell: Cell, dPdp_function: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
+    def cell_sensitivity(
+        cell: Cell,
+        sensitivity_function: Callable,
+        cog: Vector = Vector(0, 0, 0),
+        **kwargs,
     ) -> Tuple[np.array, np.array]:
-        """Calculates all direction force sensitivities.
+        """Calculates force and moment sensitivities for a single cell.
 
         Parameters
         ----------
         cell : Cell
             The cell.
 
-        dPdp_method : Callable
-            The method to use when calculating the pressure sensitivities.
+        sensitivity_function : Callable
+            The function to use when calculating the pressure sensitivities.
 
         cog : Vector, optional
             The reference centre of gravity, used in calculating the moment
@@ -253,7 +253,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         # For each parameter
         for p_i in range(cell.dndp.shape[1]):
             # Calculate pressure sensitivity
-            dPdp = dPdp_function(cell=cell, p_i=p_i, **kwargs)
+            dPdp = sensitivity_function(cell=cell, p_i=p_i, **kwargs)
 
             # Evaluate for sensitivities for each direction
             for i, direction in enumerate(all_directions):

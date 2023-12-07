@@ -2,12 +2,9 @@ import numpy as np
 
 np.seterr(all="ignore")
 import gdtk.ideal_gas_flow as igf
+from pysagas.geometry import Vector, Cell
 from pysagas.flow import GasState, FlowState
 from pysagas.sensitivity.calculator import SensitivityCalculator
-from pysagas.geometry import (
-    Vector,
-    Cell,
-)
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:
@@ -118,7 +115,7 @@ def run_main():
     B.flowstate = ramp_fs
 
     # Calculate force sensitivity
-    F_sense, _ = SensitivityCalculator.all_dfdp(cells=[A, B])
+    F_sense, _ = SensitivityCalculator.net_sensitivity(cells=[A, B])
 
     # Calculate error with finite differencing method
     fd_F_sense = calc_fd_sens(parameters, freestream)
