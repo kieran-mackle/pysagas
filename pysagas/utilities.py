@@ -144,8 +144,7 @@ def piston_dPdp(cell: Cell, p_i: int, **kwargs):
 def van_dyke_dPdp(
     cell: Cell,
     p_i,
-    freestream: FlowState,
-    dp: Union[List, ArrayLike],
+    **kwargs,
 ):
     """
     Calculates the pressure-parameter sensitivity using
@@ -159,49 +158,6 @@ def van_dyke_dPdp(
     p_i : int
         The index of the parameter to find the sensitivity for. This is used to
         index cell.dndp.
-    """
-    mach_inf = freestream.M
-    a_inf = freestream.a
-    gamma = freestream.gamma
-
-    mach = cell.flowstate.M
-
-    if mach < 1.0:
-        # Subsonic cell, skip
-        return 0
-
-    beta = np.sqrt(mach**2 - 1)
-
-    # Calculate normal velocity
-    v_n = np.dot(cell.flowstate.vec, -cell.dndp[:, p_i] * dp[p_i])
-
-    a = (
-        -cell.flowstate.vec
-        * (2 / (mach_inf**2))
-        * (
-            mach_inf / (a_inf * beta)
-            + (v_n / a_inf)
-            * ((gamma + 1) * mach_inf**4 - 4 * (mach**2 - 1))
-            / (2 * a_inf * (mach**2 - 1))
-        )
-    )
-
-    dCPdp = np.dot(a, cell.dndp[:, p_i])
-
-    # Normalise to pressure sensitivity
-    dPdp = dCPdp * freestream.q
-
-    return dPdp
-
-
-def van_dyke_dPdp_ingo(
-    cell: Cell,
-    p_i,
-    **kwargs,
-):
-    """
-    Calculates the pressure-parameter sensitivity using
-    Van Dyke second-order theory.
     """
     M_l = cell.flowstate.M
     if M_l < 1.0:
