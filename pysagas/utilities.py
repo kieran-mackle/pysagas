@@ -2,10 +2,9 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import gdtk.ideal_gas_flow as igf
-from numpy.typing import ArrayLike
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector, Cell
-from typing import List, Callable, Tuple, Union, Optional
+from typing import List, Callable, Tuple, Optional
 
 
 def calculate_pressures(flow: FlowState, theta: float) -> float:
