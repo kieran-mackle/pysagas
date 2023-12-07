@@ -1,60 +1,8 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import gdtk.ideal_gas_flow as igf
-from pysagas.flow import FlowState
 from pysagas.geometry import Vector, Cell
 from typing import List, Callable, Tuple, Optional
-
-
-def calculate_pressures(flow: FlowState, theta: float) -> float:
-    """Calculates the pressure from a flow state and deflecion angle
-    using ideal gas oblique shock theory.
-
-    Parameters
-    ----------
-    flow : FlowState
-        The flow state.
-
-    theta : float
-        The deflection angle (radians).
-
-    Returns
-    --------
-    P2 : float
-        The pressure behind the oblique shock.
-    """
-    beta = igf.beta_obl(M1=flow.M, theta=abs(theta), g=flow.gamma, tol=1.0e-6)
-    P2_P1 = igf.p2_p1_obl(flow.M, beta, g=flow.gamma)
-    P2 = P2_P1 * flow.P
-    return P2
-
-
-def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
-    """Calculates the force vector components, acting on a
-    surface defined by its area and normal vector.
-
-    Parameters
-    ----------
-    P : float
-        The pressure (Pa).
-
-    n : np.array
-        The normal vector.
-
-    A : float
-        The reference area (m^2).
-
-    Returns
-    --------
-    forces : np.array
-        The force components.
-    """
-    F_x = A * P * np.dot(n, np.array([-1, 0, 0]))
-    F_y = A * P * np.dot(n, np.array([0, -1, 0]))
-    F_z = A * P * np.dot(n, np.array([0, 0, -1]))
-
-    return [F_x, F_y, F_z]
 
 
 def cell_dfdp(
