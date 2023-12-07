@@ -1,71 +1,8 @@
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from pysagas.geometry import Vector, Cell
-from typing import List, Callable, Tuple, Optional
-
-
-def cell_dfdp(
-    cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
-) -> Tuple[np.array, np.array]:
-    """Calculates all direction force sensitivities.
-
-    Parameters
-    ----------
-    cell : Cell
-        The cell.
-
-    dPdp_method : Callable
-        The method to use when calculating the pressure sensitivities.
-
-    cog : Vector, optional
-        The reference centre of gravity, used in calculating the moment
-        sensitivities. The defualt is Vector(0,0,0).
-
-    Returns
-    --------
-    sensitivities : np.array
-        An array of shape n x 3, for a 3-dimensional cell with
-        n parameters.
-
-    See Also
-    --------
-    all_dfdp : a wrapper to calculate force sensitivities for many cells
-    """
-    # TODO - move this into a class object along with others
-    # Initialisation
-    all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
-    sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
-    moment_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
-
-    # Calculate moment dependencies
-    r = cell.c - cog
-    F = cell.flowstate.P * cell.A * cell.n.vec
-
-    # For each parameter
-    for p_i in range(cell.dndp.shape[1]):
-        # Calculate pressure sensitivity
-        dPdp = dPdp_method(cell=cell, p_i=p_i, **kwargs)
-
-        # Evaluate for sensitivities for each direction
-        for i, direction in enumerate(all_directions):
-            dF = (
-                dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
-                + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
-                + cell.flowstate.P * cell.A * np.dot(-cell.dndp[:, p_i], direction.vec)
-            )
-            sensitivities[p_i, i] = dF
-
-        # Now evaluate moment sensitivities
-        moment_sensitivities[p_i, :] = np.cross(
-            r.vec, sensitivities[p_i, :]
-        ) + np.cross(cell.dcdp[:, p_i], F)
-
-    # Append to cell
-    cell.sensitivities = sensitivities
-    cell.moment_sensitivities = moment_sensitivities
-
-    return sensitivities, moment_sensitivities
+from typing import List, Optional
+from pysagas.geometry import Cell
 
 
 def piston_dPdp(cell: Cell, p_i: int, **kwargs):
@@ -135,56 +72,6 @@ def isentropic_dPdp(cell: Cell, p_i: int, **kwargs):
     dndp = cell.dndp[:, p_i]
     dPdp = dPdW * np.dot(dWdn, dndp)
     return dPdp
-
-
-def all_dfdp(
-    cells: List[Cell],
-    dPdp_method: Callable = piston_dPdp,
-    cog: Vector = Vector(0, 0, 0),
-    **kwargs,
-) -> Tuple[np.array, np.array]:
-    """Calcualtes the force sensitivities for a list of Cells.
-
-    Parameters
-    ----------
-    cells : list[Cell]
-        The cells to be analysed.
-
-    dPdp_method : Callable, optional
-        The method used to calculate the pressure/parameter sensitivities.
-        The default is the Panel method approximation panel_dPdp (see below).
-
-    cog : Vector, optional
-        The reference centre of gravity, used in calculating the moment
-        sensitivities. The defualt is Vector(0,0,0).
-
-    Returns
-    --------
-    dFdp : np.array
-        The force sensitivity matrix with respect to the parameters.
-
-    dMdp : np.array
-        The moment sensitivity matrix with respect to the parameters.
-
-    See Also
-    --------
-    cell_dfdp : the force sensitivity per cell
-
-    panel_dPdp : pressure sensitivities calculated using Panel method
-        approximations
-    """
-    dFdp = 0
-    dMdp = 0
-    for cell in cells:
-        # Calculate force sensitivity
-        dFdp_c, dMdp_c = cell_dfdp(
-            cell=cell, dPdp_method=dPdp_method, cog=cog, **kwargs
-        )
-
-        dFdp += dFdp_c
-        dMdp += dMdp_c
-
-    return dFdp, dMdp
 
 
 def add_sens_data(

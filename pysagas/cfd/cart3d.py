@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 from pysagas import FlowState, Vector
 from typing import Dict, List, Optional
-from pysagas.wrappers import Cart3DWrapper
+from pysagas.sensitivity import Cart3DWrapper
 from pysagas.optimisation.cart3d.utilities import C3DPrep
 from pysagas.cfd.solver import FlowSolver, FlowResults, SensitivityResults
 

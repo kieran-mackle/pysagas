@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 from pysagas.flow import FlowState
 from pysagas.geometry import Vector
-from pysagas.wrappers import Cart3DWrapper
 from pysagas.utilities import van_dyke_dPdp
+from pysagas.sensitivity import Cart3DSensitivityCalculator
 
 
 def run_main(data_path):
@@ -24,7 +24,7 @@ def run_main(data_path):
     celldata = pd.read_csv(os.path.join(data_path, "cells.csv"))
 
     # Create PySAGAS wrapper
-    wrapper = Cart3DWrapper(
+    wrapper = Cart3DSensitivityCalculator(
         freestream=freestream,
         sensitivity_filepath=sensitivity_filepath,
         pointdata=pointdata,

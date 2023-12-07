@@ -5,11 +5,11 @@ from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
 from pysagas.cfd.solver import SensitivityResults
 from typing import List, Callable, Tuple, Optional
-from pysagas.utilities import all_dfdp, piston_dPdp, add_sens_data
+from pysagas.utilities import piston_dPdp, add_sens_data
 
 
-class AbstractWrapper(ABC):
-    """Abstract Wrapper class defining the wrapper interface."""
+class AbstractSensitivityCalculator(ABC):
+    """Abstract sensitivity calculator class defining the interface."""
 
     solver = None
 
@@ -18,15 +18,15 @@ class AbstractWrapper(ABC):
         pass
 
     def __repr__(self) -> str:
-        return f"PySAGAS Solver Wrapper for {self.solver}"
+        return f"PySAGAS Sensitivity Calculator for {self.solver}"
 
     def __str__(self) -> str:
-        return f"PySAGAS Solver Wrapper for {self.solver}"
+        return f"PySAGAS Sensitivity Calculator for {self.solver}"
 
     @property
     @abstractmethod
     def solver(self):
-        # This is a placeholder for a class variable defining the wrapper's solver
+        # This is a placeholder for a class variable defining the Sensitivity Calculator's solver
         pass
 
     @abstractmethod
@@ -59,8 +59,8 @@ class AbstractWrapper(ABC):
         pass
 
 
-class Wrapper(AbstractWrapper):
-    """Wrapper base class."""
+class SensitivityCalculator(AbstractSensitivityCalculator):
+    """SensitivityCalculator base class."""
 
     def __init__(self, **kwargs) -> None:
         self.cells: list[Cell] = None
@@ -97,9 +97,6 @@ class Wrapper(AbstractWrapper):
 
         parameters = self._extract_parameters()
 
-        # if parameters != ["theta_2", "theta_1"]:
-        #     print("swapped.")
-
         if self.cells is None:
             self.cells = self._transcribe_cells(parameters=parameters)
 
@@ -109,18 +106,9 @@ class Wrapper(AbstractWrapper):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         # Calculate force sensitivity
-        F_sense, M_sense = all_dfdp(
+        F_sense, M_sense = self.all_dfdp(
             cells=self.cells, dPdp_method=dPdp_method, cog=cog, **kwargs
         )
-
-        # hm = np.array([[ 3.59853397e+04,  1.85845803e+04,  2.15575270e+03],
-        #     [ 5.79130106e+02,  1.81481290e+03, -1.05987335e-06]])
-
-        # if not np.all(np.isclose(hm, F_sense)):
-        #     print("\n\n\n\nbad")
-
-        # if parameters[0] != "theta_2":
-        #     print("\n\n\n\nwtf")
 
         # Construct dataframes to return
         df_f = pd.DataFrame(
@@ -160,8 +148,125 @@ class Wrapper(AbstractWrapper):
                     parameters.append(e[3:])
         return parameters
 
+    @staticmethod
+    def all_dfdp(
+        cells: List[Cell],
+        dPdp_method: Callable = piston_dPdp,
+        cog: Vector = Vector(0, 0, 0),
+        **kwargs,
+    ) -> Tuple[np.array, np.array]:
+        """Calcualtes the force sensitivities for a list of Cells.
 
-class GenericWrapper(Wrapper):
+        Parameters
+        ----------
+        cells : list[Cell]
+            The cells to be analysed.
+
+        dPdp_method : Callable, optional
+            The method used to calculate the pressure/parameter sensitivities.
+            The default is the Panel method approximation panel_dPdp (see below).
+
+        cog : Vector, optional
+            The reference centre of gravity, used in calculating the moment
+            sensitivities. The defualt is Vector(0,0,0).
+
+        Returns
+        --------
+        dFdp : np.array
+            The force sensitivity matrix with respect to the parameters.
+
+        dMdp : np.array
+            The moment sensitivity matrix with respect to the parameters.
+
+        See Also
+        --------
+        cell_dfdp : the force sensitivity per cell
+
+        panel_dPdp : pressure sensitivities calculated using Panel method
+            approximations
+        """
+        # TODO - use Enum for sens method used
+        dFdp = 0
+        dMdp = 0
+        for cell in cells:
+            # Calculate force sensitivity
+            dFdp_c, dMdp_c = SensitivityCalculator.cell_dfdp(
+                cell=cell, dPdp_method=dPdp_method, cog=cog, **kwargs
+            )
+
+            dFdp += dFdp_c
+            dMdp += dMdp_c
+
+        return dFdp, dMdp
+
+    @staticmethod
+    def cell_dfdp(
+        cell: Cell, dPdp_method: Callable, cog: Vector = Vector(0, 0, 0), **kwargs
+    ) -> Tuple[np.array, np.array]:
+        """Calculates all direction force sensitivities.
+
+        Parameters
+        ----------
+        cell : Cell
+            The cell.
+
+        dPdp_method : Callable
+            The method to use when calculating the pressure sensitivities.
+
+        cog : Vector, optional
+            The reference centre of gravity, used in calculating the moment
+            sensitivities. The defualt is Vector(0,0,0).
+
+        Returns
+        --------
+        sensitivities : np.array
+            An array of shape n x 3, for a 3-dimensional cell with
+            n parameters.
+
+        See Also
+        --------
+        all_dfdp : a wrapper to calculate force sensitivities for many cells
+        """
+        # Initialisation
+        all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
+        sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+        moment_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+
+        # Calculate moment dependencies
+        r = cell.c - cog
+        F = cell.flowstate.P * cell.A * cell.n.vec
+
+        # For each parameter
+        for p_i in range(cell.dndp.shape[1]):
+            # Calculate pressure sensitivity
+            dPdp = dPdp_method(cell=cell, p_i=p_i, **kwargs)
+
+            # Evaluate for sensitivities for each direction
+            for i, direction in enumerate(all_directions):
+                dF = (
+                    dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
+                    + cell.flowstate.P
+                    * cell.dAdp[p_i]
+                    * np.dot(cell.n.vec, direction.vec)
+                    + cell.flowstate.P
+                    * cell.A
+                    * np.dot(-cell.dndp[:, p_i], direction.vec)
+                )
+                sensitivities[p_i, i] = dF
+
+            # Now evaluate moment sensitivities
+            moment_sensitivities[p_i, :] = np.cross(
+                r.vec, sensitivities[p_i, :]
+            ) + np.cross(cell.dcdp[:, p_i], F)
+
+        # Append to cell
+        cell.sensitivities = sensitivities
+        cell.moment_sensitivities = moment_sensitivities
+
+        return sensitivities, moment_sensitivities
+
+
+class GenericSensitivityCalculator(SensitivityCalculator):
     solver = "Generic Flow Solver"
 
     def __init__(
@@ -172,7 +277,7 @@ class GenericWrapper(Wrapper):
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
-        """Instantiate a generic PySAGAS sensitivity wrapper.
+        """Instantiate a generic PySAGAS sensitivity calculator.
 
         Parameters
         ----------
@@ -204,7 +309,7 @@ class GenericWrapper(Wrapper):
 
     def _transcribe_cells(self, **kwargs) -> List[Cell]:
         """This is a dummy method to satisfy the abstract base class. Transcribed cells
-        are provided upon instantiation of the wrapper.
+        are provided upon instantiation of the sensitivity calculator.
         """
         # Add sensitivity data to _pre_transcribed_cells
         add_sens_data(
