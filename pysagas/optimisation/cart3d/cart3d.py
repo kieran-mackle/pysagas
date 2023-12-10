@@ -391,33 +391,31 @@ def evaluate_objective(x: dict) -> dict:
     # Run Cart3D simulation
     sim_success, loads_dict, _ = _run_simulation()
 
-    if sim_success:
-        # Load properties
-        properties_dir = glob.glob("*_properties")
-        if properties_dir:
-            volmass = pd.read_csv(
-                glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+    # Load properties
+    properties_dir = glob.glob("*_properties")
+    if properties_dir:
+        volmass = pd.read_csv(
+            glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
+            index_col=0,
+        )
+
+        # Fetch user-defined properties
+        properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
+        if len(properties_file) > 0:
+            # File exists, load it
+            properties = pd.read_csv(
+                properties_file[0],
                 index_col=0,
-            )
-
-            # Fetch user-defined properties
-            properties_file = glob.glob(
-                os.path.join(properties_dir[0], "*properties.csv")
-            )
-            if len(properties_file) > 0:
-                # File exists, load it
-                properties = pd.read_csv(
-                    properties_file[0],
-                    index_col=0,
-                )["0"]
-            else:
-                properties = None
-
+            )["0"]
         else:
-            # No properties data found
-            volmass = None
             properties = None
 
+    else:
+        # No properties data found
+        volmass = None
+        properties = None
+
+    if sim_success:
         # Evaluate objective function
         funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
         failed = False
@@ -425,6 +423,8 @@ def evaluate_objective(x: dict) -> dict:
     else:
         # Simulation failed
         funcs = {}
+        loads_dict = {"C_L-entire": 0, "C_D-entire": 1}
+        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
         failed = True
 
     return funcs, failed
