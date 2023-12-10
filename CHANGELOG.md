@@ -1,3 +1,42 @@
+## v0.12.1 (2023-11-06)
+
+### Refactor
+
+- **optimisation.cartd.__init__.py**: remove imports to simplify
+
+## v0.12.0 (2023-10-31)
+
+### Feat
+
+- **Parser**: STL load_from_file also appends sensitivity data
+- **OPM**: added count of bad cells for diagnosing bad solve
+- **OPM**: optionally provide parameters to avoid sens extraction
+- **FlowState**: add Vector property
+- **Cart3DShapeOpt**: provide kwargs for wrapper.calculate
+
+### Fix
+
+- **Wrapper**: _extract_parameters preserves parameter ordering
+- **van_dyke_dPdp_ingo**: take kwargs
+
+## v0.11.0 (2023-06-18)
+
+### Feat
+
+- **deck.py**: added multideck object to tidy sensitivity deck
+- **SensitivityResults**: translate f_sens to aero frame for coefficients
+- **Deck**: added from_csv methods
+- **deck.py**: added aerodeck object
+- **Wrapper**: return SensitivityResult from calculate
+- **Wrapper**: add verbosity to calculate method
+- **PyMesh-Parser**: optionally provide geom sens data to append to cells on load
+- **GenericWrapper**: specify that cells already have geom sens data to prevent transcription
+- **wrappers**: added generic wrapper to calculate sensitivities from provided cells
+
+### Refactor
+
+- **Sensdeck**: change type to sensdeck
+
 ## v0.10.0 (2023-06-13)
 
 ### Feat

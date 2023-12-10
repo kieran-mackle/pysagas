@@ -9,10 +9,10 @@ import pandas as pd
 import multiprocess as mp
 from pysagas.flow import FlowState
 from pysagas.cfd.cart3d import Cart3D
-from pysagas.optimisation import ShapeOpt
-from pysagas.wrappers import Cart3DWrapper
 from hypervehicle.generator import Generator
+from pysagas.sensitivity import Cart3DWrapper
 from pyoptsparse import Optimizer, Optimization
+from pysagas.optimisation.optimiser import ShapeOpt
 from hypervehicle.utilities import SensitivityStudy
 from pysagas.optimisation.cart3d.utilities import C3DPrep, combine_sense_data
 

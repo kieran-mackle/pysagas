@@ -2,16 +2,32 @@ import numpy as np
 
 np.seterr(all="ignore")
 import gdtk.ideal_gas_flow as igf
+from pysagas.geometry import Vector, Cell
 from pysagas.flow import GasState, FlowState
-from pysagas.utilities import (
-    calculate_pressures,
-    calculate_force_vector,
-    all_dfdp,
-)
-from pysagas.geometry import (
-    Vector,
-    Cell,
-)
+from pysagas.sensitivity.calculator import SensitivityCalculator
+
+
+def calculate_pressures(flow: FlowState, theta: float) -> float:
+    """Calculates the pressure from a flow state and deflecion angle
+    using ideal gas oblique shock theory.
+
+    Parameters
+    ----------
+    flow : FlowState
+        The flow state.
+
+    theta : float
+        The deflection angle (radians).
+
+    Returns
+    --------
+    P2 : float
+        The pressure behind the oblique shock.
+    """
+    beta = igf.beta_obl(M1=flow.M, theta=abs(theta), g=flow.gamma, tol=1.0e-6)
+    P2_P1 = igf.p2_p1_obl(flow.M, beta, g=flow.gamma)
+    P2 = P2_P1 * flow.P
+    return P2
 
 
 def run_main():
@@ -99,7 +115,7 @@ def run_main():
     B.flowstate = ramp_fs
 
     # Calculate force sensitivity
-    F_sense, _ = all_dfdp(cells=[A, B])
+    F_sense, _ = SensitivityCalculator.net_sensitivity(cells=[A, B])
 
     # Calculate error with finite differencing method
     fd_F_sense = calc_fd_sens(parameters, freestream)
@@ -109,6 +125,33 @@ def run_main():
 
     # Test against expected values (error < 10%)
     assert np.max(np.abs(errors)) < 10, "Adjoints inaccurately calculated"
+
+
+def calculate_force_vector(P: float, n: np.array, A: float) -> np.array:
+    """Calculates the force vector components, acting on a
+    surface defined by its area and normal vector.
+
+    Parameters
+    ----------
+    P : float
+        The pressure (Pa).
+
+    n : np.array
+        The normal vector.
+
+    A : float
+        The reference area (m^2).
+
+    Returns
+    --------
+    forces : np.array
+        The force components.
+    """
+    F_x = A * P * np.dot(n, np.array([-1, 0, 0]))
+    F_y = A * P * np.dot(n, np.array([0, -1, 0]))
+    F_z = A * P * np.dot(n, np.array([0, 0, -1]))
+
+    return [F_x, F_y, F_z]
 
 
 def calc_fd_sens(parameters: list, freestream: GasState):

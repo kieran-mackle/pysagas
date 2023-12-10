@@ -3,13 +3,13 @@ import pandas as pd
 from tqdm import tqdm
 from typing import List, Optional
 from pysagas.flow import FlowState
-from pysagas.wrappers.wrapper import Wrapper
+from pysagas.sensitivity.calculator import SensitivityCalculator
 from pysagas.geometry import Vector, Cell, DegenerateCell
-from pysagas.wrappers.cart3d.utilities import process_components_file
+from pysagas.sensitivity.cart3d.utilities import process_components_file
 
 
-class Cart3DWrapper(Wrapper):
-    """PySAGAS Cart3D flow sensitivity wrapper."""
+class Cart3DSensitivityCalculator(SensitivityCalculator):
+    """PySAGAS Cart3D flow sensitivity calculator."""
 
     solver = "Cart3D"
 
@@ -24,7 +24,7 @@ class Cart3DWrapper(Wrapper):
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
-        """A PySAGAS sensitivity wrapper for Cart3D.
+        """A PySAGAS sensitivity calculator for Cart3D.
 
         Parameters
         ----------
