@@ -45,7 +45,8 @@ Shape Optimisation <examples/nose_cone>
 Geometry Module <api_ref/geometry/index>
 Flow Module <api_ref/flow>
 Utilities <api_ref/utilities>
-Wrappers <api_ref/wrappers/index>
+Sensitivity Calculators <api_ref/wrappers/index>
+CFD Wrappers <api_ref/cfd/index>
 Optimisation <api_ref/optimisation/index>
 ```
 

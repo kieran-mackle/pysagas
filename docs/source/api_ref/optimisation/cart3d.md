@@ -2,13 +2,7 @@
 
 
 ```{eval-rst}
-.. autoclass:: pysagas.optimisation.cart3d.ShapeOpt
-   :members:
-```
-
-
-```{eval-rst}
-.. autoclass:: pysagas.optimisation.cart3d.C3DPrep
+.. autoclass:: pysagas.optimisation.cart3d.utilities.C3DPrep
    :members:
 ```
 

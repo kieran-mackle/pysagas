@@ -1,15 +1,15 @@
-# PySAGAS CFD Solver Wrappers
+# PySAGAS Sensitivity Calculators
 
 
 ```{eval-rst}
-.. automodule:: pysagas.wrappers.wrapper
+.. automodule:: pysagas.sensitivity.calculator
    :members:
    :private-members:
 ```
 
 
 ## Supported CFD Wrappers
-The following CFD wrappers have been implemented into *PySAGAS*.
+The following CFD sensitivity wrappers have been implemented into *PySAGAS*.
 
 ```{toctree}
 :maxdepth: 2

@@ -4,14 +4,12 @@ and a utilities module.
 
 
 ```{eval-rst}
-.. automodule:: pysagas.wrappers.cart3d.cart3d
+.. automodule:: pysagas.sensitivity.cart3d.cart3d
    :members:
    :private-members:
 ```
 
-
 ```{eval-rst}
-.. automodule:: pysagas.wrappers.cart3d.utilities
+.. automodule:: pysagas.sensitivity.cart3d.utilities
    :members:
 ```
-
