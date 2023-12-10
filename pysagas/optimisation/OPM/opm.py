@@ -6,10 +6,11 @@ import pandas as pd
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
 from pysagas.optimisation import ShapeOpt
+from pysagas.wrappers import GenericWrapper
 from pysagas.geometry.parsers import PyMesh, STL
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
-from hypervehicle.utilities import SensitivityStudy
+from hypervehicle.utilities import SensitivityStudy, merge_stls
 from typing import List, Dict, Optional, Optional, Any
 
 
@@ -29,6 +30,8 @@ class OPMShapeOpt(ShapeOpt):
         basefiles_dir_name: str = "basefiles",
         save_evolution: bool = True,
         verbosity: int = 1,
+        sensitivity_kwargs: dict = None,
+        parser_kwargs: dict = None,
     ) -> None:
         # Declare global variables
         global fs_flow
@@ -55,6 +58,11 @@ class OPMShapeOpt(ShapeOpt):
         generator = vehicle_generator
         save_geom = save_evolution
         verbose = verbosity
+
+        # Save sensitivity kwargs
+        global _sens_kwargs, _parser_kwargs
+        _sens_kwargs = sensitivity_kwargs if sensitivity_kwargs else {}
+        _parser_kwargs = parser_kwargs if parser_kwargs else {}
 
         if save_geom:
             # Create evolution history directory
@@ -202,7 +210,7 @@ def _process_parameters(x):
     already_started = _compare_parameters(x)
 
     if already_started and verbose > 0:
-        print("  Picking up solution from file..")
+        print("  Picking up solution from file...")
 
     if not already_started:
         # These parameters haven't run yet, prepare the working directory
@@ -239,6 +247,16 @@ def _process_parameters(x):
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
 
+        # Merge STLs
+        vehicle = ss.nominal_vehicle_instance
+        stl_files = [f"{c}.stl" for c in vehicle.get_non_ghost_components().keys()]
+        if len(stl_files) > 1:
+            geom_file = merge_stls(
+                stl_files=stl_files, name=vehicle.name, verbosity=verbose
+            )
+        else:
+            geom_file = stl_files[0]
+
 
 def _run_simulation():
     """Prepare and run the CFD simulation with the OPM solver."""
@@ -250,13 +268,17 @@ def _run_simulation():
     # Load cells from geometry
     if cells is None:
         try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+            cells = PyMesh.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
         except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+            cells = STL.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
 
     # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # if solver is None:
+    solver = OPM(cells=cells, freestream=fs_flow, verbosity=verbose)
 
     if verbose > 0:
         print("  Running OPM flow solver.")
@@ -279,25 +301,50 @@ def _run_sensitivities():
     # Load cells from geometry
     if cells is None:
         try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+            # cells = PyMesh.load_from_file(geom_filename, verbosity=verbose, **_parser_kwargs)
+            cells = PyMesh.load_from_file(
+                filepath=geom_filename,
+                geom_sensitivities=sens_filename,
+                verbosity=verbose,
+                **_parser_kwargs,
+            )
         except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+            cells = STL.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
 
-    # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # Run OPM to generate nominal aero data on cells
+    flow_solver = OPM(cells=cells, freestream=fs_flow, verbosity=verbose)
+    aero = flow_solver.solve(freestream=fs_flow)
 
-    # TODO - how will sens combining be handled? Need to use merged STL
-    # TODO - remove hard coding below
-    if verbose > 0:
-        print("  Running OPM sensitivity flow solver.")
-    sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
+    # Solve for aerodynamic sensitivities
+    sens_solver = GenericWrapper(
+        cells=cells,
+        sensitivity_filepath=sens_filename,
+        cells_have_sens_data=True,
+        verbosity=verbose,
+    )
+    result = sens_solver.calculate(**_sens_kwargs)
+    F_sense = result.f_sens
 
     # Non-dimensionalise
-    coef_sens = sens_results.f_sens / (fs_flow.q * _A_ref)
+    coef_sens = F_sense / (fs_flow.q * _A_ref)
+
+    # # Run OPM solver for coefficients
+    # if solver is None:
+    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+
+    # # TODO - how will sens combining be handled? Need to use merged STL
+    # # TODO - remove hard coding below
+    # if verbose > 0:
+    #     print("  Running OPM sensitivity flow solver.")
+    # sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
+
+    # # Non-dimensionalise
+    # coef_sens = sens_results.f_sens / (fs_flow.q * _A_ref)
 
     # Construct coefficient dictionary
-    CL, CD, Cm = solver.flow_result.coefficients()
+    CL, CD, Cm = aero.coefficients()
     coefficients = {"CL": CL, "CD": CD}
 
     return coefficients, coef_sens
