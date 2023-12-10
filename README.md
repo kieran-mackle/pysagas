@@ -102,6 +102,12 @@ If using an Anaconda environment, you can also install PyOptSparse from Conda fo
 conda install -c conda-forge pyoptsparse
 ```
 
+#### PyMesh
+
+Having [PyMesh](https://github.com/PyMesh/PyMesh) installed can greatly enhance the capabilities
+offered by `PySAGAS`. However, it can be difficult to install. Troubleshooting guide coming soon.
+
+
 
 ### Installation
 After installing the dependencies above, clone this repo to your 
@@ -115,7 +121,8 @@ Next, use pip to install the `pysagas` package from the repo you
 just cloned.
 
 ```
-python3 -m pip install pysagas
+cd pysagas
+python3 -m pip install .
 ```
 
 <!-- end getting started -->
@@ -180,9 +187,7 @@ PySAGAS is being developed along the following roadmap.
 * [x] Control over surface tags / faces being analysed
 * [x] Visualisation of sensitivities on mesh (cell-wise)
 * [x] Implementation of additional sensitivity models
-* [ ] Visualisation of pressures from Newton impact solver
-* [ ] CLI, to access `ShapeOpt` and `NewtonImpact` flow solver
-* [ ] Testing with flow solutions from [Eilmer](https://github.com/gdtk-uq/gdtk)
+* [ ] CLI
 
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
@@ -224,8 +229,7 @@ below.
 
 ### Developing PySAGAS
 
-- Before making any changes, create a new branch to develop on using 
-`git checkout -b new-branch-name`.
+- Before making any changes, fork this repository and clone it to your machine.
 
 - Run [black](https://black.readthedocs.io/en/stable/index.html) on any
 code you modify. This formats it according to 
@@ -238,7 +242,7 @@ docstrings, and add to the docs where relevant.
 - Write unit tests for the code you add, and include them in `tests/`. 
 This project uses [pytest](https://docs.pytest.org/en/7.2.x/).
 
-- Commit code regularly to avoid large commits with many changes. 
+- Commit code regularly to avoid large commits with many changes.
 
 - Write meaningful commit messages, following the 
 [Conventional Commits standard](https://www.conventionalcommits.org/en/v1.0.0/).
