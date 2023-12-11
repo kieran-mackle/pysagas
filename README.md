@@ -277,11 +277,3 @@ sphinx-autobuild source/ build/html --open-browser
 <!-- end contribution guidelines -->
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
-
-
-
-## License
-To be confirmed.
-
-
-<p align="right">[<a href="#readme-top">back to top</a>]</p>
