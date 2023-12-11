@@ -10,10 +10,10 @@ import multiprocess as mp
 from pysagas.flow import FlowState
 from pysagas.cfd.cart3d import Cart3D
 from hypervehicle.generator import Generator
-from pysagas.sensitivity import Cart3DWrapper
 from pyoptsparse import Optimizer, Optimization
 from pysagas.optimisation.optimiser import ShapeOpt
 from hypervehicle.utilities import SensitivityStudy
+from pysagas.sensitivity.cart3d import Cart3DSensitivityCalculator
 from pysagas.optimisation.cart3d.utilities import C3DPrep, combine_sense_data
 
 
@@ -444,7 +444,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     # Create PySAGAS wrapper and run
     try:
-        wrapper = Cart3DWrapper(
+        wrapper = Cart3DSensitivityCalculator(
             freestream=_freestream,
             sensitivity_filepath=sensitivity_filepath,
             components_filepath=components_filepath,
@@ -468,7 +468,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         )
 
         # Re-instantiate the wrapper
-        wrapper = Cart3DWrapper(
+        wrapper = Cart3DSensitivityCalculator(
             freestream=_freestream,
             sensitivity_filepath=sensitivity_filepath,
             components_filepath=components_filepath,

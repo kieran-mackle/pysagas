@@ -5,13 +5,13 @@ import pickle
 import pandas as pd
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
-from pysagas.optimisation import ShapeOpt
-from pysagas.wrappers import GenericWrapper
-from pysagas.geometry.parsers import PyMesh, STL
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
-from hypervehicle.utilities import SensitivityStudy, merge_stls
+from pysagas.geometry.parsers import PyMesh, STL
+from pysagas.optimisation.optimiser import ShapeOpt
 from typing import List, Dict, Optional, Optional, Any
+from pysagas.sensitivity import GenericSensitivityCalculator
+from hypervehicle.utilities import SensitivityStudy, merge_stls
 
 
 class OPMShapeOpt(ShapeOpt):
@@ -318,7 +318,7 @@ def _run_sensitivities():
     aero = flow_solver.solve(freestream=fs_flow)
 
     # Solve for aerodynamic sensitivities
-    sens_solver = GenericWrapper(
+    sens_solver = GenericSensitivityCalculator(
         cells=cells,
         sensitivity_filepath=sens_filename,
         cells_have_sens_data=True,
