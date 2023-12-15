@@ -23,6 +23,7 @@ Getting Started <documentation/getting-started>
 Usage <documentation/usage>
 Theory <documentation/theory>
 Definitions <documentation/definitions>
+Publications <documentation/publications/index>
 ```
 
 
@@ -58,4 +59,5 @@ Optimisation <api_ref/optimisation/index>
 
 Contributing <documentation/contributing_docs/index>
 Changelog <documentation/changelog>
+Citing PySAGAS <documentation/citing>
 ```
