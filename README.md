@@ -1,16 +1,23 @@
 <a name="readme-top"></a>
 
-# PySAGAS
+<h1 align="center">PySAGAS</h1>
+
+<p align="center">
+  <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center"></a>
+</p>
+
+
 
 <!-- start intro -->
 **PySAGAS** is a Python package for the generation of **S**ensitivity **A**pproximations
-for **G**eometric and **A**erodynamic **Surface** properties.
-It provides a computationally-efficient method for generating 
-surface sensitivity approximations from existing flow solutions,
-to use in aerodynamic shape optimisation studies.
+for **G**eometric and **A**erodynamic **Surface** properties. It provides a 
+computationally-efficient method for generating surface sensitivity approximations from 
+existing flow solutions, to use in aerodynamic shape optimisation studies. The GIF below 
+is an example of this, where a hypersonic waverider was optimised for maximum L/D at Mach
+6.
+
 <!-- end intro -->
 
-<a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status"></a>
 
 
 ![waverider-evolution-flipped](https://github.com/kieran-mackle/pysagas/assets/60687606/4c78a82c-8f20-4235-baf3-ad57bda4945d)
