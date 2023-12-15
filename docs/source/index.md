@@ -21,8 +21,8 @@ or have a look at the [examples](examples/ramp_3d.md).
 
 Getting Started <documentation/getting-started>
 Usage <documentation/usage>
-Theory <documentation/theory>
 Definitions <documentation/definitions>
+Theory <documentation/theory>
 Publications <documentation/publications/index>
 ```
 
