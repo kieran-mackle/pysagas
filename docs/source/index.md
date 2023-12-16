@@ -6,12 +6,12 @@
 :end-before: <!-- end intro -->
 ```
 
+![ReFEX CFD](_static/waverider-evolution-flipped.gif)
+
 To learn more about the theory behind *PySAGAS*, see the 
 [theory documentation](theory-docs). Otherwise, see the 
 [Getting Started](documentation/getting-started) guide, 
 or have a look at the [examples](examples/ramp_3d.md).
-
-![ReFEX CFD](_static/refex-sim.png)
 
 
 ```{toctree}
