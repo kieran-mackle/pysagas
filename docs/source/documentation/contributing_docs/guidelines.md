@@ -50,7 +50,7 @@ docstrings, and add to the docs where relevant.
 - Write unit tests for the code you add, and include them in `tests/`. 
 This project uses [pytest](https://docs.pytest.org/en/7.2.x/).
 
-- Commit code regularly to avoid large commits with many changes.
+- Commit code regularly to avoid large commits with many unrelated changes.
 
 - Write meaningful commit messages, following the 
 [Conventional Commits standard](https://www.conventionalcommits.org/en/v1.0.0/).
