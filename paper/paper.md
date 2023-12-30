@@ -34,6 +34,8 @@ The Pyhon package has been developed according to best practices, and extensive 
 
 # Statement of need
 
+This package has played a key role in research conducted for the efficient optimisation of hypersonic vehicle configurations [@MackleShapeOpt; @MackleCoDesign].
+
 ![Shape optimised hypersonic waverider using *PySAGAS*.](vd-optimised-outlined.png){ width=70% }
 
 +-------------------+-------------------------------+
@@ -48,11 +50,6 @@ The Pyhon package has been developed according to best practices, and extensive 
 +-------------------+-------------------------------+
 | Finite difference |       2 days, 8:40:00         |
 +===================+===============================+
-
-Getting errors in the build (locally) whenever citations are included. Need to try with GitHub actions to see if the errors persist.
-
-<!-- PySAGAS paper [@MackleShapeOpt] -->
-
 
 
 # Acknowledgements
