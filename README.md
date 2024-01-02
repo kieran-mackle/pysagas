@@ -10,7 +10,7 @@
 
 <!-- start intro -->
 **PySAGAS** is a Python package for the generation of **S**ensitivity **A**pproximations
-for **G**eometric and **A**erodynamic **Surface** properties. It provides a 
+for **G**eometric and **A**erodynamic **S**urface properties. It provides a 
 computationally-efficient method for generating surface sensitivity approximations from 
 existing flow solutions, to use in aerodynamic shape optimisation studies. The GIF below 
 is an example of this, where a hypersonic waverider was optimised for maximum L/D at Mach
