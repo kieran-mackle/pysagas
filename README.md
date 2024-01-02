@@ -14,7 +14,7 @@
   </a>
 
   <a>
-    <img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center">
+    <img src="https://github.com/kieran-mackle/pysagas/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center">
   </a>
   
 </p>
