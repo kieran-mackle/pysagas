@@ -2,10 +2,22 @@
 
 <h1 align="center">PySAGAS</h1>
 
-<p align="center">
-  <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center"></a>
-</p>
 
+
+<p align="center">
+  <a href="https://pypi.org/project/hypysagas/">
+    <img src="https://img.shields.io/pypi/v/hypysagas.svg?color=blue&style=plastic" alt="Latest version" width=95 height=20>
+  </a>
+  
+  <a href="https://github.com/psf/black">
+    <img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
+
+  <a>
+    <img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center">
+  </a>
+  
+</p>
 
 
 <!-- start intro -->
