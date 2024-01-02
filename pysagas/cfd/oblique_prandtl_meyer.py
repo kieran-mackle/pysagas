@@ -20,11 +20,11 @@ class OPM(FlowSolver):
     ----------------
     Data attribute 'method' refers to which method was used for a particular
     cell, according to:
-        -1 : invalid / skipped (eg. 90 degree face)
-        0 : parallel face, do nothing
-        1 : Prandlt-Meyer
-        2 : normal shock
-        3 : oblique shock
+        - -1 : invalid / skipped (eg. 90 degree face)
+        - 0 : parallel face, do nothing
+        - 1 : Prandlt-Meyer
+        - 2 : normal shock
+        - 3 : oblique shock
     """
 
     method = "Oblique/Prandtl-Meyer combination"

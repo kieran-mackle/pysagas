@@ -7,7 +7,7 @@ This page covers a simple test case of an inclined ramp.
 ## Problem Definition
 
 The parameters of this problem are 
-$\mathbf{p} = [\theta, \, L, \, W]$, shown
+$\underline{\theta} = [\theta, \, L, \, W]$, shown
 diagramatically in the figure below. The geometry is
 built from two [cells](cell-definition), sharing a common edge.
 
@@ -87,11 +87,11 @@ be calculated using the method of finite differencing. Performing
 such a study produces the results shown in the table below.
 
 $$
-F = P \times A \times \mathbf{n}_{ramp} \cdot \mathbf{u}
+F = P \times A \times \underline{n}_{ramp} \cdot \underline{u}
 $$
 
 
-|  Parameter $p$  | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
+|  Parameter      | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
 |-----------------|-----------|-----------|-----------|
 |  $\theta$       |  1.07  |  -3.11   |  0  |
 |  $L$            |  8.92  |  -50.57  |  0  |
@@ -107,7 +107,7 @@ sensitivitiy, as calculated using the analytical solution
 for reference, is shown in brackets.
 
 
-|  Parameter $p$  | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
+|  Parameter      | $dF_x/dp$ | $dF_y/dp$ | $dF_z/dp$ |
 |-----------------|-----------|-----------|-----------|
 |  $\theta$       |  1.09 (-1.6%) | -3.20 (-3.1%)  |  0 (0%) |
 |  $L$            |  8.92 (0%) | -50.57 (0%)  |  0 (0%) |

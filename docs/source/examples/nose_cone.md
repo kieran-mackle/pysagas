@@ -41,10 +41,10 @@ Therefore, there are 4 design parameters in this problem.
 ## Optimisation Process
 The optimisation process follows the schematic in the figure below.
 Starting with a nominal set of geometric parameters, 
-[*hypervehicle*](http://github.com/kieran-mackle/hypervehicle/) is used
+[*HyperVehicle*](http://github.com/kieran-mackle/HyperVehicle/) is used
 to generate STL files. These files are passed into an aerodynamic modelling
 package, in order to obtain the nominal flow solution for that geometry.
-[*Hypervehicle*](http://github.com/kieran-mackle/hypervehicle/) is also
+[*HyperVehicle*](http://github.com/kieran-mackle/HyperVehicle/) is also
 used to generate the geometry sensitivities, $dv/dp$, which are used in
 conjunction with the flow solution to generate the design parameter 
 sensitivities via *pysagas*. Finally, these sensitivities can be 
@@ -72,7 +72,7 @@ $$
 As mentioned above, the geometry and geometry-parameter 
 sensitivities, $dv/dp$, will be generated using the parametric 
 geometry generation package, 
-[*hypervehicle*](http://github.com/kieran-mackle/hypervehicle/).
+[*HyperVehicle*](http://github.com/kieran-mackle/HyperVehicle/).
 This package allows a user to parametrically define a vehicle
 and output STL files for aerodynamic modelling.
 

@@ -8,7 +8,7 @@ from any solver could be used instead of Cart3D.
 ## Problem Defintion
 The geometry for this example was generated using the 
 parameteric geometry generation tool 
-[hypervehicle](https://github.com/kieran-mackle/hypervehicle).
+[HyperVehicle](https://github.com/kieran-mackle/hypervehicle).
 This tool provides the capability of generating cell vertex
 sensitivities to geometric parameters. 
 
@@ -46,7 +46,7 @@ sensitivities in the non-dimensional coefficients
 $C_x, C_y$ and $C_z$.
 
 
-|  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
+|  Parameter      | $\partial C_x/ \partial \theta$ | $\partial C_y/ \partial \theta$ | $\partial C_z/ \partial \theta$ |
 |-----------------|-----------|-----------|-----------|
 | Thickness       |  0.14517  |  0.126153   |  0.0000  |
 
@@ -57,7 +57,7 @@ sensitivities can be generated using *PySAGAS*.
 Note, the error of each sensitivitiy, as calculated using 
 the Cart3D solution for reference, is shown in brackets.
 
-|  Parameter $p$  | $dC_x/dp$ | $dC_y/dp$ | $dC_z/dp$ |
+|  Parameter      | $\partial C_x/ \partial \theta$ | $\partial C_y/ \partial \theta$ | $\partial C_z/ \partial \theta$ |
 |-----------------|-----------|-----------|-----------|
 | Thickness       |  0.15496 (5.0%) | 0.11912 (-5.6%)  |  0.00312 (-) |
 

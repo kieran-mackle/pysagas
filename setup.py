@@ -35,7 +35,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="pysagas",
+    name="hypysagas",
     version=get_version("pysagas/__init__.py"),
     author="Kieran Mackle",
     author_email="kemackle98@gmail.com",

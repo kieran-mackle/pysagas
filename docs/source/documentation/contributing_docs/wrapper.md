@@ -1,7 +1,5 @@
 
-# Implementing a New Wrapper
+# Implementing a New Senstivity Calculater
 
-PySAGAS wrappers for different CFD solvers all inherit 
-from the [Wrapper](pysagas.wrappers.wrapper.Wrapper)
-class.
-
+PySAGAS sensitivity calculators for different CFD solvers all inherit 
+from the {py:class}`.SensitivityCalculator` class.

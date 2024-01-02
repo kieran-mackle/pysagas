@@ -1,10 +1,13 @@
 # PySAGAS Optimisation Wrappers
 
-Create a base class for optimisation wrappers?
+```{eval-rst}
+.. autoclass:: pysagas.optimisation.optimiser.ShapeOpt
+   :members:
+```
 
 
 ## Supported Optimisation Wrappers
-The following ShapeOpt wrappers have been implemented into *PySAGAS*.
+The following `ShapeOpt` wrappers have been implemented into *PySAGAS*.
 
 ```{toctree}
 :maxdepth: 2

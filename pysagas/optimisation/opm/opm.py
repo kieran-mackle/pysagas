@@ -2,15 +2,17 @@ import os
 import glob
 import shutil
 import pickle
+import numpy as np
 import pandas as pd
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
-from pysagas.optimisation import ShapeOpt
-from pysagas.geometry.parsers import PyMesh, STL
 from hypervehicle.generator import Generator
 from pyoptsparse import Optimizer, Optimization
-from hypervehicle.utilities import SensitivityStudy
+from pysagas.geometry.parsers import PyMesh, STL
+from pysagas.optimisation.optimiser import ShapeOpt
 from typing import List, Dict, Optional, Optional, Any
+from pysagas.sensitivity import GenericSensitivityCalculator
+from hypervehicle.utilities import SensitivityStudy, merge_stls
 
 
 class OPMShapeOpt(ShapeOpt):
@@ -29,6 +31,8 @@ class OPMShapeOpt(ShapeOpt):
         basefiles_dir_name: str = "basefiles",
         save_evolution: bool = True,
         verbosity: int = 1,
+        sensitivity_kwargs: dict = None,
+        parser_kwargs: dict = None,
     ) -> None:
         # Declare global variables
         global fs_flow
@@ -55,6 +59,11 @@ class OPMShapeOpt(ShapeOpt):
         generator = vehicle_generator
         save_geom = save_evolution
         verbose = verbosity
+
+        # Save sensitivity kwargs
+        global _sens_kwargs, _parser_kwargs
+        _sens_kwargs = sensitivity_kwargs if sensitivity_kwargs else {}
+        _parser_kwargs = parser_kwargs if parser_kwargs else {}
 
         if save_geom:
             # Create evolution history directory
@@ -96,9 +105,15 @@ def evaluate_objective(x: dict):
     # Load properties
     properties_dir = glob.glob("*_properties")
     if properties_dir:
+        # Load volume and mass
         volmass = pd.read_csv(
             glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
             index_col=0,
+        )
+
+        # Load COG data
+        cog = np.loadtxt(
+            glob.glob(os.path.join(properties_dir[0], "*cog.txt"))[0], delimiter=","
         )
 
         # Fetch user-defined properties
@@ -116,10 +131,15 @@ def evaluate_objective(x: dict):
         # No properties data found
         volmass = None
         properties = None
+        cog = None
 
     # Evaluate objective function
     funcs = obj_cb(
-        loads_dict=loads_dict, volmass=volmass, properties=properties, parameters=x
+        loads_dict=loads_dict,
+        volmass=volmass,
+        properties=properties,
+        parameters=x,
+        cog=cog,
     )
     failed = False
 
@@ -202,7 +222,7 @@ def _process_parameters(x):
     already_started = _compare_parameters(x)
 
     if already_started and verbose > 0:
-        print("  Picking up solution from file..")
+        print("  Picking up solution from file...")
 
     if not already_started:
         # These parameters haven't run yet, prepare the working directory
@@ -239,6 +259,16 @@ def _process_parameters(x):
         ss.dvdp(parameter_dict=parameters, perturbation=2, write_nominal_stl=True)
         ss.to_csv()
 
+        # Merge STLs
+        vehicle = ss.nominal_vehicle_instance
+        stl_files = [f"{c}.stl" for c in vehicle.get_non_ghost_components().keys()]
+        if len(stl_files) > 1:
+            geom_file = merge_stls(
+                stl_files=stl_files, name=vehicle.name, verbosity=verbose
+            )
+        else:
+            geom_file = stl_files[0]
+
 
 def _run_simulation():
     """Prepare and run the CFD simulation with the OPM solver."""
@@ -250,13 +280,17 @@ def _run_simulation():
     # Load cells from geometry
     if cells is None:
         try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+            cells = PyMesh.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
         except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+            cells = STL.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
 
     # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # if solver is None:
+    solver = OPM(cells=cells, freestream=fs_flow, verbosity=verbose)
 
     if verbose > 0:
         print("  Running OPM flow solver.")
@@ -265,7 +299,7 @@ def _run_simulation():
 
     # Construct coefficient dictionary
     CL, CD, Cm = sim_results.coefficients()
-    coefficients = {"CL": CL, "CD": CD}
+    coefficients = {"CL": CL, "CD": CD, "Cm": Cm}
 
     return coefficients
 
@@ -279,26 +313,51 @@ def _run_sensitivities():
     # Load cells from geometry
     if cells is None:
         try:
-            cells = PyMesh.load_from_file(geom_filename, verbosity=0)
+            # cells = PyMesh.load_from_file(geom_filename, verbosity=verbose, **_parser_kwargs)
+            cells = PyMesh.load_from_file(
+                filepath=geom_filename,
+                geom_sensitivities=sens_filename,
+                verbosity=verbose,
+                **_parser_kwargs,
+            )
         except:
-            cells = STL.load_from_file(geom_filename, verbosity=0)
+            cells = STL.load_from_file(
+                geom_filename, verbosity=verbose, **_parser_kwargs
+            )
 
-    # Run OPM solver
-    if solver is None:
-        solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+    # Run OPM to generate nominal aero data on cells
+    flow_solver = OPM(cells=cells, freestream=fs_flow, verbosity=verbose)
+    aero = flow_solver.solve(freestream=fs_flow)
 
-    # TODO - how will sens combining be handled? Need to use merged STL
-    # TODO - remove hard coding below
-    if verbose > 0:
-        print("  Running OPM sensitivity flow solver.")
-    sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
+    # Solve for aerodynamic sensitivities
+    sens_solver = GenericSensitivityCalculator(
+        cells=cells,
+        sensitivity_filepath=sens_filename,
+        cells_have_sens_data=True,
+        verbosity=verbose,
+    )
+    result = sens_solver.calculate(**_sens_kwargs)
+    F_sense = result.f_sens
 
     # Non-dimensionalise
-    coef_sens = sens_results.f_sens / (fs_flow.q * _A_ref)
+    coef_sens = F_sense / (fs_flow.q * _A_ref)
+
+    # # Run OPM solver for coefficients
+    # if solver is None:
+    #     solver = OPM(cells=cells, freestream=fs_flow, verbosity=0)
+
+    # # TODO - how will sens combining be handled? Need to use merged STL
+    # # TODO - remove hard coding below
+    # if verbose > 0:
+    #     print("  Running OPM sensitivity flow solver.")
+    # sens_results = solver.solve_sens(sensitivity_filepath="nose_sensitivity.csv")
+
+    # # Non-dimensionalise
+    # coef_sens = sens_results.f_sens / (fs_flow.q * _A_ref)
 
     # Construct coefficient dictionary
-    CL, CD, Cm = solver.flow_result.coefficients()
-    coefficients = {"CL": CL, "CD": CD}
+    CL, CD, Cm = aero.coefficients()
+    coefficients = {"CL": CL, "CD": CD, "Cm": Cm}
 
     return coefficients, coef_sens
 

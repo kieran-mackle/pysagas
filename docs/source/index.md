@@ -6,12 +6,12 @@
 :end-before: <!-- end intro -->
 ```
 
+![ReFEX CFD](_static/waverider-evolution-flipped.gif)
+
 To learn more about the theory behind *PySAGAS*, see the 
 [theory documentation](theory-docs). Otherwise, see the 
 [Getting Started](documentation/getting-started) guide, 
 or have a look at the [examples](examples/ramp_3d.md).
-
-![ReFEX CFD](_static/refex-sim.png)
 
 
 ```{toctree}
@@ -21,8 +21,9 @@ or have a look at the [examples](examples/ramp_3d.md).
 
 Getting Started <documentation/getting-started>
 Usage <documentation/usage>
-Theory <documentation/theory>
 Definitions <documentation/definitions>
+Theory <documentation/theory>
+Publications <documentation/publications/index>
 ```
 
 
@@ -45,7 +46,8 @@ Shape Optimisation <examples/nose_cone>
 Geometry Module <api_ref/geometry/index>
 Flow Module <api_ref/flow>
 Utilities <api_ref/utilities>
-Wrappers <api_ref/wrappers/index>
+Sensitivity Calculators <api_ref/wrappers/index>
+CFD Wrappers <api_ref/cfd/index>
 Optimisation <api_ref/optimisation/index>
 ```
 
@@ -57,4 +59,5 @@ Optimisation <api_ref/optimisation/index>
 
 Contributing <documentation/contributing_docs/index>
 Changelog <documentation/changelog>
+Citing PySAGAS <documentation/citing>
 ```

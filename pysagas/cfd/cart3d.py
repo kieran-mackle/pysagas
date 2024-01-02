@@ -5,8 +5,8 @@ import subprocess
 import numpy as np
 from pysagas import FlowState, Vector
 from typing import Dict, List, Optional
-from pysagas.wrappers import Cart3DWrapper
 from pysagas.optimisation.cart3d.utilities import C3DPrep
+from pysagas.sensitivity import Cart3DSensitivityCalculator
 from pysagas.cfd.solver import FlowSolver, FlowResults, SensitivityResults
 
 
@@ -194,7 +194,7 @@ class Cart3D(FlowSolver):
             components_filepath = os.path.join(
                 self._sim_dir, "BEST/FLOW/Components.i.plt"
             )
-            wrapper = Cart3DWrapper(
+            wrapper = Cart3DSensitivityCalculator(
                 freestream=flow,
                 sensitivity_filepath=sensitivity_filepath,
                 components_filepath=components_filepath,
