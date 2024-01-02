@@ -36,6 +36,8 @@ is an example of this, where a hypersonic waverider was optimised for maximum L/
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#citing-pysagas">Citing</a></li>
+    <li><a href="#license">License</a></li>
   </ol>
 </details>
 
@@ -121,5 +123,27 @@ with the sensitivity of the geometric vertices to the design parameters. From he
 
 
 <!-- end usage -->
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
+
+## Citing PySAGAS
+If you use PySAGAS in any published work, please cite it using the BibTex reference below.
+
+```text
+@inproceedings{Mackle2024,
+  author    = {Mackle, Kieran and Jahn, Ingo},
+  booktitle = {AIAA Science and Technology Forum and Exposition},
+  title     = {Efficient and Flexible Methodology for the Aerodynamic Shape Optimisation of Hypersonic Vehicle Concepts in a High-Dimensional Design Space},
+  year      = {2024},
+}
+```
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
+## License
+PySAGAS is licensed under [GPLv3](COPYING).
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
