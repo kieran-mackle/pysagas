@@ -2,6 +2,7 @@ import os
 import glob
 import shutil
 import pickle
+import numpy as np
 import pandas as pd
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
@@ -104,9 +105,15 @@ def evaluate_objective(x: dict):
     # Load properties
     properties_dir = glob.glob("*_properties")
     if properties_dir:
+        # Load volume and mass
         volmass = pd.read_csv(
             glob.glob(os.path.join(properties_dir[0], "*volmass.csv"))[0],
             index_col=0,
+        )
+
+        # Load COG data
+        cog = np.loadtxt(
+            glob.glob(os.path.join(properties_dir[0], "*cog.txt"))[0], delimiter=","
         )
 
         # Fetch user-defined properties
@@ -124,10 +131,15 @@ def evaluate_objective(x: dict):
         # No properties data found
         volmass = None
         properties = None
+        cog = None
 
     # Evaluate objective function
     funcs = obj_cb(
-        loads_dict=loads_dict, volmass=volmass, properties=properties, parameters=x
+        loads_dict=loads_dict,
+        volmass=volmass,
+        properties=properties,
+        parameters=x,
+        cog=cog,
     )
     failed = False
 
@@ -287,7 +299,7 @@ def _run_simulation():
 
     # Construct coefficient dictionary
     CL, CD, Cm = sim_results.coefficients()
-    coefficients = {"CL": CL, "CD": CD}
+    coefficients = {"CL": CL, "CD": CD, "Cm": Cm}
 
     return coefficients
 
@@ -345,7 +357,7 @@ def _run_sensitivities():
 
     # Construct coefficient dictionary
     CL, CD, Cm = aero.coefficients()
-    coefficients = {"CL": CL, "CD": CD}
+    coefficients = {"CL": CL, "CD": CD, "Cm": Cm}
 
     return coefficients, coef_sens
 
