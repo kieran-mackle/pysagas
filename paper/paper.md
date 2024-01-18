@@ -5,7 +5,7 @@ tags:
   - engineering
   - cfd
   - hypersonics
-  - optimisation
+  - optimization
 authors:
   - name: Kieran Mackle
     orcid: 0000-0001-8245-250X
@@ -27,23 +27,23 @@ bibliography: paper.bib
 
 PySAGAS is a **Py**thon package for **S**ensitivity **A**pproximations of **G**eometric and **A**erodynamic **S**urface properties. 
 It provides a computationally-efficient method for approximating the sensitivities of aerodynamic forces and moments with respect to design parameters, from nominal surface properties provided by a single CFD flow solution.
-The sensitivities outputted by PySAGAS can be used for sensitivity studies, or for aerodynamic shape optimisation.
-PySAGAS also provides a conventient API to multiple senstivity model implementations, as well as optimisation wrappers and geometry utilities.
+The sensitivities outputted by PySAGAS can be used for sensitivity studies, or for aerodynamic shape optimization.
+PySAGAS also provides a conventient API to multiple senstivity model implementations, as well as optimization wrappers and geometry utilities.
 
 The Pyhon package has been developed according to best practices, and extensive documentation is provided online.
 
 # Statement of need
 
-Gradient-based optimization techniques possess many desireable characteristics for the application of aerodynamic shape optimisation.
+Gradient-based optimization techniques possess many desireable characteristics for the application of aerodynamic shape optimization.
 Specifically, these techniques are known for being efficient and scalable with the number of design parameters.
 As the name implies, they require information about the gradient of the objective function with respect to the design parameters.
 For analytical or computationally-inexpensive problems, this is a relatively straightforward hurdle to overcome.
 Analytical expressions can easily be differentiated, and gradient information can be extracted from inexpensive problems by use of numerical techniques, such as finite-differencing.
-However, as the system being optimised becomes more computationally demanding, either by virtue of complexity or dimensionality, these approaches of calculating gradient information are either impossible or intractable.
+However, as the system being optimized becomes more computationally demanding, either by virtue of complexity or dimensionality, these approaches of calculating gradient information are either impossible or intractable.
 
 PySAGAS implements a novel solution to this problem in the context of hypersonic vehicle design.
 A detailed description of the methodology employed can be found in [@MackleShapeOpt].
-This package has played a key role in research conducted for the efficient optimisation of hypersonic vehicle configurations [@MackleCoDesign].
+This package has played a key role in research conducted for the efficient optimization of hypersonic vehicle configurations [@MackleCoDesign].
 
 
 # Theory
@@ -53,8 +53,8 @@ This is performed on a surface-local basis.
 To explain this, consider the surface mesh shown in the image below, which discretizes the continuous surface into triangular elements.
 Each of these triangular elements is defined by three vertices, and has an associated area and normal vector.
 
-![Waverider geometry surface mesh.](waverider-mesh.png){ width=40% }
-![Triangular element.](nominal_tri.png){ width=40% }
+![Waverider geometry surface mesh.](waverider-mesh.png){ width=60% }
+![Triangular element.](nominal-tri.png){ width=40% }
 
 
 The force acting on one of these elements is given by multiplying the pressure acting on the element by the area of the element.
@@ -123,6 +123,64 @@ $$
 \frac{\partial \underline{n}_i}{\partial\underline{\theta}} = \frac{\partial \underline{n}_i}{\partial \underline{v}_i} \frac{\partial \underline{v}_i}{\partial \underline{\theta}}
 $$
 
-<!-- How accurate is it? -->
+
+# Benefits of Approach
+
+The approach for obtaining parametric sensitivity information described above has many benefits over other approaches. 
+Some of these benefits are touched on below.
+
+## One-sided trade-off between accuracy and computational efficiency
+As the saying goes, "*there's no free lunch*".
+In any numerical context, it is inevitable that as you move up the ladder of solver fidelity and accuracy, you make the trade-off with computational expense.
+Similarly, as you move towards more computationally efficient solvers, you pay for the efficiency with accuracy.
+However, the approach outlined is able to strike a very practical balance between accuracy and efficiency, by leveraging the accuracy of high-fidelity CFD solutions to provide nominal surface properties and the efficiency of low-fidelity flow models to provide pressure sensitivity information.
+Furthermore, in many design applications, CFD is already being run to characterize aerodynamic properties, at which point generating the aerodynamic sensitivities is a very cheap post-processing addition.
+This makes the approach implemented by PySAGAS about as close as a free lunch as you can get.
+
+The figure below provides a comparison of aerodynamic coefficient sensitivities (specifically, the drag, lift and pitching moment coefficients) to a design parameter calculated using three different methods.
+The first method applies a central-difference scheme to CFD solutions obtained by the high-fidelity Euler CFD solver Cart3D [@Cart3D].
+The second method is the theory described above, using Cart3D to provide the nominal surface properties.
+The third method is another finite-difference solution using the low-fidelity flow solver *OPM* implemented in PySAGAS, described below.
+
+<!-- This means that the theory implemented by PySAGAS is able to significantly improve computational efficiency, without making a significant trade-off with accuracy. -->
+
+![Comparison of aerodynamic sensitivities.](mach6_sens_comparison.png){ width=100% }
+
+
+## CFD solver agnostic
+As described in the theory section, approximating aerodynamic parametric senstivities with PySAGAS requires the user to provide the nominal flow properties on the surface of the geometry.
+Importantly, the source of these properties is not significant to PySAGAS; the approach is CFD solver agnostic.
+Furthermore, it can be applied as a simple post-processing step, once the surface properties are calculated from the user's flow solver of choice.
+
+
+## Flexibility
+Aside from the flexibility afforded by being CFD solver agnostic, the modular construction of the PySAGAS package means that other flow models can easily be implemented to provide alternative approaches depending on the application.
+In fact, multiple models are already implemented, including Piston theory (as described above) and Van Dyke's second-order theory [@VANDYKE1951].
+
+
+# Other Features
+Although PySAGAS is primarily an implementation of the theory presented above to produce approximate sensitivity information, it features much more functionality to assist in using this information.
+
+
+## Geometry parsers
+PySAGAS offers a variety of utilities to make loading geometry files into the required format as simple as possible.
+This includes tools to load surface meshes saved in formats including STL, VTK, TRI, and more.
+
+
+## Low-fidelity flow solver
+PySAGAS also implements a low-fidelity, ideal shock solver to efficiently provide preliminary aerodynamic characteristics of geometries simulated at supersonic flow conditions.
+This solver computes the local pressure acting on each cell of a geometry dependent on the angle of its normal vector relative to the freestream flow.
+For cells which are inclined towards the freestream, oblique shock theory is applied, whereas for cells which are inclined away from the freestream, Prandtl-Meyer expansion theory is used [@Anderson2016].
+This solver has been named *OPM*, derived from the use of oblique shock and Prandtl-Meyer theories.
+The capabilities of this solver are demonstrated in the figure below, which provides a direct comparison to Cart3D [@Cart3D] for the longitudinal aerodynamic coefficients of a hypersonic waverider geometry similar to that shown above.
+
+![Ideal shock solver performance.](mach6_aero_comparison.png){ width=100% }
+
+
+## Shape optimization API
+To make efficient shape optimization even more accessible, PySAGAS offers an API leveraging PyOptSparse [@Wu2020] to do so.
+This API currently supports using both Cart3D [@Cart3D] and the OPM solver described above to provide nominal aerodynamic solutions.
+However, alternative CFD solvers can easily be substituted using the existing infrastructure as a template.
+
 
 # References
