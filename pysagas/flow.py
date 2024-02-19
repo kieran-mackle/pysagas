@@ -83,6 +83,10 @@ class GasState:
     def gamma(self):
         return self._gamma
 
+    @property
+    def Cp(self):
+        return self.R*self._gamma / (self._gamma-1)
+
 
 class FlowState(GasState):
     """An ideal gas state defined by Mach number, pressure and
