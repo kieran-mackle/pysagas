@@ -139,6 +139,49 @@ class STL(Parser):
         return cells
 
 
+class MeshIO(Parser):
+    """Meshio parser"""
+
+    filetype = "meshio mesh"
+
+    def __init__(self, filepath: str, verbosity: int = 1) -> None:
+        # Import meshio
+        try:
+            import meshio
+        except ModuleNotFoundError:
+            raise Exception("Could not find meshio. Please install it and try again.")
+        self._meshio = meshio
+        super().__init__(filepath, verbosity)
+
+    def load(self) -> List[Cell]:
+        def mp_wrapper(face):
+            vertices = [Vector.from_coordinates(mesh_vertices[i]) for i in face]
+            try:
+                cell = Cell.from_points(vertices, face_ids=face)
+            except:
+                cell = None
+            return cell
+
+        # Load the STL
+        mesh_obj = self._meshio.read(self.filepath)
+
+        if self.verbosity > 0:
+            print("\nTranscribing cells.")
+
+        # Create multiprocessing pool to construct cells
+        cells = []
+        pool = mp.Pool()
+        mesh_vertices = mesh_obj.points
+        for result in pool.map(mp_wrapper, mesh_obj.cells[0].data):
+            if result is not None:
+                cells.append(result)
+
+        if self.verbosity > 0:
+            print("Done.")
+
+        return cells
+
+
 class PyMesh(Parser):
     filetype = "PyMesh STL"
 

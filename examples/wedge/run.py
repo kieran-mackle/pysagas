@@ -1,10 +1,10 @@
 from pysagas.cfd import OPM
 from pysagas.flow import FlowState
-from pysagas.geometry.parsers import PyMesh
+from pysagas.geometry.parsers import MeshIO
 
 
 # Load STL file
-cells = PyMesh.load_from_file("wedge.stl")
+cells = MeshIO.load_from_file("wedge.stl")
 A_ref = 1
 
 # Instantiate solver
