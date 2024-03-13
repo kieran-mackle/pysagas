@@ -166,3 +166,5 @@ all_components_sensitivity.csv
 swept_1_sensitivity.csv
 thickness_sensdeck.csv
 Wedge-swept-0.stl
+
+*.vtk
