@@ -1,5 +1,7 @@
 import numpy as np
 from .geometry.vector import Vector
+from typing import Union
+from gdtk.geom.vector3 import Vector3
 
 
 class GasState:
@@ -36,7 +38,7 @@ class GasState:
         self._gamma = gamma
 
     def __str__(self) -> str:
-        return f"Mach {self.M} flow condition with P = {self.P}, T = {self.T}."
+        return f"Mach {self.M:.3f} flow condition with P = {self.P:.3e} Pa, T = {self.T:.1f} K."
 
     def __repr__(self) -> str:
         return f"Flow(M={self.M}, P={self.P}, T={self.T})"
@@ -98,7 +100,7 @@ class FlowState(GasState):
         mach: float,
         pressure: float,
         temperature: float,
-        direction: Vector = None,
+        direction: Union[Vector, Vector3] = None,
         aoa: float = 0.0,
         gamma: float = 1.4,
     ) -> None:
@@ -126,12 +128,15 @@ class FlowState(GasState):
             The ratio of specific heats. The default is 1.4.
         """
         super().__init__(mach, pressure, temperature, gamma)
-        if direction:
-            # Use direction provided
-            self.direction = direction.unit
-        else:
+        if direction is None:
             # Use AoA to calculate direction
-            self.direction = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0).unit
+            direction_vec = Vector(1, 1 * np.tan(np.deg2rad(aoa)), 0)
+        elif isinstance(direction, Vector3):
+            # Convert provided direction to Vector and use it
+            direction_vec = Vector(x=direction.x, y=direction.y, z=direction.z)
+        else:
+            direction_vec = direction
+        self.direction = direction_vec.unit
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, FlowState):
