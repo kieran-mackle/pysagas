@@ -8,6 +8,7 @@ from pysagas.geometry import Vector
 from scipy.optimize import root_scalar
 from pysagas.utilities import add_sens_data
 from pysagas.cfd.solver import FlowSolver, FlowResults, SensitivityResults
+from hypervehicle.utilities import PatchTag
 
 
 class OPM(FlowSolver):
@@ -33,11 +34,12 @@ class OPM(FlowSolver):
     def solve(
         self,
         freestream: Optional[FlowState] = None,
+        eng_outflow: Optional[FlowState] = None,
         mach: Optional[float] = None,
         aoa: Optional[float] = None,
         cog: Vector = Vector(0, 0, 0),
     ) -> FlowResults:
-        already_run = super().solve(freestream=freestream, mach=mach, aoa=aoa)
+        already_run = super().solve(freestream=freestream, eng_outflow=eng_outflow, mach=mach, aoa=aoa)
         if already_run:
             # Already have a result
             if self.verbosity > 1:
@@ -46,12 +48,13 @@ class OPM(FlowSolver):
 
         else:
             # Get flow
-            flow = self._last_solve_freestream
+            free_flow = self._last_solve_freestream
+            nozzle_flow = self._last_solve_eng_outflow
 
             # Construct progress bar
             if self.verbosity > 0:
                 print()
-                desc = f"Running OPM solver at AoA = {flow.aoa:.2f} and Mach = {flow.M:.2f}"
+                desc = f"Running OPM solver at AoA = {free_flow.aoa:.2f} and Mach = {free_flow.M:.2f}"
                 pbar = tqdm(
                     total=len(self.cells),
                     desc=desc,
@@ -65,6 +68,17 @@ class OPM(FlowSolver):
             bad = 0
             total = 0
             for cell in self.cells:
+
+                dont_calc = False
+                # Check which flow state to use
+                if cell.tag == PatchTag.FREE_STREAM:
+                    flow = free_flow
+                elif cell.tag == PatchTag.NOZZLE:
+                    flow = nozzle_flow
+                elif cell.tag == PatchTag.INLET or cell.tag == PatchTag.OUTLET:
+                    flow = free_flow
+                    dont_calc = True
+
                 # Calculate orientation of cell to flow
                 theta = np.pi / 2 - np.arccos(
                     np.dot(flow.direction.vec, cell.n.vec)
@@ -75,7 +89,11 @@ class OPM(FlowSolver):
                 r = cell.c - cog
 
                 # Solve flow for this cell
-                if theta < 0:
+                if dont_calc:
+                    # ignore cell - is part of inlet or outlet
+                    M2, p2, T2 = (flow.M, 0.0, flow.T)
+                    method = -1
+                elif theta < 0:
                     # Rearward facing cell
                     if theta < np.deg2rad(self.PM_ANGLE_THRESHOLD):
                         M2, p2, T2 = (flow.M, 0.0, flow.T)
@@ -151,7 +169,7 @@ class OPM(FlowSolver):
 
             # Construct results
             result = FlowResults(
-                freestream=flow, net_force=net_force, net_moment=net_moment
+                freestream=flow, eng_outflow=eng_outflow, net_force=net_force, net_moment=net_moment
             )
 
             # Save

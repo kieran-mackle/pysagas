@@ -43,6 +43,7 @@ class FlowSolver(AbstractFlowSolver):
         self,
         cells: List[Cell],
         freestream: Optional[FlowState] = None,
+        eng_outflow: Optional[FlowState] = None,
         verbosity: Optional[int] = 1,
     ) -> None:
         """Instantiates the flow solver.
@@ -65,8 +66,10 @@ class FlowSolver(AbstractFlowSolver):
 
         self.cells = cells
         self.freestream = freestream
+        self.eng_outflow = eng_outflow
         self.verbosity = verbosity
         self._last_solve_freestream: FlowState = None
+        self._last_solve_eng_outflow: FlowState = None
         self._last_sens_freestream: FlowState = None
 
         # Results
@@ -81,6 +84,7 @@ class FlowSolver(AbstractFlowSolver):
     def solve(
         self,
         freestream: Optional[FlowState] = None,
+        eng_outflow: Optional[FlowState] = None,
         mach: Optional[float] = None,
         aoa: Optional[float] = None,
     ) -> bool:
@@ -91,6 +95,10 @@ class FlowSolver(AbstractFlowSolver):
         freestream : Flowstate, optional
             The free-stream flow state. The default is the freestream provided
             upon instantiation of the solver.
+
+        eng_outflow : Flowstate, optional
+            The outflow conditions of the engine (to be used for NOZZLE solve).
+            The default is the None.
 
         mach : float, optional
             The free-stream Mach number. The default is that specified in
@@ -132,12 +140,18 @@ class FlowSolver(AbstractFlowSolver):
             if mach or aoa:
                 print("Using freestream provided; ignoring Mach/aoa provided.")
 
+        if not eng_outflow and self.eng_outflow:
+            # if eng_outflow provided only on instantiation
+            eng_outflow = self.eng_outflow
+
         # Check if already solved
-        if self._last_solve_freestream and freestream == self._last_solve_freestream:
+        if (self._last_solve_freestream and freestream == self._last_solve_freestream
+                and self._last_solve_eng_outflow and eng_outflow == self._last_solve_eng_outflow):
             return True
         else:
             # Update last solve freestream and continue
             self._last_solve_freestream = freestream
+            self._last_solve_eng_outflow = eng_outflow
             return False
 
     def solve_sens(
@@ -332,6 +346,9 @@ class FlowResults:
     freestream : FlowState
         The freestream flow state.
 
+    eng_outflow : Optional, FlowState
+        The engine's outlet flow state (for nozzle calculation). default - None
+
     net_force : pd.DataFrame
         The net force in cartesian coordinate frame (x,y,z).
 
@@ -340,9 +357,10 @@ class FlowResults:
     """
 
     def __init__(
-        self, freestream: FlowState, net_force: Vector, net_moment: Vector
+        self, freestream: FlowState, net_force: Vector, net_moment: Vector, eng_outflow: Optional[FlowState] = None
     ) -> None:
         self.freestream = freestream
+        self.eng_outflow = eng_outflow
         self.net_force = net_force
         self.net_moment = net_moment
 
