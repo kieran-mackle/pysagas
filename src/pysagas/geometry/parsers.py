@@ -154,10 +154,13 @@ class MeshIO(Parser):
         super().__init__(filepath, verbosity)
 
     def load(self) -> List[Cell]:
-        def mp_wrapper(face):
+        def mp_wrapper(args):
+            ind, face = args
             vertices = [Vector.from_coordinates(mesh_vertices[i]) for i in face]
             try:
                 cell = Cell.from_points(vertices, face_ids=face)
+                if tags is not None:
+                    cell.add_tag(tags[ind])
             except:
                 cell = None
             return cell
@@ -168,13 +171,21 @@ class MeshIO(Parser):
         if self.verbosity > 0:
             print("\nTranscribing cells.")
 
-        # Create multiprocessing pool to construct cells
         cells = []
-        pool = mp.Pool()
         mesh_vertices = mesh_obj.points
-        for result in pool.map(mp_wrapper, mesh_obj.cells[0].data):
+        tags = mesh_obj.cell_data['tag'][0] if 'tag' in mesh_obj.cell_data else None
+
+        # Create multiprocessing pool to construct cells
+        pool = mp.Pool()
+        for result in pool.map(mp_wrapper, enumerate(mesh_obj.cells[0].data)):
             if result is not None:
                 cells.append(result)
+
+        # Submit tasks single (debug mode)
+        # for ind, a in enumerate(mesh_obj.cells[0].data):
+        #     result = mp_wrapper((ind, a))
+        #     if result is not None:
+        #         cells.append(result)
 
         if self.verbosity > 0:
             print("Done.")
