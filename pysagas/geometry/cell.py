@@ -1,6 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import pysagas.flow
+from hypervehicle.utilities import PatchTag
 from .vector import Vector
 from numpy.typing import ArrayLike
 from typing import Union, List, Optional
@@ -52,6 +53,9 @@ class Cell:
 
     sensitivities : np.array
         An array containing the [x,y,z] force sensitivities of the cell.
+
+    tag : PatchTag
+        An PatchTag(Enum) value to define which FlowState to use. Default: PatchTag.FREE_STREAM
     """
 
     def __init__(
@@ -100,6 +104,9 @@ class Cell:
         # Sensitivities
         self.sensitivities = None
         self.moment_sensitivities = None
+
+        # tags
+        self.tag = PatchTag.FREE_STREAM
 
         # Cell attributes
         self.attributes = {}
@@ -605,6 +612,9 @@ class Cell:
             ]
         )
         return c_sens
+
+    def add_tag(self, tag):
+        self.tag = PatchTag(tag)
 
 
 class DegenerateCell(Exception):
