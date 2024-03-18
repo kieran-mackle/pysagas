@@ -169,7 +169,7 @@ class OPM(FlowSolver):
 
             # Construct results
             result = FlowResults(
-                freestream=flow, eng_outflow=eng_outflow, net_force=net_force, net_moment=net_moment
+                freestream=flow, net_force=net_force, net_moment=net_moment
             )
 
             # Save

@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 from pysagas import banner
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from pysagas import Cell, FlowState, Vector
+from gdtk.geom.vector3 import Vector3
 
 
 class AbstractFlowSolver(ABC):
@@ -263,7 +264,7 @@ class FlowSolver(AbstractFlowSolver):
         mesh_obj.write(f"{name}.vtk")
 
     @staticmethod
-    def body_to_wind(v: Vector, aoa: float):
+    def body_to_wind(v: Union[Vector, Vector3], aoa: float):
         """Converts a vector from body axes to wind axes.
 
         Parameters
@@ -357,10 +358,9 @@ class FlowResults:
     """
 
     def __init__(
-        self, freestream: FlowState, net_force: Vector, net_moment: Vector, eng_outflow: Optional[FlowState] = None
+        self, freestream: FlowState, net_force: Union[Vector, Vector3], net_moment: Union[Vector, Vector3],
     ) -> None:
         self.freestream = freestream
-        self.eng_outflow = eng_outflow
         self.net_force = net_force
         self.net_moment = net_moment
 
