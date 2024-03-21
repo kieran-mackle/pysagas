@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+
+from HyperPro.utilities import HP_SensResults
 from pysagas.flow import FlowState
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
@@ -10,6 +12,7 @@ from pysagas.sensitivity.models import (
     piston_sensitivity,
     van_dyke_sensitivity,
     isentropic_sensitivity,
+    freestream_isentropic_sensitivity,
 )
 
 
@@ -74,7 +77,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
     def calculate(
         self,
         sensitivity_model: Optional[
-            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
+            Union[Callable, Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"]]
         ] = "van_dyke",
         cog: Optional[Vector] = Vector(0, 0, 0),
         flowstate: Optional[FlowState] = None,
@@ -85,7 +88,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
         Parameters
         ----------
-        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"], optional
             The model used to calculate the pressure/parameter sensitivities.
             The default is Van Dyke's second-order theory model.
 
@@ -112,6 +115,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
             for d in ["x", "y", "z"]:
                 params_sens_cols.append(f"d{d}d_{p}")
 
+        kwargs = {'eng_sens': self.eng_sens, 'eng_outflow': self.eng_outflow}
         # Calculate force sensitivity
         F_sense, M_sense = self.net_sensitivity(
             cells=self.cells, sensitivity_model=sensitivity_model, cog=cog, **kwargs
@@ -159,7 +163,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
     def net_sensitivity(
         cells: List[Cell],
         sensitivity_model: Optional[
-            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
+            Union[Callable, Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"]]
         ] = "van_dyke",
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
@@ -171,7 +175,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         cells : list[Cell]
             The cells to be analysed.
 
-        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"], optional
             The model used to calculate the pressure/parameter sensitivities.
             The default is Van Dyke's second-order theory model.
 
@@ -288,6 +292,8 @@ class GenericSensitivityCalculator(SensitivityCalculator):
         cells: List[Cell],
         sensitivity_filepath: Optional[str] = None,
         cells_have_sens_data: Optional[bool] = False,
+        eng_sens: Optional[HP_SensResults] = None,
+        eng_outflow: Optional[FlowState] = None,
         verbosity: Optional[int] = 1,
         **kwargs,
     ) -> None:
@@ -317,6 +323,9 @@ class GenericSensitivityCalculator(SensitivityCalculator):
             self.cells = cells
         else:
             self._pre_transcribed_cells = cells
+
+        self.eng_sens = eng_sens
+        self.eng_outflow = eng_outflow
 
         self.sensdata = pd.read_csv(sensitivity_filepath)
         self.verbosity = verbosity
