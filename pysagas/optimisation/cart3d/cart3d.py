@@ -420,27 +420,36 @@ def evaluate_objective(x: dict) -> dict:
         properties = None
         cog = None
 
+    # Call objective function
+    failed = False
     if sim_success:
         # Evaluate objective function
-        funcs = obj_cb(
+        funcs: dict[str, dict[str, list]] = obj_cb(
             loads_dict=loads_dict,
             volmass=volmass,
             properties=properties,
             cog=cog,
         )
-        failed = False
+
+        # Check for nans
+        for v1 in funcs.values():
+            if any(np.isnan(v1)):
+                failed = True
 
     else:
         # Simulation failed
-        funcs = {}
+        # funcs = {}
         loads_dict = {"C_L-entire": 0, "C_D-entire": 1}
-        funcs = obj_cb(
-            loads_dict=loads_dict,
-            volmass=volmass,
-            properties=properties,
-            cog=cog,
-        )
+        # funcs = obj_cb(
+        #     loads_dict=loads_dict,
+        #     volmass=volmass,
+        #     properties=properties,
+        #     cog=cog,
+        # )
         failed = True
+
+    if failed:
+        funcs = {}
 
     return funcs, failed
 
@@ -553,7 +562,7 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
     # Call function
     failed = False
     try:
-        jac = jac_cb(
+        jac: dict[str, dict[str, list]] = jac_cb(
             parameters=x,
             coef_sens=coef_sens,
             moment_coef_sens=moment_coef_sens,
@@ -566,10 +575,18 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             cog_sens=cog_sens,
         )
 
+        # Check for nans
+        for v1 in jac.values():
+            for v2 in v1.values():
+                if any(np.isnan(v2)):
+                    failed = True
+
     except Exception as e:
         print(f"Exception calling jacobian callback: {e}")
-        jac = {}
         failed = True
+
+    if failed:
+        jac = {}
 
     return jac, failed
 
@@ -693,6 +710,7 @@ def _run_simulation(no_attempts: int = 3):
             os.chdir(sim_dir)
             target_adapt = _infer_adapt(sim_dir)
             c3d_donefile = os.path.join(sim_dir, target_adapt, "FLOW", "DONE")
+            _c3dprepper._log(f"Waiting for DONE file: {c3d_donefile}")
             run_cmd = "./aero.csh restart"
             _restarts = 0
             if not os.path.exists(c3d_donefile):
