@@ -269,6 +269,8 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
                     * cell.A
                     * np.dot(-cell.dndp[:, p_i], direction.vec)
                 )
+                if kwargs['eng_sens'] is not None:
+                    dF += kwargs['eng_sens'].force_sens.iloc[i, p_i]
                 sensitivities[p_i, i] = dF
 
             # Now evaluate moment sensitivities
