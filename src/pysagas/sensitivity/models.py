@@ -88,13 +88,19 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, eng_outflow: FlowSta
 
     # Calculate sens to inflow Mach number
     dP2_dM1 = (-gamma2 * cell.flowstate.P * cell.flowstate.M ** 2 / eng_outflow.M
-              * beta1 / (beta2 * fun2))
+              * beta1 / (beta2 * fun1))
 
     # Calculate sens to inflow pressure
     dP2_dP1 = (fun1 / fun2) ** (gamma2 / (gamma2 - 1))
 
+    # Calculate sens to inflow aoa
+    dP2_daoa = -cell.flowstate.M ** 2 / beta2 * gamma2 * cell.flowstate.P
+
     # sum contributions
-    dPdp = dP2_dgeom + dP2_dM1 * eng_sens.flow_sens.loc['dMout'][p_i] + dP2_dP1 * eng_sens.flow_sens.loc['dPout'][p_i]
+    dPdp = (dP2_dgeom
+            + dP2_dM1 * eng_sens.flow_sens.loc['dMout'][p_i]
+            + dP2_dP1 * eng_sens.flow_sens.loc['dPout'][p_i]
+            + dP2_daoa * eng_sens.flow_sens.loc['daoa'][p_i])
 
     return dPdp
 
