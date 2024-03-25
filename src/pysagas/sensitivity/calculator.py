@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 
-from HyperPro.utilities import HP_SensResults
+from HyperPro.Sensitivity import HP_SensResults
+from hypervehicle.utilities import PatchTag
 from pysagas.flow import FlowState
 from abc import ABC, abstractmethod
 from pysagas.geometry import Vector, Cell
@@ -76,7 +77,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
     def calculate(
         self,
         sensitivity_model: Optional[
-            Union[Callable, Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"]]
+            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
         ] = "van_dyke",
         cog: Optional[Vector] = Vector(0, 0, 0),
         flowstate: Optional[FlowState] = None,
@@ -87,7 +88,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
         Parameters
         ----------
-        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"], optional
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
             The model used to calculate the pressure/parameter sensitivities.
             The default is Van Dyke's second-order theory model.
 
@@ -115,9 +116,10 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
                 params_sens_cols.append(f"d{d}d_{p}")
 
         kwargs = {'eng_sens': self.eng_sens, 'eng_outflow': self.eng_outflow}
+
         # Calculate force sensitivity
         F_sense, M_sense = self.net_sensitivity(
-            cells=self.cells, sensitivity_model=sensitivity_model, cog=cog, **kwargs
+            cells=self.cells, sensitivity_model=sensitivity_model, cog=cog, **kwargs,
         )
 
         # Construct dataframes to return
@@ -162,7 +164,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
     def net_sensitivity(
         cells: List[Cell],
         sensitivity_model: Optional[
-            Union[Callable, Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"]]
+            Union[Callable, Literal["piston", "van_dyke", "isentropic"]]
         ] = "van_dyke",
         cog: Vector = Vector(0, 0, 0),
         **kwargs,
@@ -174,7 +176,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         cells : list[Cell]
             The cells to be analysed.
 
-        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic", "freestream_isentropic"], optional
+        sensitivity_model : Callable | Literal["piston", "van_dyke", "isentropic"], optional
             The model used to calculate the pressure/parameter sensitivities.
             The default is Van Dyke's second-order theory model.
 
@@ -200,16 +202,68 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
             if sensitivity_function is None:
                 raise Exception("Invalid sensitivity method specified.")
 
-        dFdp = 0
-        dMdp = 0
-        for cell in cells:
-            # Calculate force sensitivity
-            dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
-                cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
-            )
+        dFdp = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+        dMdp = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+        F1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+        F2 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
 
-            dFdp += dFdp_c
-            dMdp += dMdp_c
+        for cell in cells:
+
+            # Check which flow state to use
+            if cell.tag == PatchTag.FREE_STREAM: #free stream
+                # Calculate force sensitivity to geometrical changes (no engine sens)
+                dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
+                    cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
+                )
+
+                dFdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dMdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f2 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+
+            elif cell.tag == PatchTag.NOZZLE: # nozzle
+                # Calculate force sensitivity to geometrical changes (no engine sens)
+                dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
+                    cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
+                )
+
+                # Calculate force sensitivity to engine outflow changes
+                dFdp_e, dMdp_e, f1, f2 = SensitivityCalculator.cell_eng_sensitivity(
+                    cell=cell,
+                    cog=cog,
+                    inflow=kwargs['eng_outflow'],
+                    inflow_sens=kwargs['eng_sens'],
+                    **kwargs
+                )
+
+            elif cell.tag == PatchTag.INLET or cell.tag == PatchTag.OUTLET: # don't calculate
+                dFdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dMdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dFdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dMdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f2 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+
+            dFdp += dFdp_c + dFdp_e
+            dMdp += dMdp_c + dMdp_e
+            F1 += f1
+            F2 += f2
+
+        # Add HP propolsion force and moment sensitivity
+        F_eng_sens = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+        M_eng_sens = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+        if kwargs['eng_sens'] is not None:
+            for p_i in range(cells[0].dndp.shape[1]):
+                directions = ['x','y', 'z']
+                for i in range(3):
+                    F_eng_sens[p_i, i] = kwargs['eng_sens'].loc[f'F{directions[i]}'][p_i]
+                    M_eng_sens[p_i, i] = kwargs['eng_sens'].loc[f'M{directions[i]}'][p_i]
+
+        dFdp += F_eng_sens
+        dMdp += M_eng_sens
+
+        print(f'dF/dM = {F1}')
+        print(f'dF/dP = {F2}')
 
         return dFdp, dMdp
 
@@ -262,15 +316,11 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
             for i, direction in enumerate(all_directions):
                 dF = (
                     dPdp * cell.A * np.dot(cell.n.vec, direction.vec)
-                    + cell.flowstate.P
-                    * cell.dAdp[p_i]
-                    * np.dot(cell.n.vec, direction.vec)
+                    + cell.flowstate.P * cell.dAdp[p_i] * np.dot(cell.n.vec, direction.vec)
                     + cell.flowstate.P
                     * cell.A
                     * np.dot(-cell.dndp[:, p_i], direction.vec)
                 )
-                if kwargs['eng_sens'] is not None:
-                    dF += kwargs['eng_sens'].force_sens.iloc[i, p_i]
                 sensitivities[p_i, i] = dF
 
             # Now evaluate moment sensitivities
@@ -283,6 +333,75 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         cell.moment_sensitivities = moment_sensitivities
 
         return sensitivities, moment_sensitivities
+
+    @staticmethod
+    def cell_eng_sensitivity(
+            cell: Cell,
+            inflow: FlowState,
+            inflow_sens,
+            cog: Vector = Vector(0, 0, 0),
+            **kwargs,
+    ):
+    # ) -> Tuple[np.array, np.array]:
+        """Calculates force and moment sensitivities for a single cell.
+
+        Parameters
+        ----------
+        cell : Cell
+            The cell.
+
+        cog : Vector, optional
+            The reference centre of gravity, used in calculating the moment
+            sensitivities. The defualt is Vector(0,0,0).
+
+        Returns
+        --------
+        sensitivities : np.array
+            An array of shape n x 3, for a 3-dimensional cell with
+            n parameters.
+
+        See Also
+        --------
+        all_dfdp : a wrapper to calculate force sensitivities for many cells
+        """
+        # Initialisation
+        all_directions = [Vector(1, 0, 0), Vector(0, 1, 0), Vector(0, 0, 1)]
+        force_eng_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+        moment_eng_sensitivities = np.zeros(shape=(cell.dndp.shape[1], 3))
+
+        f1 = np.zeros(shape=(cell.dndp.shape[1], 3))
+        f2 = np.zeros(shape=(cell.dndp.shape[1], 3))
+
+        # Calculate moment dependencies
+        r = cell.c - cog
+
+        # For each parameter
+        for p_i in range(cell.dndp.shape[1]):
+            # Calculate pressure sensitivity
+            dPdp, d1, d2 = freestream_isentropic_sensitivity(cell=cell, p_i=p_i,
+                                        inflow=inflow, inflow_sens=inflow_sens,
+                                        **kwargs)
+
+            # Evaluate for sensitivities for each direction
+            for i, direction in enumerate(all_directions):
+                dF = (dPdp * cell.A * np.dot(cell.n.vec, direction.vec))
+                force_eng_sensitivities[p_i, i] = dF
+
+                dF1 = (d1 * cell.A * np.dot(cell.n.vec, direction.vec))
+                dF2 = (d2 * cell.A * np.dot(cell.n.vec, direction.vec))
+                f1[p_i, i] = dF1
+                f2[p_i, i] = dF2
+
+            # TODO - Add eng_sens to moment_sensitivities
+            # Now evaluate moment sensitivities
+            moment_eng_sensitivities[p_i, :] = np.cross(
+                r.vec, force_eng_sensitivities[p_i, :])
+
+        # Append to cell
+        cell.force_eng_sensitivities = force_eng_sensitivities
+        cell.moment_eng_sensitivities = moment_eng_sensitivities
+
+        return force_eng_sensitivities, moment_eng_sensitivities, f1, f2
 
 
 class GenericSensitivityCalculator(SensitivityCalculator):
