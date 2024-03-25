@@ -67,23 +67,20 @@ def isentropic_sensitivity(cell: Cell, p_i: int, **kwargs):
     return dPdp
 
 
-def freestream_isentropic_sensitivity(cell: Cell, p_i: int, eng_outflow: FlowState, eng_sens, **kwargs):
+def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, inflow_sens, **kwargs):
     """Calculates the pressure-parameter sensitivity, including
     the sensitivity to the incoming flow state (for use on nozzle cells
     where the engine outflow changes due to parameter change"""
 
-    gamma1 = eng_outflow.gamma
+    gamma1 = inflow.gamma
     gamma2 = cell.flowstate.gamma
-    beta1 = np.sqrt(eng_outflow.M ** 2 - 1)
+    beta1 = np.sqrt(inflow.M ** 2 - 1)
     beta2 = np.sqrt(cell.flowstate.M ** 2 - 1)
-    fun1 = 1 + (gamma1 - 1) / 2 * eng_outflow.M ** 2
+    fun1 = 1 + (gamma1 - 1) / 2 * inflow.M ** 2
     fun2 = 1 + (gamma2 - 1) / 2 * cell.flowstate.M ** 2
 
-    # Calculate sens of P to grid changes using the isentropic method
-    dP2_dgeom = isentropic_sensitivity(cell=cell, p_i=p_i, **kwargs)
-
     # Calculate sens to inflow Mach number
-    dP2_dM1 = (-gamma2 * cell.flowstate.P * cell.flowstate.M ** 2 / eng_outflow.M
+    dP2_dM1 = (-gamma2 * cell.flowstate.P * cell.flowstate.M ** 2 / inflow.M
               * beta1 / (beta2 * fun1))
 
     # Calculate sens to inflow pressure
@@ -92,13 +89,29 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, eng_outflow: FlowSta
     # Calculate sens to inflow aoa
     dP2_daoa = -cell.flowstate.M ** 2 / beta2 * gamma2 * cell.flowstate.P
 
-    # sum contributions
-    dPdp = (dP2_dgeom
-            + dP2_dM1 * eng_sens.flow_sens.loc['dMout'][p_i]
-            + dP2_dP1 * eng_sens.flow_sens.loc['dPout'][p_i]
-            + dP2_daoa * eng_sens.flow_sens.loc['daoa'][p_i])
+    # Calculate sens to inflow gamma
+    gp1 = gamma1 + 1
+    gm1 = gamma1 - 1
+    fg = gp1 / gm1
+    fM = beta1 / fg
+    num1 = np.sqrt(fg) * ((beta1 / gp1) * (1 - 1 / fg))
+    den1 = 2 * np.sqrt(fM) * (fM + 1)
+    num2 = (1 - fg) / gm1 * np.arctan(np.sqrt(fM))
+    den2 = 2 * np.sqrt(fg)
+    dnu_dg1 = num1 / den1 + num2 / den2
 
-    return dPdp
+    dP2_dg1 = dP2_daoa * dnu_dg1
+
+    # sum contributions
+    dPdp = (  dP2_dM1 * inflow_sens.loc['M'][p_i]
+            + dP2_dP1 * inflow_sens.loc['P'][p_i]
+            + dP2_daoa * inflow_sens.loc['flow_angle'][p_i]
+            + dP2_dg1 * inflow_sens.loc['gamma'][p_i])
+
+    d1 = dP2_dM1 * inflow_sens.loc['M'][p_i]
+    d2 = dP2_dP1 * inflow_sens.loc['P'][p_i]
+
+    return dPdp, d1, d2
 
 
 
