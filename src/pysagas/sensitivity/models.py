@@ -78,33 +78,49 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, i
 
     gamma1 = inflow.gamma
     gamma2 = cell.flowstate.gamma
-    beta1 = np.sqrt(inflow.M ** 2 - 1)
-    beta2 = np.sqrt(cell.flowstate.M ** 2 - 1)
-    fun1 = 1 + (gamma1 - 1) / 2 * inflow.M ** 2
-    fun2 = 1 + (gamma2 - 1) / 2 * cell.flowstate.M ** 2
+    M1 = inflow.M
+    M2 = cell.flowstate.M
+    P1 = inflow.P
+    P2 = cell.flowstate.P
+
+    beta1 = np.sqrt(M1 ** 2 - 1)
+    beta2 = np.sqrt(M2 ** 2 - 1)
+    fun1 = 1 + (gamma1 - 1) / 2 * M1 ** 2
+    fun2 = 1 + (gamma2 - 1) / 2 * M2 ** 2
 
     # Calculate sens to inflow Mach number
-    dP2_dM1 = (-gamma2 * cell.flowstate.P * cell.flowstate.M ** 2 / inflow.M
-              * beta1 / (beta2 * fun1))
+    dM2_dM1 = (M2 / M1) * (beta1 / beta2) * (fun2 / fun1)
+    t1 = M1 * fun1 ** (1/(gamma1-1)) * fun2 ** ((-gamma1)/(gamma1-1))
+    t2 = M2 * fun1 ** (gamma1 / (gamma1 - 1)) * fun2 ** ((1 - 2 * gamma1) / (gamma1 - 1)) * dM2_dM1
+    dP2_dM1 = P1 * gamma1 * (t1 - t2)
+
 
     # Calculate sens to inflow pressure
     dP2_dP1 = (fun1 / fun2) ** (gamma2 / (gamma2 - 1))
 
     # Calculate sens to inflow aoa
-    dP2_daoa = -cell.flowstate.M ** 2 / beta2 * gamma2 * cell.flowstate.P
+    dP2_daoa = M2 ** 2 / beta2 * gamma2 * P2
 
     # Calculate sens to inflow gamma
     gp1 = gamma1 + 1
     gm1 = gamma1 - 1
     fg = gp1 / gm1
-    fM = beta1 / fg
-    num1 = np.sqrt(fg) * ((beta1 / gp1) * (1 - 1 / fg))
-    den1 = 2 * np.sqrt(fM) * (fM + 1)
-    num2 = (1 - fg) / gm1 * np.arctan(np.sqrt(fM))
-    den2 = 2 * np.sqrt(fg)
-    dnu_dg1 = num1 / den1 + num2 / den2
+    fM = beta1**2 / fg
+    num1 = np.sqrt(fg) *(beta1 / gp1) ** 2
+    den1 = np.sqrt(fM) * (fM + 1)
+    num2 = 1 / gm1 * np.arctan(np.sqrt(fM))
+    den2 = np.sqrt(gm1 * gp1)
+    dnu_dg1 = num1 / den1 - num2 / den2
 
-    dP2_dg1 = dP2_daoa * dnu_dg1
+
+    q = (fun1/fun2)**(gamma1/gm1)
+    r1 = gamma1 * (M1 ** 2 - (M2 ** 2 * fun1) / fun2)
+    r2 = 2*gm1*fun1
+    s1 = 1/gm1 - gamma1/(gm1**2)
+    s2 = np.log(fun1/fun2)
+    df_dg = q*(r1/r2 + s1*s2)
+
+    dP2_dg1 = P1*df_dg - dP2_daoa*dnu_dg1
 
     # sum contributions
     dPdp = (  dP2_dM1 * inflow_sens.loc['M'][p_i]
@@ -112,10 +128,12 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, i
             + dP2_daoa * inflow_sens.loc['flow_angle'][p_i]
             + dP2_dg1 * inflow_sens.loc['gamma'][p_i])
 
-    d1 = dP2_dM1 * inflow_sens.loc['M'][p_i]
-    d2 = dP2_dP1 * inflow_sens.loc['P'][p_i]
+    d1 = dP2_dM1 * 1
+    d2 = dP2_dP1 * 1
+    d3 = dP2_daoa * 1
+    d4 = dP2_dg1 * 1
 
-    return dPdp, d1, d2
+    return dPdp, d1, d2, d3, d4
 
 
 
