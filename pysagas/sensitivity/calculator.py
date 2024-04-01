@@ -69,7 +69,6 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
 
     def __init__(self, **kwargs) -> None:
         self.cells: list[Cell] = None
-        self.verbosity = 1
 
     def calculate(
         self,
