@@ -203,6 +203,7 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
             if sensitivity_function is None:
                 raise Exception("Invalid sensitivity method specified.")
 
+        temp_F = np.zeros(shape=(cells[0].dndp.shape[1], 3))
         dFdp = np.zeros(shape=(cells[0].dndp.shape[1], 3))
         dMdp = np.zeros(shape=(cells[0].dndp.shape[1], 3))
         F1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
@@ -213,7 +214,17 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         for cell in cells:
 
             # Check which flow state to use
-            if cell.tag == PatchTag.FREE_STREAM: #free stream
+            if cell.tag == PatchTag.INLET or cell.tag == PatchTag.OUTLET or cell.attributes['method'] == -1:  # don't calculate
+                dFdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dMdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dFdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                dMdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f2 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f3 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+                f4 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
+
+            elif cell.tag == PatchTag.FREE_STREAM: #free stream
                 # Calculate force sensitivity to geometrical changes (no engine sens)
                 dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
                     cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
@@ -231,6 +242,8 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
                 dFdp_c, dMdp_c = SensitivityCalculator.cell_sensitivity(
                     cell=cell, sensitivity_function=sensitivity_function, cog=cog, **kwargs
                 )
+                # if dFdp_c[0,0] != 0:
+                #     print(dFdp_c)
 
                 # Calculate force sensitivity to engine outflow changes
                 dFdp_e, dMdp_e, f1, f2, f3, f4 = SensitivityCalculator.cell_eng_sensitivity(
@@ -242,18 +255,9 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
                 )
 
 
-            elif cell.tag == PatchTag.INLET or cell.tag == PatchTag.OUTLET: # don't calculate
-                dFdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                dMdp_c = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                dFdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                dMdp_e = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                f1 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                f2 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                f3 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-                f4 = np.zeros(shape=(cells[0].dndp.shape[1], 3))
-
             dFdp += dFdp_c + dFdp_e
             dMdp += dMdp_c + dMdp_e
+            temp_F += dFdp_c
             F1 += f1
             F2 += f2
             F3 += f3
@@ -273,10 +277,11 @@ class SensitivityCalculator(AbstractSensitivityCalculator):
         dFdp += F_eng_sens
         dMdp += M_eng_sens
 
-        print(f'dF/dM = {F1}')
-        print(f'dF/dP = {F2}')
-        print(f'dF/daoa = {F3}')
-        print(f'dF/dgamma = {F4}')
+        print(f'Pysagas sens = {temp_F}')
+        # print(f'dF/dM = {F1}')
+        # print(f'dF/dP = {F2}')
+        # print(f'dF/daoa = {F3}')
+        # print(f'dF/dgamma = {F4}')
 
         return dFdp, dMdp
 
