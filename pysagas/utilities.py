@@ -61,33 +61,37 @@ def add_sens_data(
             leave=True,
         )
 
+    # Perform graph matching first
+    pts_xyz = [[[p.x, p.y, p.z] for p in [c.p0, c.p1, c.p2]] for c in cells]
+    pts_xyz = np.array(pts_xyz).reshape(-1, 3)
+    data_xyz = np.array([data["x"], data["y"], data["z"]]).T
+    from scipy.spatial.distance import cdist
+
+    dist = cdist(pts_xyz, data_xyz)
+    min_idx = np.argmin(dist, axis=1)  # index of min distance to data for each cell
+    #  min_dist = np.min(dist, axis=1) # value of min distance to data for each cell
+
     matched_points = 0
     total_points = 0
     skipped_cells = 0
     total_cells = 0
-    for cell in cells:
+    for cell_idx, cell in enumerate(cells):
         # Check if cell already has sensitivity data
         total_cells += 1
         if cell.dvdp is None or force:
             # Initialise sensitivity
             dvdp = np.zeros((9, len(parameters)))
-            for i, point in enumerate([cell.p0, cell.p1, cell.p2]):
-                match_x = (point.x - data["x"]).abs() < match_tolerance
-                match_y = (point.y - data["y"]).abs() < match_tolerance
-                match_z = (point.z - data["z"]).abs() < match_tolerance
-
-                match = match_x & match_y & match_z
+            for pt_idx in range(3):
                 try:
-                    # Get match
-                    matched_data = data[match].iloc[0][param_cols]
+                    # Optional chack that distance is less than threshold.
+                    #  if np.abs(min_dist[3*cell_idx + pt_idx]) < match_tolerance:
+                    matched_data = data.iloc[min_idx[3 * cell_idx + pt_idx]][param_cols]
 
                     # Round off infinitesimally small values
                     matched_data[abs(matched_data) < rounding_tolerance] = 0
 
-                    for j, p in enumerate(parameters):
-                        # For each parameter (column)
-                        for k, c in enumerate(["x", "y", "z"]):
-                            dvdp[3 * i + k, j] = matched_data[f"d{c}d{p}"]
+                    # avoid slow string indexing
+                    dvdp[3 * pt_idx : 3 * (pt_idx + 1), :] = matched_data.to_numpy().reshape(-1,3).T
 
                     # Update match count
                     matched_points += 1
