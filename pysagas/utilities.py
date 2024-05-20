@@ -91,7 +91,9 @@ def add_sens_data(
                     matched_data[abs(matched_data) < rounding_tolerance] = 0
 
                     # avoid slow string indexing
-                    dvdp[3 * pt_idx : 3 * (pt_idx + 1), :] = matched_data.to_numpy().reshape(-1,3).T
+                    dvdp[3 * pt_idx : 3 * (pt_idx + 1), :] = (
+                        matched_data.to_numpy().reshape(-1, 3).T
+                    )
 
                     # Update match count
                     matched_points += 1
