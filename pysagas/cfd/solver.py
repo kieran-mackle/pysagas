@@ -215,16 +215,6 @@ class FlowSolver(AbstractFlowSolver):
             Note that this is not required when calling `solve` from a
             child FlowSolver.
         """
-        # Import PyMesh
-        try:
-            import pymesh
-        except ModuleNotFoundError:
-            raise Exception(
-                "Could not find pymesh. Please follow the "
-                + "installation instructions at "
-                + "https://pymesh.readthedocs.io/en/latest/installation.html"
-            )
-
         # Construct vertices and faces
         faces = []
         vertex_faces = {}
@@ -250,25 +240,13 @@ class FlowSolver(AbstractFlowSolver):
         vertices = np.array([v for v in sorted_vertices.values()])
         faces = np.array(faces)
 
-        # Convert back to mesh object
-        mesh_obj = pymesh.form_mesh(vertices, faces)
-
-        # Try add attributes to the cells
-        for a, v in attributes.items():
-            mesh_obj.add_attribute(a)
-            mesh_obj.set_attribute(a, np.array(v))
-
-        # Save mesh
-        pymesh.save_mesh(
-            f"{name}.ply", mesh_obj, *mesh_obj.get_attribute_names(), ascii=True
+        # Convert mesh object with attributes
+        mesh_obj = meshio.Mesh(
+            points=vertices,
+            cells=[("triangle", faces)],
+            cell_data={k: [v] for k, v in attributes.items()},
         )
-
-        # Convert to VTK format
-        m = meshio.read(f"{name}.ply")
-        m.write(f"{name}.vtk")
-
-        # Remove .ply file
-        os.remove(f"{name}.ply")
+        mesh_obj.write(f"{name}.vtk")
 
     @staticmethod
     def body_to_wind(v: Vector, aoa: float):

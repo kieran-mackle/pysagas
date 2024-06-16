@@ -35,14 +35,12 @@ class Cart3DShapeOpt(ShapeOpt):
     def __init__(
         self,
         freestream: FlowState,
-        # a_inf: float,
-        # rho_inf: float,
-        # V_inf: float,
-        A_ref: float,
         optimiser: Optimizer,
         vehicle_generator: Generator,
         objective_callback: callable,
         jacobian_callback: callable,
+        A_ref: float = 1.0,
+        l_ref: float = 1.0,
         optimiser_options: dict = None,
         sensitivity_filename: str = "all_components_sensitivity.csv",
         working_dir_name: str = "working_dir",
@@ -120,7 +118,7 @@ class Cart3DShapeOpt(ShapeOpt):
         # Define global variable so that functions can access them
         global c3d_logname, _matching_tolerance, _max_matching_tol, _matching_target
         global sens_filename, basefiles_dir, _c3dprepper, sim_dir_name
-        global _A_ref
+        global _A_ref, _l_ref
         global _freestream
         global home_dir, working_dir, f_sense_filename
         global obj_cb, jac_cb
@@ -156,6 +154,7 @@ class Cart3DShapeOpt(ShapeOpt):
 
         # Save reference area
         _A_ref = A_ref
+        _l_ref = l_ref
 
         # Create instance of Cart3D prepper
         _c3dprepper = C3DPrep(
@@ -399,6 +398,11 @@ def evaluate_objective(x: dict) -> dict:
             index_col=0,
         )
 
+        # Load COG data
+        cog = np.loadtxt(
+            glob.glob(os.path.join(properties_dir[0], "*cog.txt"))[0], delimiter=","
+        )
+
         # Fetch user-defined properties
         properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
         if len(properties_file) > 0:
@@ -414,17 +418,28 @@ def evaluate_objective(x: dict) -> dict:
         # No properties data found
         volmass = None
         properties = None
+        cog = None
 
     if sim_success:
         # Evaluate objective function
-        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
+        funcs = obj_cb(
+            loads_dict=loads_dict,
+            volmass=volmass,
+            properties=properties,
+            cog=cog,
+        )
         failed = False
 
     else:
         # Simulation failed
         funcs = {}
         loads_dict = {"C_L-entire": 0, "C_D-entire": 1}
-        funcs = obj_cb(loads_dict=loads_dict, volmass=volmass, properties=properties)
+        funcs = obj_cb(
+            loads_dict=loads_dict,
+            volmass=volmass,
+            properties=properties,
+            cog=cog,
+        )
         failed = True
 
     return funcs, failed
@@ -477,9 +492,11 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
 
     result = wrapper.calculate(**_sens_kwargs)
     F_sense = result.f_sens
+    M_sens = result.m_sens
 
     # Non-dimensionalise
     coef_sens = F_sense / (_freestream.q * _A_ref)
+    moment_coef_sens = M_sens / (_freestream.q * _A_ref * _l_ref)
 
     # Calculate Jacobian
     properties_dir = glob.glob("*_properties")
@@ -493,6 +510,18 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
             os.path.join(scalar_sens_dir, "volmass_sensitivity.csv"),
             index_col=0,
         )[x.keys()]
+
+        # Load COG data
+        cog = np.loadtxt(
+            glob.glob(os.path.join(properties_dir[0], "*cog.txt"))[0], delimiter=","
+        )
+        cog_sens_files = glob.glob(
+            os.path.join(scalar_sens_dir, "*cog_sensitivity.txt")
+        )
+        cog_sens = {}
+        for file in cog_sens_files:
+            param = file.split("_cog_sensitivity.txt")[0].split("/")[-1]
+            cog_sens[param] = np.loadtxt(file, delimiter=",")
 
         # Fetch user-defined properties and sensitivities
         properties_file = glob.glob(os.path.join(properties_dir[0], "*properties.csv"))
@@ -518,19 +547,31 @@ def evaluate_gradient(x: dict, objective: dict) -> dict:
         vm_sens = None
         properties = None
         property_sens = None
+        cog = None
+        cog_sens = None
 
     # Call function
-    jac = jac_cb(
-        parameters=x,
-        coef_sens=coef_sens,
-        loads_dict=loads_dict,
-        volmass=vm,
-        volmass_sens=vm_sens,
-        properties=properties,
-        property_sens=property_sens,
-    )
+    failed = False
+    try:
+        jac = jac_cb(
+            parameters=x,
+            coef_sens=coef_sens,
+            moment_coef_sens=moment_coef_sens,
+            loads_dict=loads_dict,
+            volmass=vm,
+            volmass_sens=vm_sens,
+            properties=properties,
+            property_sens=property_sens,
+            cog=cog,
+            cog_sens=cog_sens,
+        )
 
-    return jac
+    except Exception as e:
+        print(f"Exception calling jacobian callback: {e}")
+        jac = {}
+        failed = True
+
+    return jac, failed
 
 
 def _process_parameters(x):

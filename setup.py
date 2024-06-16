@@ -41,6 +41,7 @@ setuptools.setup(
     author_email="kemackle98@gmail.com",
     description="Python Sensitivity Approximations for Geometric-Aerodynamic Surfaces",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     project_urls={
         "Bug Tracker": "https://github.com/kieran-mackle/pysagas/issues",
         "Source Code": "https://github.com/kieran-mackle/pysagas",

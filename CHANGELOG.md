@@ -1,3 +1,34 @@
+## v0.14.0 (2024-02-27)
+
+### Feat
+
+- use meshio instead of pymesh when saving FlowSolver results
+- **parsers.py**: added meshio parser
+
+## v0.13.0 (2024-01-02)
+
+### Feat
+
+- **ShapeOpt**: added passing of cog data
+
+### Fix
+
+- **optimisation**: fixed stale import
+- **OPMShapeOpt**: use generic sensitivity solver instead of finite diff
+- **Cart3DShapeOpt**: add sim_success flag to recover from bad sim
+- **van_dyke_dPdp**: remove temporary method
+- **Cell**: fix face_ids type hint
+
+### Refactor
+
+- **opm**: convert opm module name to lowercase for PEP8
+- renamed dPdp methods to sensitivity for clarity
+- refactored sensitivity models into senstivity module
+- **wrapper**: refactored wrapper module into sensitivity module
+- **utilities.py**: integrate piston sens with mach_limited_piston function
+- **utilities.py**: move test helper functions into relevant test module
+- **cart3d.py**: update import to avoid pymesh dependency error
+
 ## v0.12.1 (2023-11-06)
 
 ### Refactor

@@ -2,15 +2,27 @@
 
 <h1 align="center">PySAGAS</h1>
 
-<p align="center">
-  <a><img src="https://github.com/0x6080604052/analytics/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center"></a>
-</p>
 
+
+<p align="center">
+  <a href="https://pypi.org/project/hypysagas/">
+    <img src="https://img.shields.io/pypi/v/hypysagas.svg?color=blue&style=plastic" alt="Latest version" width=95 height=20>
+  </a>
+  
+  <a href="https://github.com/psf/black">
+    <img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
+  </a>
+
+  <a>
+    <img src="https://github.com/kieran-mackle/pysagas/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center">
+  </a>
+  
+</p>
 
 
 <!-- start intro -->
 **PySAGAS** is a Python package for the generation of **S**ensitivity **A**pproximations
-for **G**eometric and **A**erodynamic **Surface** properties. It provides a 
+for **G**eometric and **A**erodynamic **S**urface properties. It provides a 
 computationally-efficient method for generating surface sensitivity approximations from 
 existing flow solutions, to use in aerodynamic shape optimisation studies. The GIF below 
 is an example of this, where a hypersonic waverider was optimised for maximum L/D at Mach
@@ -36,6 +48,8 @@ is an example of this, where a hypersonic waverider was optimised for maximum L/
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#citing-pysagas">Citing</a></li>
+    <li><a href="#license">License</a></li>
   </ol>
 </details>
 
@@ -121,5 +135,27 @@ with the sensitivity of the geometric vertices to the design parameters. From he
 
 
 <!-- end usage -->
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
+
+## Citing PySAGAS
+If you use PySAGAS in any published work, please cite it using the BibTex reference below.
+
+```text
+@inproceedings{Mackle2024,
+  author    = {Mackle, Kieran and Jahn, Ingo},
+  booktitle = {AIAA Science and Technology Forum and Exposition},
+  title     = {Efficient and Flexible Methodology for the Aerodynamic Shape Optimisation of Hypersonic Vehicle Concepts in a High-Dimensional Design Space},
+  year      = {2024},
+}
+```
+
+<p align="right">[<a href="#readme-top">back to top</a>]</p>
+
+
+## License
+PySAGAS is licensed under [GPLv3](COPYING).
 
 <p align="right">[<a href="#readme-top">back to top</a>]</p>
