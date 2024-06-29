@@ -1,7 +1,7 @@
 from __future__ import annotations
 import numpy as np
 import pysagas.flow
-from .vector import Vector
+from pysagas.geometry import Vector
 from numpy.typing import ArrayLike
 from typing import Union, List, Optional
 

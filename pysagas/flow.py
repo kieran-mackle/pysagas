@@ -1,5 +1,5 @@
 import numpy as np
-from .geometry.vector import Vector
+from pysagas.geometry import Vector
 
 
 class GasState:
