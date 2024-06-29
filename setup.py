@@ -47,8 +47,6 @@ setuptools.setup(
         "Source Code": "https://github.com/kieran-mackle/pysagas",
     },
     classifiers=[
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
     ],
     package_dir={"": "."},
@@ -62,6 +60,7 @@ setuptools.setup(
         "meshio >= 5.3.4",
         "matplotlib",
         "scipy >= 1.10.1",
+        "hypervehicle",
     ],
     extras_require={
         "dev": dev_dep,
