@@ -46,8 +46,12 @@ def van_dyke_sensitivity(
         The index of the parameter to find the sensitivity for. This is used to
         index cell.dndp.
     """
-    piston = piston_sensitivity(cell=cell, p_i=p_i)
     M_l = cell.flowstate.M
+    if M_l < 1.0:
+        # Subsonic cell, skip
+        return 0
+
+    piston = piston_sensitivity(cell=cell, p_i=p_i)
     dPdp = piston * M_l / (M_l**2 - 1) ** 0.5
     return dPdp
 

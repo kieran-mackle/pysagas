@@ -66,8 +66,12 @@ class Cart3DSensitivityCalculator(SensitivityCalculator):
         self.verbosity = verbosity
 
         # Check dimensionality
-        if len(self.sensdata) != len(self.pointdata):
-            raise ValueError("The sensitivity data does not match the point data.")
+        l1 = len(self.sensdata)
+        l2 = len(self.pointdata)
+        if l1 != l2:
+            raise ValueError(
+                f"The sensitivity data does not match the point data ({l1} vs. {l2})."
+            )
 
         super().__init__(**kwargs)
 

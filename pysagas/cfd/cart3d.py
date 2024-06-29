@@ -463,6 +463,8 @@ class Cart3D(FlowSolver):
                 _tag = word[0]
 
                 if (not tag) or (tag is not None and tag == _tag):
+                    if not tag:
+                        tag = _tag
                     coeff = word[-1]
                     short_coeff = coeff[1:4]
                     long_coeff = coeff[1:6]
