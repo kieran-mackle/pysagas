@@ -453,6 +453,7 @@ class OPM(FlowSolver):
         M2 = (a / b / (np.sin(beta - theta)) ** 2) ** 0.5
         return M2
 
+    @staticmethod
     def oblique_T2_T1(M1: float, beta: float, gamma: float = 1.4):
         """Returns the temperature ratio T2/T1 across an oblique shock.
 

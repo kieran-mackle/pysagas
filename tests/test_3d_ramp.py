@@ -1,9 +1,10 @@
 import numpy as np
 
 np.seterr(all="ignore")
-import gdtk.ideal_gas_flow as igf
+
 from pysagas.geometry import Vector, Cell
 from pysagas.flow import GasState, FlowState
+from pysagas.cfd.oblique_prandtl_meyer import OPM
 from pysagas.sensitivity.calculator import SensitivityCalculator
 
 
@@ -24,8 +25,10 @@ def calculate_pressures(flow: FlowState, theta: float) -> float:
     P2 : float
         The pressure behind the oblique shock.
     """
-    beta = igf.beta_obl(M1=flow.M, theta=abs(theta), g=flow.gamma, tol=1.0e-6)
-    P2_P1 = igf.p2_p1_obl(flow.M, beta, g=flow.gamma)
+    beta = OPM.oblique_beta(
+        M1=flow.M, theta=abs(theta), gamma=flow.gamma, tolerance=1.0e-6
+    )
+    P2_P1 = OPM.oblique_p2_p1(flow.M, beta, gamma=flow.gamma)
     P2 = P2_P1 * flow.P
     return P2
 
@@ -40,9 +43,11 @@ def run_main():
     width = 0.02
     parameters = [theta, length, width]
 
-    beta = igf.beta_obl(freestream.M, abs(theta), g=freestream.gamma, tol=1.0e-6)
-    M_ramp = igf.M2_obl(freestream.M, beta, theta, g=freestream.gamma)
-    T2_T1 = igf.T2_T1_obl(freestream.M, beta, g=freestream.gamma)
+    beta = OPM.oblique_beta(
+        freestream.M, abs(theta), gamma=freestream.gamma, tolerance=1.0e-6
+    )
+    M_ramp = OPM.oblique_M2(freestream.M, beta, theta, gamma=freestream.gamma)
+    T2_T1 = OPM.oblique_T2_T1(freestream.M, beta, gamma=freestream.gamma)
 
     P_ramp = calculate_pressures(flow=freestream, theta=theta)
 
