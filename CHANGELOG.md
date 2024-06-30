@@ -1,3 +1,9 @@
+## v0.15.1 (2024-06-29)
+
+### Refactor
+
+- migrate Vector into hypervehicle
+
 ## v0.15.0 (2024-06-29)
 
 ### Feat
