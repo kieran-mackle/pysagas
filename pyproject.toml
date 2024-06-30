@@ -24,12 +24,12 @@ dependencies = [
     'meshio >= 5.3.4',
     'matplotlib',
     'scipy >= 1.10.1',
-    'hypervehicle >= 0.7.0',
+    'hypervehicle >= 0.6.0',
 ]
 
 [project.optional-dependencies]
 dev = [
-    'sphinx == 5.3.0',
+    'sphinx',
     'sphinx-rtd-theme == 1.1.1',
     'sphinx-copybutton >= 0.5.0',
     'sphinx-inline-tabs >= 2022.1.2b11',
