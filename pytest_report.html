@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title id="head-title">pytest_report.html</title>
+      <style type="text/css">body {
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: 12px;
+  /* do not increase min-width as some may use split screens */
+  min-width: 800px;
+  color: #999;
+}
+
+h1 {
+  font-size: 24px;
+  color: black;
+}
+
+h2 {
+  font-size: 16px;
+  color: black;
+}
+
+p {
+  color: black;
+}
+
+a {
+  color: #999;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+/******************************
+ * SUMMARY INFORMATION
+ ******************************/
+#environment td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  vertical-align: top;
+}
+#environment tr:nth-child(odd) {
+  background-color: #f6f6f6;
+}
+#environment ul {
+  margin: 0;
+  padding: 0 20px;
+}
+
+/******************************
+ * TEST RESULT COLORS
+ ******************************/
+span.passed,
+.passed .col-result {
+  color: green;
+}
+
+span.skipped,
+span.xfailed,
+span.rerun,
+.skipped .col-result,
+.xfailed .col-result,
+.rerun .col-result {
+  color: orange;
+}
+
+span.error,
+span.failed,
+span.xpassed,
+.error .col-result,
+.failed .col-result,
+.xpassed .col-result {
+  color: red;
+}
+
+.col-links__extra {
+  margin-right: 3px;
+}
+
+/******************************
+ * RESULTS TABLE
+ *
+ * 1. Table Layout
+ * 2. Extra
+ * 3. Sorting items
+ *
+ ******************************/
+/*------------------
+ * 1. Table Layout
+ *------------------*/
+#results-table {
+  border: 1px solid #e6e6e6;
+  color: #999;
+  font-size: 12px;
+  width: 100%;
+}
+#results-table th,
+#results-table td {
+  padding: 5px;
+  border: 1px solid #e6e6e6;
+  text-align: left;
+}
+#results-table th {
+  font-weight: bold;
+}
+
+/*------------------
+ * 2. Extra
+ *------------------*/
+.logwrapper {
+  max-height: 230px;
+  overflow-y: scroll;
+  background-color: #e6e6e6;
+}
+.logwrapper.expanded {
+  max-height: none;
+}
+.logwrapper.expanded .logexpander:after {
+  content: "collapse [-]";
+}
+.logwrapper .logexpander {
+  z-index: 1;
+  position: sticky;
+  top: 10px;
+  width: max-content;
+  border: 1px solid;
+  border-radius: 3px;
+  padding: 5px 7px;
+  margin: 10px 0 10px calc(100% - 80px);
+  cursor: pointer;
+  background-color: #e6e6e6;
+}
+.logwrapper .logexpander:after {
+  content: "expand [+]";
+}
+.logwrapper .logexpander:hover {
+  color: #000;
+  border-color: #000;
+}
+.logwrapper .log {
+  min-height: 40px;
+  position: relative;
+  top: -50px;
+  height: calc(100% + 50px);
+  border: 1px solid #e6e6e6;
+  color: black;
+  display: block;
+  font-family: "Courier New", Courier, monospace;
+  padding: 5px;
+  padding-right: 80px;
+  white-space: pre-wrap;
+}
+
+div.media {
+  border: 1px solid #e6e6e6;
+  float: right;
+  height: 240px;
+  margin: 0 5px;
+  overflow: hidden;
+  width: 320px;
+}
+
+.media-container {
+  display: grid;
+  grid-template-columns: 25px auto 25px;
+  align-items: center;
+  flex: 1 1;
+  overflow: hidden;
+  height: 200px;
+}
+
+.media-container--fullscreen {
+  grid-template-columns: 0px auto 0px;
+}
+
+.media-container__nav--right,
+.media-container__nav--left {
+  text-align: center;
+  cursor: pointer;
+}
+
+.media-container__viewport {
+  cursor: pointer;
+  text-align: center;
+  height: inherit;
+}
+.media-container__viewport img,
+.media-container__viewport video {
+  object-fit: cover;
+  width: 100%;
+  max-height: 100%;
+}
+
+.media__name,
+.media__counter {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  flex: 0 0 25px;
+  align-items: center;
+}
+
+.collapsible td:not(.col-links) {
+  cursor: pointer;
+}
+.collapsible td:not(.col-links):hover::after {
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+}
+
+.col-result {
+  width: 130px;
+}
+.col-result:hover::after {
+  content: " (hide details)";
+}
+
+.col-result.collapsed:hover::after {
+  content: " (show details)";
+}
+
+#environment-header h2:hover::after {
+  content: " (hide details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+#environment-header.collapsed h2:hover::after {
+  content: " (show details)";
+  color: #bbb;
+  font-style: italic;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/*------------------
+ * 3. Sorting items
+ *------------------*/
+.sortable {
+  cursor: pointer;
+}
+.sortable.desc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: -12.5px;
+  border: 10px solid #4caf50;
+  border-bottom: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.sortable.asc:after {
+  content: " ";
+  position: relative;
+  left: 5px;
+  bottom: 12.5px;
+  border: 10px solid #4caf50;
+  border-top: 0;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+
+.hidden, .summary__reload__button.hidden {
+  display: none;
+}
+
+.summary__data {
+  flex: 0 0 550px;
+}
+.summary__reload {
+  flex: 1 1;
+  display: flex;
+  justify-content: center;
+}
+.summary__reload__button {
+  flex: 0 0 300px;
+  display: flex;
+  color: white;
+  font-weight: bold;
+  background-color: #4caf50;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.summary__reload__button:hover {
+  background-color: #46a049;
+}
+.summary__spacer {
+  flex: 0 0 550px;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+}
+
+.filters,
+.collapse {
+  display: flex;
+  align-items: center;
+}
+.filters button,
+.collapse button {
+  color: #999;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.filters button:hover,
+.collapse button:hover {
+  color: #ccc;
+}
+
+.filter__label {
+  margin-right: 10px;
+}
+
+      </style>
+    
+  </head>
+  <body>
+    <h1 id="title">pytest_report.html</h1>
+    <p>Report generated on 05-Jul-2024 at 23:13:26 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a>
+        v4.1.1</p>
+    <div id="environment-header">
+      <h2>Environment</h2>
+    </div>
+    <table id="environment"></table>
+    <!-- TEMPLATES -->
+      <template id="template_environment_row">
+      <tr>
+        <td></td>
+        <td></td>
+      </tr>
+    </template>
+    <template id="template_results-table__body--empty">
+      <tbody class="results-table-row">
+        <tr id="not-found-message">
+          <td colspan="4">No results found. Check the filters.</th>
+        </tr>
+    </template>
+    <template id="template_results-table__tbody">
+      <tbody class="results-table-row">
+        <tr class="collapsible">
+        </tr>
+        <tr class="extras-row">
+          <td class="extra" colspan="4">
+            <div class="extraHTML"></div>
+            <div class="media">
+              <div class="media-container">
+                  <div class="media-container__nav--left"><</div>
+                  <div class="media-container__viewport">
+                    <img src="" />
+                    <video controls>
+                      <source src="" type="video/mp4">
+                    </video>
+                  </div>
+                  <div class="media-container__nav--right">></div>
+                </div>
+                <div class="media__name"></div>
+                <div class="media__counter"></div>
+            </div>
+            <div class="logwrapper">
+              <div class="logexpander"></div>
+              <div class="log"></div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </template>
+    <!-- END TEMPLATES -->
+    <div class="summary">
+      <div class="summary__data">
+        <h2>Summary</h2>
+        <div class="additional-summary prefix">
+        </div>
+        <p class="run-count">3 tests took 00:00:25.</p>
+        <p class="filter">(Un)check the boxes to filter the results.</p>
+        <div class="summary__reload">
+          <div class="summary__reload__button hidden" onclick="location.reload()">
+            <div>There are still tests running. <br />Reload this page to get the latest results!</div>
+          </div>
+        </div>
+        <div class="summary__spacer"></div>
+        <div class="controls">
+          <div class="filters">
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="failed" disabled/>
+            <span class="failed">0 Failed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="passed" />
+            <span class="passed">3 Passed,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="skipped" disabled/>
+            <span class="skipped">0 Skipped,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xfailed" disabled/>
+            <span class="xfailed">0 Expected failures,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="xpassed" disabled/>
+            <span class="xpassed">0 Unexpected passes,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="error" disabled/>
+            <span class="error">0 Errors,</span>
+            <input checked="true" class="filter" name="filter_checkbox" type="checkbox" data-test-result="rerun" disabled/>
+            <span class="rerun">0 Reruns</span>
+          </div>
+          <div class="collapse">
+            <button id="show_all_details">Show all details</button>&nbsp;/&nbsp;<button id="hide_all_details">Hide all details</button>
+          </div>
+        </div>
+      </div>
+      <div class="additional-summary summary">
+      </div>
+      <div class="additional-summary postfix">
+      </div>
+    </div>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable" data-column-type="result">Result</th>
+          <th class="sortable" data-column-type="testId">Test</th>
+          <th class="sortable" data-column-type="duration">Duration</th>
+          <th>Links</th>
+        </tr>
+      </thead>
+    </table>
+  </body>
+  <footer>
+    <div id="data-container" data-jsonblob="{&#34;environment&#34;: {&#34;Python&#34;: &#34;3.11.9&#34;, &#34;Platform&#34;: &#34;Linux-6.5.0-1022-azure-x86_64-with-glibc2.35&#34;, &#34;Packages&#34;: {&#34;pytest&#34;: &#34;8.2.2&#34;, &#34;pluggy&#34;: &#34;1.5.0&#34;}, &#34;Plugins&#34;: {&#34;html&#34;: &#34;4.1.1&#34;, &#34;metadata&#34;: &#34;3.1.1&#34;, &#34;cov&#34;: &#34;5.0.0&#34;}, &#34;CI&#34;: &#34;true&#34;, &#34;JAVA_HOME&#34;: &#34;/usr/lib/jvm/temurin-11-jdk-amd64&#34;}, &#34;tests&#34;: {&#34;tests/test_3d_ramp.py::test_ramp&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/test_3d_ramp.py::test_ramp&#34;, &#34;duration&#34;: &#34;6 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/test_3d_ramp.py::test_ramp&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;6 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}], &#34;tests/test_cart3d.py::test_cart3d_wedge&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/test_cart3d.py::test_cart3d_wedge&#34;, &#34;duration&#34;: &#34;00:00:25&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/test_cart3d.py::test_cart3d_wedge&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;00:00:25&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;----------------------------- Captured stdout call -----------------------------\n\nCalculating aerodynamic sensitivities.\n\nTranscribing cells from Components.i.plt...\nDone.\nDone.\n\nCalculating aerodynamic sensitivities.\nDone.\n\nCart 3D Finite Difference Result:\n[[0.147517 0.126153 0.      ]]\n\nPySAGAS Result:\nPiston theory:\n     dFx/dp    dFy/dp    dFz/dp\nP  0.155206  0.119313  0.003127\nVan Dykes theory:\n     dFx/dp   dFy/dp    dFz/dp\nP  0.156749  0.12372  0.003127\n\nError (%):\n[[ 5.21209048 -5.42160515  0.        ]]\n\n----------------------------- Captured stderr call -----------------------------\n\r  0%|          | 0/10368 [00:00&amp;lt;?, ?it/s]\r  1%|          | 52/10368 [00:00&amp;lt;00:19, 519.20it/s]\r  1%|          | 104/10368 [00:00&amp;lt;00:25, 407.00it/s]\r  2%|\u258f         | 156/10368 [00:00&amp;lt;00:22, 451.61it/s]\r  2%|\u258f         | 208/10368 [00:00&amp;lt;00:21, 476.31it/s]\r  3%|\u258e         | 260/10368 [00:00&amp;lt;00:20, 490.71it/s]\r  3%|\u258e         | 312/10368 [00:00&amp;lt;00:20, 500.13it/s]\r  4%|\u258e         | 364/10368 [00:00&amp;lt;00:19, 506.14it/s]\r  4%|\u258d         | 416/10368 [00:00&amp;lt;00:19, 509.58it/s]\r  5%|\u258d         | 469/10368 [00:00&amp;lt;00:19, 513.26it/s]\r  5%|\u258c         | 521/10368 [00:01&amp;lt;00:19, 514.63it/s]\r  6%|\u258c         | 573/10368 [00:01&amp;lt;00:19, 510.81it/s]\r  6%|\u258c         | 625/10368 [00:01&amp;lt;00:18, 513.53it/s]\r  7%|\u258b         | 677/10368 [00:01&amp;lt;00:18, 515.32it/s]\r  7%|\u258b         | 729/10368 [00:01&amp;lt;00:18, 516.58it/s]\r  8%|\u258a         | 781/10368 [00:01&amp;lt;00:18, 516.64it/s]\r  8%|\u258a         | 834/10368 [00:01&amp;lt;00:18, 517.79it/s]\r  9%|\u258a         | 887/10368 [00:01&amp;lt;00:18, 518.66it/s]\r  9%|\u2589         | 940/10368 [00:01&amp;lt;00:18, 519.34it/s]\r 10%|\u2589         | 992/10368 [00:01&amp;lt;00:18, 518.92it/s]\r 10%|\u2588         | 1044/10368 [00:02&amp;lt;00:17, 518.80it/s]\r 11%|\u2588         | 1096/10368 [00:02&amp;lt;00:17, 517.13it/s]\r 11%|\u2588         | 1149/10368 [00:02&amp;lt;00:17, 518.44it/s]\r 12%|\u2588\u258f        | 1201/10368 [00:02&amp;lt;00:17, 518.59it/s]\r 12%|\u2588\u258f        | 1254/10368 [00:02&amp;lt;00:17, 519.46it/s]\r 13%|\u2588\u258e        | 1307/10368 [00:02&amp;lt;00:17, 520.02it/s]\r 13%|\u2588\u258e        | 1360/10368 [00:02&amp;lt;00:17, 519.09it/s]\r 14%|\u2588\u258e        | 1412/10368 [00:02&amp;lt;00:17, 517.60it/s]\r 14%|\u2588\u258d        | 1464/10368 [00:02&amp;lt;00:17, 518.18it/s]\r 15%|\u2588\u258d        | 1516/10368 [00:02&amp;lt;00:17, 518.55it/s]\r 15%|\u2588\u258c        | 1568/10368 [00:03&amp;lt;00:16, 518.29it/s]\r 16%|\u2588\u258c        | 1620/10368 [00:03&amp;lt;00:16, 518.52it/s]\r 16%|\u2588\u258c        | 1672/10368 [00:03&amp;lt;00:16, 518.47it/s]\r 17%|\u2588\u258b        | 1725/10368 [00:03&amp;lt;00:16, 519.34it/s]\r 17%|\u2588\u258b        | 1777/10368 [00:03&amp;lt;00:16, 517.93it/s]\r 18%|\u2588\u258a        | 1829/10368 [00:03&amp;lt;00:16, 518.44it/s]\r 18%|\u2588\u258a        | 1882/10368 [00:03&amp;lt;00:16, 519.34it/s]\r 19%|\u2588\u258a        | 1934/10368 [00:03&amp;lt;00:16, 518.83it/s]\r 19%|\u2588\u2589        | 1986/10368 [00:03&amp;lt;00:16, 518.76it/s]\r 20%|\u2588\u2589        | 2038/10368 [00:03&amp;lt;00:16, 518.39it/s]\r 20%|\u2588\u2588        | 2090/10368 [00:04&amp;lt;00:16, 515.74it/s]\r 21%|\u2588\u2588        | 2142/10368 [00:04&amp;lt;00:15, 516.74it/s]\r 21%|\u2588\u2588        | 2194/10368 [00:04&amp;lt;00:15, 517.46it/s]\r 22%|\u2588\u2588\u258f       | 2246/10368 [00:04&amp;lt;00:15, 517.36it/s]\r 22%|\u2588\u2588\u258f       | 2299/10368 [00:04&amp;lt;00:15, 518.19it/s]\r 23%|\u2588\u2588\u258e       | 2352/10368 [00:04&amp;lt;00:15, 519.02it/s]\r 23%|\u2588\u2588\u258e       | 2404/10368 [00:04&amp;lt;00:15, 514.08it/s]\r 24%|\u2588\u2588\u258e       | 2456/10368 [00:04&amp;lt;00:15, 514.51it/s]\r 24%|\u2588\u2588\u258d       | 2508/10368 [00:04&amp;lt;00:15, 516.01it/s]\r 25%|\u2588\u2588\u258d       | 2560/10368 [00:04&amp;lt;00:15, 517.18it/s]\r 25%|\u2588\u2588\u258c       | 2612/10368 [00:05&amp;lt;00:14, 517.66it/s]\r 26%|\u2588\u2588\u258c       | 2665/10368 [00:05&amp;lt;00:14, 519.23it/s]\r 26%|\u2588\u2588\u258c       | 2718/10368 [00:05&amp;lt;00:14, 519.88it/s]\r 27%|\u2588\u2588\u258b       | 2770/10368 [00:05&amp;lt;00:14, 518.50it/s]\r 27%|\u2588\u2588\u258b       | 2822/10368 [00:05&amp;lt;00:14, 518.51it/s]\r 28%|\u2588\u2588\u258a       | 2874/10368 [00:05&amp;lt;00:14, 518.75it/s]\r 28%|\u2588\u2588\u258a       | 2926/10368 [00:05&amp;lt;00:14, 518.30it/s]\r 29%|\u2588\u2588\u258a       | 2978/10368 [00:05&amp;lt;00:14, 518.44it/s]\r 29%|\u2588\u2588\u2589       | 3031/10368 [00:05&amp;lt;00:14, 519.09it/s]\r 30%|\u2588\u2588\u2589       | 3083/10368 [00:05&amp;lt;00:14, 517.18it/s]\r 30%|\u2588\u2588\u2588       | 3135/10368 [00:06&amp;lt;00:13, 517.69it/s]\r 31%|\u2588\u2588\u2588       | 3188/10368 [00:06&amp;lt;00:13, 518.79it/s]\r 31%|\u2588\u2588\u2588\u258f      | 3240/10368 [00:06&amp;lt;00:13, 518.95it/s]\r 32%|\u2588\u2588\u2588\u258f      | 3293/10368 [00:06&amp;lt;00:13, 519.39it/s]\r 32%|\u2588\u2588\u2588\u258f      | 3345/10368 [00:06&amp;lt;00:13, 519.19it/s]\r 33%|\u2588\u2588\u2588\u258e      | 3398/10368 [00:06&amp;lt;00:13, 519.62it/s]\r 33%|\u2588\u2588\u2588\u258e      | 3450/10368 [00:06&amp;lt;00:13, 513.25it/s]\r 34%|\u2588\u2588\u2588\u258d      | 3503/10368 [00:06&amp;lt;00:13, 515.57it/s]\r 34%|\u2588\u2588\u2588\u258d      | 3556/10368 [00:06&amp;lt;00:13, 517.00it/s]\r 35%|\u2588\u2588\u2588\u258d      | 3609/10368 [00:07&amp;lt;00:13, 518.21it/s]\r 35%|\u2588\u2588\u2588\u258c      | 3662/10368 [00:07&amp;lt;00:12, 518.72it/s]\r 36%|\u2588\u2588\u2588\u258c      | 3715/10368 [00:07&amp;lt;00:12, 519.61it/s]\r 36%|\u2588\u2588\u2588\u258b      | 3767/10368 [00:07&amp;lt;00:12, 518.22it/s]\r 37%|\u2588\u2588\u2588\u258b      | 3819/10368 [00:07&amp;lt;00:15, 426.98it/s]\r 37%|\u2588\u2588\u2588\u258b      | 3872/10368 [00:07&amp;lt;00:14, 451.72it/s]\r 38%|\u2588\u2588\u2588\u258a      | 3924/10368 [00:07&amp;lt;00:13, 469.96it/s]\r 38%|\u2588\u2588\u2588\u258a      | 3976/10368 [00:07&amp;lt;00:13, 481.76it/s]\r 39%|\u2588\u2588\u2588\u2589      | 4028/10368 [00:07&amp;lt;00:12, 491.83it/s]\r 39%|\u2588\u2588\u2588\u2589      | 4080/10368 [00:07&amp;lt;00:12, 499.49it/s]\r 40%|\u2588\u2588\u2588\u2589      | 4132/10368 [00:08&amp;lt;00:12, 503.93it/s]\r 40%|\u2588\u2588\u2588\u2588      | 4184/10368 [00:08&amp;lt;00:12, 508.45it/s]\r 41%|\u2588\u2588\u2588\u2588      | 4236/10368 [00:08&amp;lt;00:11, 511.73it/s]\r 41%|\u2588\u2588\u2588\u2588\u258f     | 4289/10368 [00:08&amp;lt;00:11, 514.32it/s]\r 42%|\u2588\u2588\u2588\u2588\u258f     | 4341/10368 [00:08&amp;lt;00:11, 515.81it/s]\r 42%|\u2588\u2588\u2588\u2588\u258f     | 4393/10368 [00:08&amp;lt;00:11, 516.86it/s]\r 43%|\u2588\u2588\u2588\u2588\u258e     | 4445/10368 [00:08&amp;lt;00:11, 517.20it/s]\r 43%|\u2588\u2588\u2588\u2588\u258e     | 4497/10368 [00:08&amp;lt;00:11, 515.75it/s]\r 44%|\u2588\u2588\u2588\u2588\u258d     | 4550/10368 [00:08&amp;lt;00:11, 517.16it/s]\r 44%|\u2588\u2588\u2588\u2588\u258d     | 4602/10368 [00:09&amp;lt;00:11, 517.78it/s]\r 45%|\u2588\u2588\u2588\u2588\u258d     | 4654/10368 [00:09&amp;lt;00:11, 517.90it/s]\r 45%|\u2588\u2588\u2588\u2588\u258c     | 4706/10368 [00:09&amp;lt;00:10, 518.41it/s]\r 46%|\u2588\u2588\u2588\u2588\u258c     | 4758/10368 [00:09&amp;lt;00:10, 518.54it/s]\r 46%|\u2588\u2588\u2588\u2588\u258b     | 4810/10368 [00:09&amp;lt;00:10, 517.41it/s]\r 47%|\u2588\u2588\u2588\u2588\u258b     | 4862/10368 [00:09&amp;lt;00:10, 518.15it/s]\r 47%|\u2588\u2588\u2588\u2588\u258b     | 4914/10368 [00:09&amp;lt;00:10, 518.69it/s]\r 48%|\u2588\u2588\u2588\u2588\u258a     | 4967/10368 [00:09&amp;lt;00:10, 519.54it/s]\r 48%|\u2588\u2588\u2588\u2588\u258a     | 5019/10368 [00:09&amp;lt;00:10, 518.62it/s]\r 49%|\u2588\u2588\u2588\u2588\u2589     | 5072/10368 [00:09&amp;lt;00:10, 519.44it/s]\r 49%|\u2588\u2588\u2588\u2588\u2589     | 5124/10368 [00:10&amp;lt;00:10, 518.15it/s]\r 50%|\u2588\u2588\u2588\u2588\u2589     | 5176/10368 [00:10&amp;lt;00:10, 514.49it/s]\r 50%|\u2588\u2588\u2588\u2588\u2588     | 5228/10368 [00:10&amp;lt;00:09, 515.75it/s]\r 51%|\u2588\u2588\u2588\u2588\u2588     | 5280/10368 [00:10&amp;lt;00:09, 516.49it/s]\r 51%|\u2588\u2588\u2588\u2588\u2588\u258f    | 5332/10368 [00:10&amp;lt;00:09, 517.46it/s]\r 52%|\u2588\u2588\u2588\u2588\u2588\u258f    | 5384/10368 [00:10&amp;lt;00:09, 517.64it/s]\r 52%|\u2588\u2588\u2588\u2588\u2588\u258f    | 5436/10368 [00:10&amp;lt;00:09, 517.88it/s]\r 53%|\u2588\u2588\u2588\u2588\u2588\u258e    | 5488/10368 [00:10&amp;lt;00:09, 517.35it/s]\r 53%|\u2588\u2588\u2588\u2588\u2588\u258e    | 5540/10368 [00:10&amp;lt;00:09, 516.88it/s]\r 54%|\u2588\u2588\u2588\u2588\u2588\u258d    | 5592/10368 [00:10&amp;lt;00:09, 517.27it/s]\r 54%|\u2588\u2588\u2588\u2588\u2588\u258d    | 5644/10368 [00:11&amp;lt;00:09, 517.56it/s]\r 55%|\u2588\u2588\u2588\u2588\u2588\u258d    | 5696/10368 [00:11&amp;lt;00:09, 517.90it/s]\r 55%|\u2588\u2588\u2588\u2588\u2588\u258c    | 5748/10368 [00:11&amp;lt;00:08, 518.51it/s]\r 56%|\u2588\u2588\u2588\u2588\u2588\u258c    | 5800/10368 [00:11&amp;lt;00:08, 517.32it/s]\r 56%|\u2588\u2588\u2588\u2588\u2588\u258b    | 5852/10368 [00:11&amp;lt;00:09, 494.19it/s]\r 57%|\u2588\u2588\u2588\u2588\u2588\u258b    | 5904/10368 [00:11&amp;lt;00:08, 500.35it/s]\r 57%|\u2588\u2588\u2588\u2588\u2588\u258b    | 5956/10368 [00:11&amp;lt;00:08, 505.65it/s]\r 58%|\u2588\u2588\u2588\u2588\u2588\u258a    | 6008/10368 [00:11&amp;lt;00:08, 508.91it/s]\r 58%|\u2588\u2588\u2588\u2588\u2588\u258a    | 6059/10368 [00:11&amp;lt;00:08, 505.70it/s]\r 59%|\u2588\u2588\u2588\u2588\u2588\u2589    | 6111/10368 [00:11&amp;lt;00:08, 508.19it/s]\r 59%|\u2588\u2588\u2588\u2588\u2588\u2589    | 6163/10368 [00:12&amp;lt;00:08, 511.40it/s]\r 60%|\u2588\u2588\u2588\u2588\u2588\u2589    | 6215/10368 [00:12&amp;lt;00:08, 513.45it/s]\r 60%|\u2588\u2588\u2588\u2588\u2588\u2588    | 6267/10368 [00:12&amp;lt;00:07, 514.91it/s]\r 61%|\u2588\u2588\u2588\u2588\u2588\u2588    | 6319/10368 [00:12&amp;lt;00:07, 515.98it/s]\r 61%|\u2588\u2588\u2588\u2588\u2588\u2588\u258f   | 6371/10368 [00:12&amp;lt;00:07, 516.01it/s]\r 62%|\u2588\u2588\u2588\u2588\u2588\u2588\u258f   | 6423/10368 [00:12&amp;lt;00:07, 516.33it/s]\r 62%|\u2588\u2588\u2588\u2588\u2588\u2588\u258f   | 6475/10368 [00:12&amp;lt;00:07, 515.58it/s]\r 63%|\u2588\u2588\u2588\u2588\u2588\u2588\u258e   | 6527/10368 [00:12&amp;lt;00:07, 516.28it/s]\r 63%|\u2588\u2588\u2588\u2588\u2588\u2588\u258e   | 6579/10368 [00:12&amp;lt;00:07, 510.83it/s]\r 64%|\u2588\u2588\u2588\u2588\u2588\u2588\u258d   | 6631/10368 [00:12&amp;lt;00:07, 512.56it/s]\r 64%|\u2588\u2588\u2588\u2588\u2588\u2588\u258d   | 6683/10368 [00:13&amp;lt;00:07, 514.12it/s]\r 65%|\u2588\u2588\u2588\u2588\u2588\u2588\u258d   | 6735/10368 [00:13&amp;lt;00:07, 514.93it/s]\r 65%|\u2588\u2588\u2588\u2588\u2588\u2588\u258c   | 6787/10368 [00:13&amp;lt;00:06, 515.14it/s]\r 66%|\u2588\u2588\u2588\u2588\u2588\u2588\u258c   | 6839/10368 [00:13&amp;lt;00:06, 515.93it/s]\r 66%|\u2588\u2588\u2588\u2588\u2588\u2588\u258b   | 6891/10368 [00:13&amp;lt;00:06, 514.92it/s]\r 67%|\u2588\u2588\u2588\u2588\u2588\u2588\u258b   | 6943/10368 [00:13&amp;lt;00:06, 515.56it/s]\r 67%|\u2588\u2588\u2588\u2588\u2588\u2588\u258b   | 6995/10368 [00:13&amp;lt;00:06, 515.74it/s]\r 68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 7047/10368 [00:13&amp;lt;00:06, 502.82it/s]\r 68%|\u2588\u2588\u2588\u2588\u2588\u2588\u258a   | 7099/10368 [00:13&amp;lt;00:06, 507.07it/s]\r 69%|\u2588\u2588\u2588\u2588\u2588\u2588\u2589   | 7151/10368 [00:13&amp;lt;00:06, 509.07it/s]\r 69%|\u2588\u2588\u2588\u2588\u2588\u2588\u2589   | 7203/10368 [00:14&amp;lt;00:06, 510.53it/s]\r 70%|\u2588\u2588\u2588\u2588\u2588\u2588\u2589   | 7255/10368 [00:14&amp;lt;00:06, 512.86it/s]\r 70%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588   | 7307/10368 [00:14&amp;lt;00:05, 513.89it/s]\r 71%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588   | 7359/10368 [00:14&amp;lt;00:05, 514.48it/s]\r 71%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f  | 7411/10368 [00:14&amp;lt;00:05, 514.57it/s]\r 72%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f  | 7463/10368 [00:14&amp;lt;00:05, 514.59it/s]\r 72%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f  | 7515/10368 [00:14&amp;lt;00:07, 393.16it/s]\r 73%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e  | 7567/10368 [00:14&amp;lt;00:06, 423.49it/s]\r 73%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e  | 7619/10368 [00:14&amp;lt;00:06, 447.86it/s]\r 74%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 7671/10368 [00:15&amp;lt;00:05, 466.92it/s]\r 74%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 7723/10368 [00:15&amp;lt;00:05, 481.04it/s]\r 75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d  | 7775/10368 [00:15&amp;lt;00:05, 491.78it/s]\r 75%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 7827/10368 [00:15&amp;lt;00:05, 498.55it/s]\r 76%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c  | 7879/10368 [00:15&amp;lt;00:04, 504.27it/s]\r 76%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b  | 7931/10368 [00:15&amp;lt;00:04, 508.08it/s]\r 77%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b  | 7983/10368 [00:15&amp;lt;00:04, 509.77it/s]\r 77%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b  | 8035/10368 [00:15&amp;lt;00:04, 512.11it/s]\r 78%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a  | 8087/10368 [00:15&amp;lt;00:04, 512.60it/s]\r 79%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a  | 8139/10368 [00:15&amp;lt;00:04, 513.44it/s]\r 79%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 8191/10368 [00:16&amp;lt;00:04, 514.56it/s]\r 80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589  | 8243/10368 [00:16&amp;lt;00:04, 515.24it/s]\r 80%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 8295/10368 [00:16&amp;lt;00:04, 516.11it/s]\r 81%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 8347/10368 [00:16&amp;lt;00:03, 515.80it/s]\r 81%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  | 8399/10368 [00:16&amp;lt;00:03, 513.59it/s]\r 82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 8451/10368 [00:16&amp;lt;00:03, 514.91it/s]\r 82%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f | 8503/10368 [00:16&amp;lt;00:03, 514.68it/s]\r 83%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e | 8555/10368 [00:16&amp;lt;00:03, 495.18it/s]\r 83%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e | 8605/10368 [00:16&amp;lt;00:03, 488.94it/s]\r 83%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e | 8657/10368 [00:17&amp;lt;00:03, 497.73it/s]\r 84%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d | 8709/10368 [00:17&amp;lt;00:03, 504.03it/s]\r 85%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d | 8761/10368 [00:17&amp;lt;00:03, 508.39it/s]\r 85%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 8813/10368 [00:17&amp;lt;00:03, 510.10it/s]\r 86%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 8865/10368 [00:17&amp;lt;00:02, 511.94it/s]\r 86%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c | 8917/10368 [00:17&amp;lt;00:02, 512.91it/s]\r 87%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b | 8969/10368 [00:17&amp;lt;00:02, 514.56it/s]\r 87%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b | 9022/10368 [00:17&amp;lt;00:02, 516.21it/s]\r 88%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 9074/10368 [00:17&amp;lt;00:02, 511.01it/s]\r 88%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 9126/10368 [00:17&amp;lt;00:02, 513.24it/s]\r 89%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a | 9178/10368 [00:18&amp;lt;00:02, 512.67it/s]\r 89%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 9231/10368 [00:18&amp;lt;00:02, 515.17it/s]\r 90%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589 | 9284/10368 [00:18&amp;lt;00:02, 517.97it/s]\r 90%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 | 9337/10368 [00:18&amp;lt;00:01, 518.96it/s]\r 91%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 | 9390/10368 [00:18&amp;lt;00:01, 519.50it/s]\r 91%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 | 9443/10368 [00:18&amp;lt;00:01, 519.80it/s]\r 92%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f| 9495/10368 [00:18&amp;lt;00:01, 519.36it/s]\r 92%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258f| 9548/10368 [00:18&amp;lt;00:01, 520.02it/s]\r 93%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 9601/10368 [00:18&amp;lt;00:01, 519.57it/s]\r 93%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 9653/10368 [00:18&amp;lt;00:01, 519.66it/s]\r 94%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258e| 9705/10368 [00:19&amp;lt;00:01, 519.28it/s]\r 94%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d| 9757/10368 [00:19&amp;lt;00:01, 519.24it/s]\r 95%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258d| 9809/10368 [00:19&amp;lt;00:01, 518.94it/s]\r 95%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c| 9861/10368 [00:19&amp;lt;00:00, 518.90it/s]\r 96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c| 9914/10368 [00:19&amp;lt;00:00, 519.56it/s]\r 96%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258c| 9966/10368 [00:19&amp;lt;00:00, 519.30it/s]\r 97%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 10018/10368 [00:19&amp;lt;00:00, 519.27it/s]\r 97%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258b| 10070/10368 [00:19&amp;lt;00:00, 519.06it/s]\r 98%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a| 10122/10368 [00:19&amp;lt;00:00, 513.66it/s]\r 98%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a| 10174/10368 [00:19&amp;lt;00:00, 515.26it/s]\r 99%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u258a| 10227/10368 [00:20&amp;lt;00:00, 517.01it/s]\r 99%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589| 10279/10368 [00:20&amp;lt;00:00, 515.03it/s]\r100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2589| 10331/10368 [00:20&amp;lt;00:00, 508.04it/s]\r100%|\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588| 10368/10368 [00:20&amp;lt;00:00, 510.30it/s]\n&#34;}], &#34;tests/test_flow_solvers.py::test_pm&#34;: [{&#34;extras&#34;: [], &#34;result&#34;: &#34;Passed&#34;, &#34;testId&#34;: &#34;tests/test_flow_solvers.py::test_pm&#34;, &#34;duration&#34;: &#34;1 ms&#34;, &#34;resultsTableRow&#34;: [&#34;&lt;td class=\&#34;col-result\&#34;&gt;Passed&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-testId\&#34;&gt;tests/test_flow_solvers.py::test_pm&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-duration\&#34;&gt;1 ms&lt;/td&gt;&#34;, &#34;&lt;td class=\&#34;col-links\&#34;&gt;&lt;/td&gt;&#34;], &#34;log&#34;: &#34;No log output captured.&#34;}]}, &#34;renderCollapsed&#34;: [&#34;passed&#34;], &#34;initialSort&#34;: &#34;result&#34;, &#34;title&#34;: &#34;pytest_report.html&#34;}"></div>
+    <script>
+      (function(){function r(e,n,t){function o(i,f){if(!n[i]){if(!e[i]){var c="function"==typeof require&&require;if(!f&&c)return c(i,!0);if(u)return u(i,!0);var a=new Error("Cannot find module '"+i+"'");throw a.code="MODULE_NOT_FOUND",a}var p=n[i]={exports:{}};e[i][0].call(p.exports,function(r){var n=e[i][1][r];return o(n||r)},p,p.exports,r,e,n,t)}return n[i].exports}for(var u="function"==typeof require&&require,i=0;i<t.length;i++)o(t[i]);return o}return r})()({1:[function(require,module,exports){
+const { getCollapsedCategory, setCollapsedIds } = require('./storage.js')
+
+class DataManager {
+    setManager(data) {
+        const collapsedCategories = [...getCollapsedCategory(data.renderCollapsed)]
+        const collapsedIds = []
+        const tests = Object.values(data.tests).flat().map((test, index) => {
+            const collapsed = collapsedCategories.includes(test.result.toLowerCase())
+            const id = `test_${index}`
+            if (collapsed) {
+                collapsedIds.push(id)
+            }
+            return {
+                ...test,
+                id,
+                collapsed,
+            }
+        })
+        const dataBlob = { ...data, tests }
+        this.data = { ...dataBlob }
+        this.renderData = { ...dataBlob }
+        setCollapsedIds(collapsedIds)
+    }
+
+    get allData() {
+        return { ...this.data }
+    }
+
+    resetRender() {
+        this.renderData = { ...this.data }
+    }
+
+    setRender(data) {
+        this.renderData.tests = [...data]
+    }
+
+    toggleCollapsedItem(id) {
+        this.renderData.tests = this.renderData.tests.map((test) =>
+            test.id === id ? { ...test, collapsed: !test.collapsed } : test,
+        )
+    }
+
+    set allCollapsed(collapsed) {
+        this.renderData = { ...this.renderData, tests: [...this.renderData.tests.map((test) => (
+            { ...test, collapsed }
+        ))] }
+    }
+
+    get testSubset() {
+        return [...this.renderData.tests]
+    }
+
+    get environment() {
+        return this.renderData.environment
+    }
+
+    get initialSort() {
+        return this.data.initialSort
+    }
+}
+
+module.exports = {
+    manager: new DataManager(),
+}
+
+},{"./storage.js":8}],2:[function(require,module,exports){
+const mediaViewer = require('./mediaviewer.js')
+const templateEnvRow = document.getElementById('template_environment_row')
+const templateResult = document.getElementById('template_results-table__tbody')
+
+function htmlToElements(html) {
+    const temp = document.createElement('template')
+    temp.innerHTML = html
+    return temp.content.childNodes
+}
+
+const find = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return elem.querySelector(selector)
+}
+
+const findAll = (selector, elem) => {
+    if (!elem) {
+        elem = document
+    }
+    return [...elem.querySelectorAll(selector)]
+}
+
+const dom = {
+    getStaticRow: (key, value) => {
+        const envRow = templateEnvRow.content.cloneNode(true)
+        const isObj = typeof value === 'object' && value !== null
+        const values = isObj ? Object.keys(value).map((k) => `${k}: ${value[k]}`) : null
+
+        const valuesElement = htmlToElements(
+            values ? `<ul>${values.map((val) => `<li>${val}</li>`).join('')}<ul>` : `<div>${value}</div>`)[0]
+        const td = findAll('td', envRow)
+        td[0].textContent = key
+        td[1].appendChild(valuesElement)
+
+        return envRow
+    },
+    getResultTBody: ({ testId, id, log, extras, resultsTableRow, tableHtml, result, collapsed }) => {
+        const resultBody = templateResult.content.cloneNode(true)
+        resultBody.querySelector('tbody').classList.add(result.toLowerCase())
+        resultBody.querySelector('tbody').id = testId
+        resultBody.querySelector('.collapsible').dataset.id = id
+
+        resultsTableRow.forEach((html) => {
+            const t = document.createElement('template')
+            t.innerHTML = html
+            resultBody.querySelector('.collapsible').appendChild(t.content)
+        })
+
+        if (log) {
+            // Wrap lines starting with "E" with span.error to color those lines red
+            const wrappedLog = log.replace(/^E.*$/gm, (match) => `<span class="error">${match}</span>`)
+            resultBody.querySelector('.log').innerHTML = wrappedLog
+        } else {
+            resultBody.querySelector('.log').remove()
+        }
+
+        if (collapsed) {
+            resultBody.querySelector('.collapsible > td')?.classList.add('collapsed')
+            resultBody.querySelector('.extras-row').classList.add('hidden')
+        } else {
+            resultBody.querySelector('.collapsible > td')?.classList.remove('collapsed')
+        }
+
+        const media = []
+        extras?.forEach(({ name, format_type, content }) => {
+            if (['image', 'video'].includes(format_type)) {
+                media.push({ path: content, name, format_type })
+            }
+
+            if (format_type === 'html') {
+                resultBody.querySelector('.extraHTML').insertAdjacentHTML('beforeend', `<div>${content}</div>`)
+            }
+        })
+        mediaViewer.setup(resultBody, media)
+
+        // Add custom html from the pytest_html_results_table_html hook
+        tableHtml?.forEach((item) => {
+            resultBody.querySelector('td[class="extra"]').insertAdjacentHTML('beforeend', item)
+        })
+
+        return resultBody
+    },
+}
+
+module.exports = {
+    dom,
+    htmlToElements,
+    find,
+    findAll,
+}
+
+},{"./mediaviewer.js":6}],3:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const storageModule = require('./storage.js')
+
+const getFilteredSubSet = (filter) =>
+    manager.allData.tests.filter(({ result }) => filter.includes(result.toLowerCase()))
+
+const doInitFilter = () => {
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+}
+
+const doFilter = (type, show) => {
+    if (show) {
+        storageModule.showCategory(type)
+    } else {
+        storageModule.hideCategory(type)
+    }
+
+    const currentFilter = storageModule.getVisible()
+    const filteredSubset = getFilteredSubSet(currentFilter)
+    manager.setRender(filteredSubset)
+
+    const sortColumn = storageModule.getSort()
+    doSort(sortColumn, true)
+}
+
+module.exports = {
+    doFilter,
+    doInitFilter,
+}
+
+},{"./datamanager.js":1,"./sort.js":7,"./storage.js":8}],4:[function(require,module,exports){
+const { redraw, bindEvents, renderStatic } = require('./main.js')
+const { doInitFilter } = require('./filter.js')
+const { doInitSort } = require('./sort.js')
+const { manager } = require('./datamanager.js')
+const data = JSON.parse(document.getElementById('data-container').dataset.jsonblob)
+
+function init() {
+    manager.setManager(data)
+    doInitFilter()
+    doInitSort()
+    renderStatic()
+    redraw()
+    bindEvents()
+}
+
+init()
+
+},{"./datamanager.js":1,"./filter.js":3,"./main.js":5,"./sort.js":7}],5:[function(require,module,exports){
+const { dom, find, findAll } = require('./dom.js')
+const { manager } = require('./datamanager.js')
+const { doSort } = require('./sort.js')
+const { doFilter } = require('./filter.js')
+const {
+    getVisible,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    getSortDirection,
+    possibleFilters,
+} = require('./storage.js')
+
+const removeChildren = (node) => {
+    while (node.firstChild) {
+        node.removeChild(node.firstChild)
+    }
+}
+
+const renderStatic = () => {
+    const renderEnvironmentTable = () => {
+        const environment = manager.environment
+        const rows = Object.keys(environment).map((key) => dom.getStaticRow(key, environment[key]))
+        const table = document.getElementById('environment')
+        removeChildren(table)
+        rows.forEach((row) => table.appendChild(row))
+    }
+    renderEnvironmentTable()
+}
+
+const addItemToggleListener = (elem) => {
+    elem.addEventListener('click', ({ target }) => {
+        const id = target.parentElement.dataset.id
+        manager.toggleCollapsedItem(id)
+
+        const collapsedIds = getCollapsedIds()
+        if (collapsedIds.includes(id)) {
+            const updated = collapsedIds.filter((item) => item !== id)
+            setCollapsedIds(updated)
+        } else {
+            collapsedIds.push(id)
+            setCollapsedIds(collapsedIds)
+        }
+        redraw()
+    })
+}
+
+const renderContent = (tests) => {
+    const sortAttr = getSort(manager.initialSort)
+    const sortAsc = JSON.parse(getSortDirection())
+    const rows = tests.map(dom.getResultTBody)
+    const table = document.getElementById('results-table')
+    const tableHeader = document.getElementById('results-table-head')
+
+    const newTable = document.createElement('table')
+    newTable.id = 'results-table'
+
+    // remove all sorting classes and set the relevant
+    findAll('.sortable', tableHeader).forEach((elem) => elem.classList.remove('asc', 'desc'))
+    tableHeader.querySelector(`.sortable[data-column-type="${sortAttr}"]`)?.classList.add(sortAsc ? 'desc' : 'asc')
+    newTable.appendChild(tableHeader)
+
+    if (!rows.length) {
+        const emptyTable = document.getElementById('template_results-table__body--empty').content.cloneNode(true)
+        newTable.appendChild(emptyTable)
+    } else {
+        rows.forEach((row) => {
+            if (!!row) {
+                findAll('.collapsible td:not(.col-links', row).forEach(addItemToggleListener)
+                find('.logexpander', row).addEventListener('click',
+                    (evt) => evt.target.parentNode.classList.toggle('expanded'),
+                )
+                newTable.appendChild(row)
+            }
+        })
+    }
+
+    table.replaceWith(newTable)
+}
+
+const renderDerived = () => {
+    const currentFilter = getVisible()
+    possibleFilters.forEach((result) => {
+        const input = document.querySelector(`input[data-test-result="${result}"]`)
+        input.checked = currentFilter.includes(result)
+    })
+}
+
+const bindEvents = () => {
+    const filterColumn = (evt) => {
+        const { target: element } = evt
+        const { testResult } = element.dataset
+
+        doFilter(testResult, element.checked)
+        const collapsedIds = getCollapsedIds()
+        const updated = manager.renderData.tests.map((test) => {
+            return {
+                ...test,
+                collapsed: collapsedIds.includes(test.id),
+            }
+        })
+        manager.setRender(updated)
+        redraw()
+    }
+
+    const header = document.getElementById('environment-header')
+    header.addEventListener('click', () => {
+        const table = document.getElementById('environment')
+        table.classList.toggle('hidden')
+        header.classList.toggle('collapsed')
+    })
+
+    findAll('input[name="filter_checkbox"]').forEach((elem) => {
+        elem.addEventListener('click', filterColumn)
+    })
+
+    findAll('.sortable').forEach((elem) => {
+        elem.addEventListener('click', (evt) => {
+            const { target: element } = evt
+            const { columnType } = element.dataset
+            doSort(columnType)
+            redraw()
+        })
+    })
+
+    document.getElementById('show_all_details').addEventListener('click', () => {
+        manager.allCollapsed = false
+        setCollapsedIds([])
+        redraw()
+    })
+    document.getElementById('hide_all_details').addEventListener('click', () => {
+        manager.allCollapsed = true
+        const allIds = manager.renderData.tests.map((test) => test.id)
+        setCollapsedIds(allIds)
+        redraw()
+    })
+}
+
+const redraw = () => {
+    const { testSubset } = manager
+
+    renderContent(testSubset)
+    renderDerived()
+}
+
+module.exports = {
+    redraw,
+    bindEvents,
+    renderStatic,
+}
+
+},{"./datamanager.js":1,"./dom.js":2,"./filter.js":3,"./sort.js":7,"./storage.js":8}],6:[function(require,module,exports){
+class MediaViewer {
+    constructor(assets) {
+        this.assets = assets
+        this.index = 0
+    }
+
+    nextActive() {
+        this.index = this.index === this.assets.length - 1 ? 0 : this.index + 1
+        return [this.activeFile, this.index]
+    }
+
+    prevActive() {
+        this.index = this.index === 0 ? this.assets.length - 1 : this.index -1
+        return [this.activeFile, this.index]
+    }
+
+    get currentIndex() {
+        return this.index
+    }
+
+    get activeFile() {
+        return this.assets[this.index]
+    }
+}
+
+
+const setup = (resultBody, assets) => {
+    if (!assets.length) {
+        resultBody.querySelector('.media').classList.add('hidden')
+        return
+    }
+
+    const mediaViewer = new MediaViewer(assets)
+    const container = resultBody.querySelector('.media-container')
+    const leftArrow = resultBody.querySelector('.media-container__nav--left')
+    const rightArrow = resultBody.querySelector('.media-container__nav--right')
+    const mediaName = resultBody.querySelector('.media__name')
+    const counter = resultBody.querySelector('.media__counter')
+    const imageEl = resultBody.querySelector('img')
+    const sourceEl = resultBody.querySelector('source')
+    const videoEl = resultBody.querySelector('video')
+
+    const setImg = (media, index) => {
+        if (media?.format_type === 'image') {
+            imageEl.src = media.path
+
+            imageEl.classList.remove('hidden')
+            videoEl.classList.add('hidden')
+        } else if (media?.format_type === 'video') {
+            sourceEl.src = media.path
+
+            videoEl.classList.remove('hidden')
+            imageEl.classList.add('hidden')
+        }
+
+        mediaName.innerText = media?.name
+        counter.innerText = `${index + 1} / ${assets.length}`
+    }
+    setImg(mediaViewer.activeFile, mediaViewer.currentIndex)
+
+    const moveLeft = () => {
+        const [media, index] = mediaViewer.prevActive()
+        setImg(media, index)
+    }
+    const doRight = () => {
+        const [media, index] = mediaViewer.nextActive()
+        setImg(media, index)
+    }
+    const openImg = () => {
+        window.open(mediaViewer.activeFile.path, '_blank')
+    }
+    if (assets.length === 1) {
+        container.classList.add('media-container--fullscreen')
+    } else {
+        leftArrow.addEventListener('click', moveLeft)
+        rightArrow.addEventListener('click', doRight)
+    }
+    imageEl.addEventListener('click', openImg)
+}
+
+module.exports = {
+    setup,
+}
+
+},{}],7:[function(require,module,exports){
+const { manager } = require('./datamanager.js')
+const storageModule = require('./storage.js')
+
+const genericSort = (list, key, ascending, customOrder) => {
+    let sorted
+    if (customOrder) {
+        sorted = list.sort((a, b) => {
+            const aValue = a.result.toLowerCase()
+            const bValue = b.result.toLowerCase()
+
+            const aIndex = customOrder.findIndex((item) => item.toLowerCase() === aValue)
+            const bIndex = customOrder.findIndex((item) => item.toLowerCase() === bValue)
+
+            // Compare the indices to determine the sort order
+            return aIndex - bIndex
+        })
+    } else {
+        sorted = list.sort((a, b) => a[key] === b[key] ? 0 : a[key] > b[key] ? 1 : -1)
+    }
+
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const durationSort = (list, ascending) => {
+    const parseDuration = (duration) => {
+        if (duration.includes(':')) {
+            // If it's in the format "HH:mm:ss"
+            const [hours, minutes, seconds] = duration.split(':').map(Number)
+            return (hours * 3600 + minutes * 60 + seconds) * 1000
+        } else {
+            // If it's in the format "nnn ms"
+            return parseInt(duration)
+        }
+    }
+    const sorted = list.sort((a, b) => parseDuration(a['duration']) - parseDuration(b['duration']))
+    if (ascending) {
+        sorted.reverse()
+    }
+    return sorted
+}
+
+const doInitSort = () => {
+    const type = storageModule.getSort(manager.initialSort)
+    const ascending = storageModule.getSortDirection()
+    const list = manager.testSubset
+    const initialOrder = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed', 'Skipped', 'Passed']
+
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    if (type?.toLowerCase() === 'original') {
+        manager.setRender(list)
+    } else {
+        let sortedList
+        switch (type) {
+        case 'duration':
+            sortedList = durationSort(list, ascending)
+            break
+        case 'result':
+            sortedList = genericSort(list, type, ascending, initialOrder)
+            break
+        default:
+            sortedList = genericSort(list, type, ascending)
+            break
+        }
+        manager.setRender(sortedList)
+    }
+}
+
+const doSort = (type, skipDirection) => {
+    const newSortType = storageModule.getSort(manager.initialSort) !== type
+    const currentAsc = storageModule.getSortDirection()
+    let ascending
+    if (skipDirection) {
+        ascending = currentAsc
+    } else {
+        ascending = newSortType ? false : !currentAsc
+    }
+    storageModule.setSort(type)
+    storageModule.setSortDirection(ascending)
+
+    const list = manager.testSubset
+    const sortedList = type === 'duration' ? durationSort(list, ascending) : genericSort(list, type, ascending)
+    manager.setRender(sortedList)
+}
+
+module.exports = {
+    doInitSort,
+    doSort,
+}
+
+},{"./datamanager.js":1,"./storage.js":8}],8:[function(require,module,exports){
+const possibleFilters = [
+    'passed',
+    'skipped',
+    'failed',
+    'error',
+    'xfailed',
+    'xpassed',
+    'rerun',
+]
+
+const getVisible = () => {
+    const url = new URL(window.location.href)
+    const settings = new URLSearchParams(url.search).get('visible')
+    const lower = (item) => {
+        const lowerItem = item.toLowerCase()
+        if (possibleFilters.includes(lowerItem)) {
+            return lowerItem
+        }
+        return null
+    }
+    return settings === null ?
+        possibleFilters :
+        [...new Set(settings?.split(',').map(lower).filter((item) => item))]
+}
+
+const hideCategory = (categoryToHide) => {
+    const url = new URL(window.location.href)
+    const visibleParams = new URLSearchParams(url.search).get('visible')
+    const currentVisible = visibleParams ? visibleParams.split(',') : [...possibleFilters]
+    const settings = [...new Set(currentVisible)].filter((f) => f !== categoryToHide).join(',')
+
+    url.searchParams.set('visible', settings)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const showCategory = (categoryToShow) => {
+    if (typeof window === 'undefined') {
+        return
+    }
+    const url = new URL(window.location.href)
+    const currentVisible = new URLSearchParams(url.search).get('visible')?.split(',').filter(Boolean) ||
+        [...possibleFilters]
+    const settings = [...new Set([categoryToShow, ...currentVisible])]
+    const noFilter = possibleFilters.length === settings.length || !settings.length
+
+    noFilter ? url.searchParams.delete('visible') : url.searchParams.set('visible', settings.join(','))
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getSort = (initialSort) => {
+    const url = new URL(window.location.href)
+    let sort = new URLSearchParams(url.search).get('sort')
+    if (!sort) {
+        sort = initialSort || 'result'
+    }
+    return sort
+}
+
+const setSort = (type) => {
+    const url = new URL(window.location.href)
+    url.searchParams.set('sort', type)
+    window.history.pushState({}, null, unescape(url.href))
+}
+
+const getCollapsedCategory = (renderCollapsed) => {
+    let categories
+    if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        const collapsedItems = new URLSearchParams(url.search).get('collapsed')
+        switch (true) {
+        case !renderCollapsed && collapsedItems === null:
+            categories = ['passed']
+            break
+        case collapsedItems?.length === 0 || /^["']{2}$/.test(collapsedItems):
+            categories = []
+            break
+        case /^all$/.test(collapsedItems) || collapsedItems === null && /^all$/.test(renderCollapsed):
+            categories = [...possibleFilters]
+            break
+        default:
+            categories = collapsedItems?.split(',').map((item) => item.toLowerCase()) || renderCollapsed
+            break
+        }
+    } else {
+        categories = []
+    }
+    return categories
+}
+
+const getSortDirection = () => JSON.parse(sessionStorage.getItem('sortAsc')) || false
+const setSortDirection = (ascending) => sessionStorage.setItem('sortAsc', ascending)
+
+const getCollapsedIds = () => JSON.parse(sessionStorage.getItem('collapsedIds')) || []
+const setCollapsedIds = (list) => sessionStorage.setItem('collapsedIds', JSON.stringify(list))
+
+module.exports = {
+    getVisible,
+    hideCategory,
+    showCategory,
+    getCollapsedIds,
+    setCollapsedIds,
+    getSort,
+    setSort,
+    getSortDirection,
+    setSortDirection,
+    getCollapsedCategory,
+    possibleFilters,
+}
+
+},{}]},{},[4]);
+    </script>
+  </footer>
+</html>
