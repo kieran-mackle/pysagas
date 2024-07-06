@@ -13,8 +13,12 @@
     <img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg">
   </a>
 
-  <a>
-    <img src="https://github.com/kieran-mackle/pysagas/actions/workflows/tests.yml/badge.svg" alt="Test Status" class="center">
+  <a href="https://kieran-mackle.github.io/pysagas/pytest_report">
+    <img src="https://github.com/kieran-mackle/pysagas/actions/workflows/tests.yml/badge.svg" alt="Test Status" >
+  </a>
+
+  <a href="https://kieran-mackle.github.io/pysagas/coverage">
+    <img src="https://github.com/kieran-mackle/pysagas/raw/gh-pages/coverage.svg?raw=true" alt="Test Coverage" >
   </a>
   
 </p>
