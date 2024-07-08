@@ -70,7 +70,27 @@ def isentropic_sensitivity(cell: Cell, p_i: int, **kwargs):
 def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, inflow_sens, **kwargs):
     """Calculates the pressure-parameter sensitivity, including
     the sensitivity to the incoming flow state (for use on nozzle cells
-    where the engine outflow changes due to parameter change"""
+    where the engine outflow changes due to parameter change)
+
+    Parameters
+        ----------
+        cell : Cell
+            The cell to be analysed.
+
+        p_i : int
+            Index of the design variable (in inflow_sens) to differeciate with respect to
+
+        inflow : FlowState
+            "Free stream" of the infoming flow (sould be the engine combustor outflow for nozzle claculation)
+
+        inflow_sens :
+            HyperPro engine outflow sensitivities
+
+        Returns
+        --------
+        dPdp : np.array
+            The pressure sensitivity matrix with respect to the parameter.
+    """
 
     gamma1 = inflow.gamma
     gamma2 = cell.flowstate.gamma
@@ -108,7 +128,6 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, i
     den2 = np.sqrt(gm1 * gp1)
     dnu_dg1 = num1 / den1 - num2 / den2
 
-
     q = (fun1/fun2)**(gamma1/gm1)
     r1 = gamma1 * (M1 ** 2 - (M2 ** 2 * fun1) / fun2)
     r2 = 2*gm1*fun1
@@ -124,12 +143,7 @@ def freestream_isentropic_sensitivity(cell: Cell, p_i: int, inflow: FlowState, i
             + dP2_daoa * inflow_sens.loc['flow_angle'][p_i]
             + dP2_dg1 * inflow_sens.loc['gamma'][p_i])
 
-    d1 = dP2_dM1 * 1
-    d2 = dP2_dP1 * 1
-    d3 = dP2_daoa * 1
-    d4 = dP2_dg1 * 1
-
-    return dPdp, d1, d2, d3, d4
+    return dPdp
 
 
 
