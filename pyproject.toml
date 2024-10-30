@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hypysagas"
-version = "0.15.2"
+version = "0.15.3"
 authors = [
   { name="Kieran Mackle", email="kemackle98@gmail.com" },
 ]
@@ -43,7 +43,7 @@ dev = [
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "0.15.2"
+version = "0.15.3"
 tag_format = "v$version"
 version_provider = "pep621"
 version_files = [
