@@ -507,7 +507,7 @@ class OPM(FlowSolver):
         Peter Jacobs
         """
         M1n = M1 * abs(np.sin(beta))
-        rho2_rho1 = (gamma + 1) * M1n**2 / 2 + (gamma - 1) * M1n**2
+        rho2_rho1 = (gamma + 1) * M1n**2 / (2 + (gamma - 1) * M1n**2)
         return rho2_rho1
 
     @staticmethod
