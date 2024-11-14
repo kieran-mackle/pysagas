@@ -308,7 +308,7 @@ class OPM(FlowSolver):
         rho2_rho1 = (gamma + 1) * M1**2 / (2 + (gamma - 1) * M1**2)
         p2_p1 = 1 + 2 * gamma * (M1**2 - 1) / (gamma + 1)
 
-        M2 = ((1 + M1 * (gamma - 1) / 2) / (gamma * M1**2 - (gamma - 1) / 2)) ** 0.5
+        M2 = ((1 + M1**2 * (gamma - 1) / 2) / (gamma * M1**2 - (gamma - 1) / 2)) ** 0.5
         p2 = p1 * p2_p1
         T2 = T1 * p2_p1 / rho2_rho1
 
